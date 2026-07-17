@@ -69,7 +69,7 @@ commander가 한쪽만 해석하고 나머지를 무시하기 때문이다.
 | `fx list` | no | 환율 목록 |
 | `fx show <base> <quote>` | no | 해석될 환율과 근거 |
 | `assert <account> <amount>` | yes | 잔고 단언 기록·대사 (실패 시 exit 1) |
-| `close <month>` | yes | 월 마감 (FX 재평가·스냅샷·기간 잠금). `--dry-run`은 쓰기 없음 |
+| `close <month>` | yes | 월 마감 (재평가·스냅샷·`period=closed`). `--dry-run`은 쓰기 없음 |
 | `ingest submit` | yes | 파싱된 거래를 draft로 적재 |
 | `review list` | no | pending draft |
 | `review accept <id>` | yes | draft → posted |
@@ -156,8 +156,9 @@ cash on hand (2026-07-17):  3000000 KRW
 />
 
 `close`는 기간 내 draft 미해소 또는 실패한 assertion이 있으면 거부한다
-(`close_blocked`). 재평가·스냅샷·기간 잠금을 수행한다. 상세는
-[데이터 모델](/docs/dev/data-model)의 재평가 절을 본다.
+(`close_blocked`). 통과 시 FX 재평가 → 스냅샷 → `period.status=closed`다.
+닫힌 기간으로의 추가 기표 거부는 아직 store에 없다. 상세는
+[잔고 단언과 월 마감](/docs/features/close)·[데이터 모델](/docs/dev/data-model)을 본다.
 
 <CommandSpec
   command="verify"

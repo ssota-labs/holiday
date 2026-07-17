@@ -1,6 +1,6 @@
 ---
 title: 잔고 단언과 월 마감
-description: assert로 명세서를 고정하고, close로 기간을 잠근다
+description: assert로 명세서를 고정하고, close로 기간을 closed로 표시한다
 type: conceptual
 summary: closeGate는 draft와 실패한 assertion을 막는다. 지분 결산 분개는 없다.
 related: ['/docs/features/fx', '/docs/features/ingest', '/docs/domain/glossary']
@@ -15,7 +15,7 @@ related: ['/docs/features/fx', '/docs/features/ingest', '/docs/domain/glossary']
 1. **다중 그레인 hard close 없음** — 일과 달을 둘 다 재평가하면 FX가 이중 계상된다. hard close 그레인은 book당 하나.
 2. **지분(equity)으로의 결산 분개 없음** — 기간 범위 합계는 SQL로 계산한다. 결산 분개는 저널 노이즈만 늘린다. 이월·대차대조는 스냅샷이 담당한다.
 
-일·주 단위는 checkpoint(스냅샷만) 영역이다. 저널 잠금·재평가를 하지 않는다.
+일·주 단위는 soft checkpoint(스냅샷만) 영역이다. hard close의 재평가·`period.status=closed`를 하지 않는다.
 
 ## 동작
 
@@ -36,7 +36,8 @@ related: ['/docs/features/fx', '/docs/features/ingest', '/docs/domain/glossary']
 | 기간 내 `status='draft'` 거래 수 > 0 | 마감 차단. `review`로 처리 |
 | 기간 내 balance assertion 중 하나라도 불일치 | 마감 차단. 차액 설명 출력 |
 
-통과 후에만 재평가·스냅샷·기간 `closed`가 진행된다.
+통과 후에만 재평가 → 스냅샷 → `period.status = closed` 순으로 진행한다.
+재평가는 기간이 아직 open인 동안 기표한다.
 
 ### FX 재평가
 
@@ -47,7 +48,9 @@ related: ['/docs/features/fx', '/docs/features/ingest', '/docs/domain/glossary']
 - `units = 0`이어도 carrying weight가 남으면 재평가 대상(실현 FX)
 - posting: `units_minor = 0`, `weight_minor = delta`, 상대 계정 `Income:FX:Unrealized`
 
-재평가는 기간이 아직 open인 동안 기표한 뒤 잠근다. weight가 units와 분리 저장되어 있어 "외화 수량 불변 + KRW 장부가액 변경"이 표현 가능하다.
+재평가는 기간이 아직 open인 동안 기표한 뒤, 스냅샷을 쓰고 `period.status`를
+`closed`로 바꾼다. weight가 units와 분리 저장되어 있어 "외화 수량 불변 + 기능통화
+장부가액 변경"이 표현 가능하다.
 
 ### --dry-run
 
@@ -82,7 +85,7 @@ related: ['/docs/features/fx', '/docs/features/ingest', '/docs/domain/glossary']
 <CommandSpec
   command="close"
   mutates={true}
-  summary="월 마감 — 게이트 통과 후 FX 재평가, 스냅샷, 기간 잠금."
+  summary="월 마감 — 게이트 통과 후 FX 재평가, 스냅샷, period.status=closed."
   signature={`holiday close <YYYY-MM> [--dry-run]`}
   flags={[{ name: '--dry-run', type: 'boolean', default: 'false', description: '기록하지 않고 재평가 예정만 출력' }]}
   exits={[
@@ -106,3 +109,5 @@ $ holiday close 2026-07
 - equity closing entry를 만들지 않는다.
 - 재평가에 `Income:FX:Unrealized` 계정이 필요하다. 없으면 usage 오류로 안내한다.
 - 환율이 없으면 외화 잔고 재평가가 throw로 마감을 막는다. 사전에 `fx add`가 필요하다.
+- `period.status = closed`는 기록된다. 다만 닫힌 기간 날짜로 `txn add`하는 것을
+  store가 거부하는 가드는 아직 없다.

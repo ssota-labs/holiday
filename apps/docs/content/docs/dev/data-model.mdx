@@ -76,7 +76,7 @@ related: ['/docs/domain/policy', '/docs/dev/system']
     { id: 'rec', type: 'doc', position: { x: 0, y: 330 }, data: { label: 'recurring', description: '정기지출', kind: 'forecast', handles: { target: false } } },
     { id: 'loan', type: 'doc', position: { x: 0, y: 410 }, data: { label: 'loan', description: '상환 스케줄', kind: 'forecast', handles: { target: false } } },
     { id: 'balance', type: 'doc', position: { x: 300, y: 20 }, data: { label: 'balance', description: 'SUM(weight)', kind: 'derived' } },
-    { id: 'cashflow', type: 'doc', position: { x: 300, y: 200 }, data: { label: 'cashflow', description: '과거 + 미래', kind: 'derived' } },
+    { id: 'cashflow', type: 'doc', position: { x: 300, y: 200 }, data: { label: 'cashflow', description: 'opening + 투영', kind: 'derived' } },
     { id: 'audit', type: 'doc', position: { x: 300, y: 110 }, data: { label: 'audit_log', description: '해시 체인', kind: 'fact' } },
   ]}
   edges={[
