@@ -42,12 +42,24 @@ cash on hand (2026-07-17):  3000000 KRW
 
 ## 설치
 
+**Claude Code**
+
 ```bash
 /plugin marketplace add ssota-labs/holiday
 /plugin install holiday@ssota-labs
 ```
 
-Node 24+ 필요. `node:sqlite`가 builtin이라 네이티브 애드온 없이 단일파일로 번들된다.
+**Codex**
+
+```bash
+codex plugin marketplace add ssota-labs/holiday
+codex plugin install holiday
+```
+
+두 플러그인은 스킬만 담는다. CLI 자체는 npm에 있고, 첫 실행 때
+`npx @holiday-cfo/cli@latest`로 받아진다.
+
+Node 24+ 필요. `node:sqlite`가 builtin이라 네이티브 애드온도 설치 스텝도 없다.
 
 ## 시작
 

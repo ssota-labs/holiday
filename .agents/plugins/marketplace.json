@@ -1,0 +1,14 @@
+{
+  "name": "ssota-labs",
+  "interface": {
+    "displayName": "holiday",
+    "shortDescription": "A double-entry CFO ledger for one person, driven from a Codex session."
+  },
+  "plugins": [
+    {
+      "name": "holiday",
+      "source": { "source": "local", "path": "./plugins/codex" },
+      "category": "Development"
+    }
+  ]
+}
