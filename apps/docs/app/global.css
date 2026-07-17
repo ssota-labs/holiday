@@ -9,36 +9,16 @@
 @source '../components/**/*.tsx';
 
 /*
- * Sidebar nav scroll.
+ * Sidebar scroll — keep Radix ScrollArea's Viewport as the scroller.
+ * Do NOT force overflow:visible on the viewport or overflow-y:auto on the
+ * root: that breaks nested Collapsible height animation (accordion appears
+ * stuck open/closed while aria-expanded drifts).
  *
- * fumadocs wraps the page tree in Radix ScrollArea: Root is overflow-hidden +
- * flex-1, and the Viewport is the intended scroller. In some embeds (and when
- * the fade mask is on the Viewport) wheel scrolling fails to move the list even
- * though content is clipped. Scroll the flex child itself with native overflow
- * and let the Viewport size to its content.
+ * Wheel scrolling: ensure the viewport can receive overflow and overscroll
+ * is contained. Fade mask stays on the viewport (fumadocs default).
  */
-#nd-sidebar > [data-radix-scroll-area-root],
-#nd-sidebar > .overflow-hidden.min-h-0.flex-1,
-#nd-sidebar-mobile > [data-radix-scroll-area-root],
-#nd-sidebar-mobile > .overflow-hidden.min-h-0.flex-1 {
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-gutter: stable;
-  mask-image: linear-gradient(
-    to bottom,
-    transparent,
-    #000 12px,
-    #000 calc(100% - 12px),
-    transparent
-  );
-}
-
 #nd-sidebar [data-radix-scroll-area-viewport],
 #nd-sidebar-mobile [data-radix-scroll-area-viewport] {
-  height: auto !important;
-  max-height: none !important;
-  overflow: visible !important;
-  mask-image: none !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }

@@ -600,13 +600,12 @@ w(
     defaultOpen: true,
   }),
 );
-w('planning/prds/meta.json', meta('PRDs', ['index', 'prd-0.1-foundation'], { collapsible: true, defaultOpen: true }));
+w('planning/prds/meta.json', meta('PRDs', ['prd-0.1-foundation'], { collapsible: true, defaultOpen: true }));
 w(
   'planning/stories/meta.json',
   meta(
     'User Stories',
     [
-      'index',
       'us-ledger-init',
       'us-accounts',
       'us-txn',

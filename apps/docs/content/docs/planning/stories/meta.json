@@ -1,7 +1,6 @@
 {
   "title": "User Stories",
   "pages": [
-    "index",
     "us-ledger-init",
     "us-accounts",
     "us-txn",

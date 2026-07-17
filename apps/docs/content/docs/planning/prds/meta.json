@@ -1,7 +1,6 @@
 {
   "title": "PRDs",
   "pages": [
-    "index",
     "prd-0.1-foundation"
   ],
   "collapsible": true,
