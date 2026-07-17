@@ -11,8 +11,7 @@
   },
   "files": [
     "dist",
-    "templates",
-    "LICENSE.md"
+    "templates"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -1,0 +1,52 @@
+name: release
+
+# Publishes every public @holiday-cfo/* package to npm when a version tag is
+# pushed. The tag is the trigger AND the version: `git tag v0.2.0 && git push
+# --tags`. Add the NPM_TOKEN secret (an npm automation token) before the first
+# release — the maintainer fills that in; nothing here contains a key.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write # npm provenance — ties each publish to this workflow run
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The tag must match every public package.json version. A mismatch would
+      # publish the wrong version, and npm has no real undo — so this gate runs
+      # before the build, not after.
+      - name: Verify tag matches package versions
+        run: node scripts/check-release-version.mjs "${{ github.ref_name }}"
+
+      - run: pnpm -r build
+
+      - run: pnpm -r test
+
+      # Topological order, workspace:* rewritten to the real version, and versions
+      # already on the registry skipped — all handled by pnpm. --provenance records
+      # a signed link from the package to this run; --no-git-checks because the tag
+      # is already the checked-out ref.
+      - name: Publish
+        run: pnpm -r publish --access public --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'

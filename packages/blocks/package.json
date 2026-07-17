@@ -3,14 +3,18 @@
   "version": "0.1.0",
   "type": "module",
   "license": "MIT",
-  "description": "The dashboard vocabulary an agent may use: 가계부 nouns, not shadcn primitives, and no prop that holds money.",
+  "description": "The dashboard vocabulary an agent may use: \uac00\uacc4\ubd80 nouns, not shadcn primitives, and no prop that holds money.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ssota-labs/holiday.git",
     "directory": "packages/blocks"
   },
-  "publishConfig": { "access": "public" },
-  "files": ["src", "LICENSE.md"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./catalog": "./src/catalog.ts"
