@@ -14,6 +14,9 @@ import {
   type Grain,
   type InstallmentPlan,
   type InstallmentRow,
+  type IngestBatch,
+  type IngestItem,
+  type IngestItemStatus,
   type InstallmentWithRows,
   type Loan,
   type LoanScheduleRow,
@@ -862,6 +865,72 @@ class SqliteUow implements LedgerUow {
     });
   }
 
+  async findIngestBatchBySha(sha: string): Promise<IngestBatch | null> {
+    const r = this.db.get<IngestBatchRaw>('SELECT * FROM ingest_batch WHERE source_sha256 = ?', sha);
+    return r ? mapBatch(r) : null;
+  }
+
+  async findIngestItemsByDedupeKey(key: string): Promise<readonly IngestItem[]> {
+    return this.db
+      .all<IngestItemRaw>('SELECT * FROM ingest_item WHERE dedupe_key = ? ORDER BY created_at', key)
+      .map(mapItem);
+  }
+
+  async listIngestItems(filter?: { status?: IngestItemStatus }): Promise<readonly IngestItem[]> {
+    const sql = filter?.status
+      ? 'SELECT * FROM ingest_item WHERE status = ? ORDER BY created_at'
+      : 'SELECT * FROM ingest_item ORDER BY created_at';
+    const params = filter?.status ? [filter.status] : [];
+    return this.db.all<IngestItemRaw>(sql, ...params).map(mapItem);
+  }
+
+  async recordIngestBatch(b: IngestBatch): Promise<void> {
+    this.db.run(
+      'INSERT INTO ingest_batch (id, source_sha256, source_name, submitted_at, item_count) VALUES (?, ?, ?, ?, ?)',
+      b.id,
+      b.sourceSha256,
+      b.sourceName,
+      b.submittedAt,
+      b.itemCount,
+    );
+  }
+
+  async recordIngestItem(i: IngestItem): Promise<void> {
+    this.db.run(
+      `INSERT INTO ingest_item (id, batch_id, dedupe_key, dedupe_authority, external_ref, merchant,
+                                txn_id, status, reason, parsed_json, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      i.id,
+      i.batchId,
+      i.dedupeKey,
+      i.dedupeAuthority,
+      i.externalRef,
+      i.merchant,
+      i.txnId,
+      i.status,
+      i.reason,
+      i.parsedJson,
+      i.createdAt,
+    );
+  }
+
+  async setIngestItemStatus(
+    id: string,
+    status: IngestItemStatus,
+    meta: { reason?: string; txnId?: TxnId },
+  ): Promise<void> {
+    // Rows are never deleted — a rejected item is dedup memory, and removing it
+    // lets the same screenshot be re-proposed forever.
+    this.db.run(
+      'UPDATE ingest_item SET status = ?, reason = ?, txn_id = COALESCE(?, txn_id) WHERE id = ?',
+      status,
+      meta.reason ?? null,
+      meta.txnId ?? null,
+      id,
+    );
+    this.#appendAudit('ingest_item_status', id, { status, reason: meta.reason ?? null });
+  }
+
   async getCommandResult(idemKey: string): Promise<CommandResult | null> {
     const r = this.db.get<{ idem_key: string; request_sha256: string; response_json: string; created_at: string }>(
       'SELECT * FROM command_log WHERE idem_key = ?',
@@ -1042,6 +1111,54 @@ class SqliteUow implements LedgerUow {
 function chainHeadOf(db: Db): { seq: number; hash: string } | null {
   const head = db.get<{ seq: bigint; hash: string }>('SELECT seq, hash FROM audit_log ORDER BY seq DESC LIMIT 1');
   return head ? { seq: toInt(head.seq), hash: head.hash } : null;
+}
+
+interface IngestBatchRaw {
+  id: string;
+  source_sha256: string;
+  source_name: string | null;
+  submitted_at: string;
+  item_count: bigint;
+}
+
+function mapBatch(r: IngestBatchRaw): IngestBatch {
+  return {
+    id: r.id,
+    sourceSha256: r.source_sha256,
+    sourceName: r.source_name,
+    submittedAt: r.submitted_at,
+    itemCount: toInt(r.item_count),
+  };
+}
+
+interface IngestItemRaw {
+  id: string;
+  batch_id: string;
+  dedupe_key: string;
+  dedupe_authority: string;
+  external_ref: string | null;
+  merchant: string | null;
+  txn_id: string | null;
+  status: string;
+  reason: string | null;
+  parsed_json: string;
+  created_at: string;
+}
+
+function mapItem(r: IngestItemRaw): IngestItem {
+  return {
+    id: r.id,
+    batchId: r.batch_id,
+    dedupeKey: r.dedupe_key,
+    dedupeAuthority: r.dedupe_authority as IngestItem['dedupeAuthority'],
+    externalRef: r.external_ref,
+    merchant: r.merchant,
+    txnId: r.txn_id as TxnId | null,
+    status: r.status as IngestItemStatus,
+    reason: r.reason,
+    parsedJson: r.parsed_json,
+    createdAt: r.created_at,
+  };
 }
 
 interface LoanRowRaw {

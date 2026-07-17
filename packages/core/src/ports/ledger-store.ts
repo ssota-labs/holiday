@@ -1,6 +1,7 @@
 import type { Account, AccountCode, AccountId, AccountType, IsoDate } from '../domain/account.js';
 import type { CardCycleRule } from '../domain/billing.js';
 import type { InstallmentPlan, InstallmentRow } from '../domain/installment.js';
+import type { DedupeAuthority } from '../domain/ingest.js';
 import type { Loan, LoanScheduleRow } from '../domain/loan.js';
 import type { Commodity, CommodityCode } from '../domain/commodity.js';
 import type { RecurringExpense } from '../domain/recurring.js';
@@ -211,6 +212,34 @@ export interface LedgerRead {
 
   listLoans(): Promise<readonly LoanWithSchedule[]>;
   getLoan(accountId: AccountId): Promise<LoanWithSchedule | null>;
+
+  findIngestBatchBySha(sha: string): Promise<IngestBatch | null>;
+  findIngestItemsByDedupeKey(key: string): Promise<readonly IngestItem[]>;
+  listIngestItems(filter?: { status?: IngestItemStatus }): Promise<readonly IngestItem[]>;
+}
+
+export interface IngestBatch {
+  readonly id: string;
+  readonly sourceSha256: string;
+  readonly sourceName: string | null;
+  readonly submittedAt: string;
+  readonly itemCount: number;
+}
+
+export type IngestItemStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface IngestItem {
+  readonly id: string;
+  readonly batchId: string;
+  readonly dedupeKey: string;
+  readonly dedupeAuthority: DedupeAuthority;
+  readonly externalRef: string | null;
+  readonly merchant: string | null;
+  readonly txnId: TxnId | null;
+  readonly status: IngestItemStatus;
+  readonly reason: string | null;
+  readonly parsedJson: string;
+  readonly createdAt: string;
 }
 
 export interface LoanWithSchedule {
@@ -247,6 +276,10 @@ export interface LedgerUow extends LedgerRead {
   upsertRecurring(r: RecurringExpense): Promise<void>;
   /** Replaces the loan and its whole schedule — a forecast is allowed to change. */
   upsertLoan(loan: Loan, rows: readonly LoanScheduleRow[]): Promise<void>;
+
+  recordIngestBatch(b: IngestBatch): Promise<void>;
+  recordIngestItem(i: IngestItem): Promise<void>;
+  setIngestItemStatus(id: string, status: IngestItemStatus, meta: { reason?: string; txnId?: TxnId }): Promise<void>;
   recordCommandResult(r: CommandResult): Promise<void>;
   verify(opts?: { deep?: boolean }): Promise<VerifyReport>;
 }

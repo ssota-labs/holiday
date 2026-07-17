@@ -8213,6 +8213,77 @@ function describeCadence(c) {
   return c.kind === "monthly" ? `\uB9E4\uC6D4 ${day}` : `\uB9E4\uB144 ${c.month}\uC6D4 ${day}`;
 }
 
+// ../core/dist/domain/ingest.js
+var DEDUPE_KEY_VERSION = 1;
+var KOREAN_CORP_PATTERNS = [
+  /\(주\)/g,
+  /\（주\）/g,
+  /주식회사/g,
+  /\(유\)/g,
+  /유한회사/g
+];
+function normalizeMerchant(raw) {
+  if (!raw)
+    return "";
+  let s = raw.normalize("NFKC").toLowerCase();
+  for (const p of KOREAN_CORP_PATTERNS)
+    s = s.replace(p, " ");
+  s = s.replace(/[*_|]+/g, " ");
+  return s.replace(/\s+/g, " ").trim();
+}
+async function dedupeKey(t) {
+  if (t.externalRef) {
+    return { key: await sha256(`v${DEDUPE_KEY_VERSION}|ref|${t.accountId}|${t.externalRef}`), authority: "external_ref" };
+  }
+  const parts = [
+    `v${DEDUPE_KEY_VERSION}`,
+    "nat",
+    t.accountId,
+    t.date,
+    t.unitsMinor.toString(),
+    t.commodity,
+    normalizeMerchant(t.merchant)
+  ];
+  return { key: await sha256(parts.join("|")), authority: "natural" };
+}
+async function sha256(s) {
+  const bytes = new TextEncoder().encode(s);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function sha256Bytes(bytes) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+var NEAR_DAYS = 3;
+function findNearDuplicates(candidate, existing) {
+  const m = normalizeMerchant(candidate.merchant);
+  return existing.filter((e) => {
+    if (e.accountId !== candidate.accountId)
+      return false;
+    if (e.commodity !== candidate.commodity)
+      return false;
+    if (e.unitsMinor !== candidate.unitsMinor)
+      return false;
+    return Math.abs(daysBetween(e.date, candidate.date)) <= NEAR_DAYS;
+  }).map((e) => {
+    const em = normalizeMerchant(e.merchant);
+    const sameDay = e.date === candidate.date;
+    const sameMerchant = em === m && m !== "";
+    return {
+      txnId: e.txnId,
+      date: e.date,
+      merchant: e.merchant,
+      unitsMinor: e.unitsMinor,
+      reason: sameDay ? sameMerchant ? "same account, amount, merchant and date \u2014 but this may genuinely be a second purchase" : "same account, amount and date" : `same account and amount, ${Math.abs(daysBetween(e.date, candidate.date))} day(s) apart \u2014 the app and the statement often disagree on the date`
+    };
+  });
+}
+function daysBetween(a, b) {
+  const ms = (/* @__PURE__ */ new Date(`${b}T00:00:00Z`)).getTime() - (/* @__PURE__ */ new Date(`${a}T00:00:00Z`)).getTime();
+  return Math.round(ms / 864e5);
+}
+
 // ../core/dist/domain/cashflow.js
 function projectCardBills(opts) {
   const { cards, postings, today: today2, until } = opts;
@@ -8372,6 +8443,36 @@ function assertEngineTier(storeName, caps) {
     throw new TierContractError(storeName, missing);
 }
 
+// src/ingest.ts
+var INGEST_SUBMISSION = external_exports.object({
+  /** sha256 of the image bytes, if the agent has the file. Blocks a re-submit of the same image. */
+  sourceSha256: external_exports.string().regex(/^[0-9a-f]{64}$/).optional(),
+  sourceName: external_exports.string().optional(),
+  items: external_exports.array(
+    external_exports.object({
+      date: external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      payee: external_exports.string().optional(),
+      narration: external_exports.string().optional(),
+      /** The issuer's own transaction id, if the model could read one. Authoritative. */
+      externalRef: external_exports.string().optional(),
+      /**
+       * Which leg is the money side, for duplicate detection. Defaults to the
+       * first liability or asset leg — the card or the bank, not the category.
+       */
+      dedupeOn: external_exports.string().optional(),
+      legs: external_exports.array(
+        external_exports.object({
+          account: external_exports.string(),
+          amount: external_exports.string(),
+          commodity: external_exports.string(),
+          /** Total in the booking commodity, for a non-functional leg. Same as `@@`. */
+          weight: external_exports.string().optional()
+        })
+      ).min(2, { message: "a transaction needs at least two legs" })
+    })
+  ).min(1, { message: "nothing to ingest" })
+});
+
 // src/legs.ts
 function parseLeg(leg, amounts2, functionalCurrency, resolveAccount) {
   const parts = leg.trim().split(/\s+/);
@@ -8430,7 +8531,7 @@ import { dirname, join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 var CHAIN_HASH_VERSION = 1;
 var GENESIS_HASH = "0".repeat(64);
-var sha256 = (s) => createHash("sha256").update(s, "utf8").digest("hex");
+var sha2562 = (s) => createHash("sha256").update(s, "utf8").digest("hex");
 function txnContentHash(tx, version = CHAIN_HASH_VERSION) {
   const parts = [
     `v${version}`,
@@ -8462,10 +8563,10 @@ function txnContentHash(tx, version = CHAIN_HASH_VERSION) {
       p.memo ?? ""
     ].join(""));
   }
-  return sha256(parts.join(""));
+  return sha2562(parts.join(""));
 }
 function chainHash(r, version = CHAIN_HASH_VERSION) {
-  return sha256([`v${version}`, r.seq.toString(), r.at, r.event, r.subject, r.detail, r.prevHash].join(""));
+  return sha2562([`v${version}`, r.seq.toString(), r.at, r.event, r.subject, r.detail, r.prevHash].join(""));
 }
 function stableJson(v) {
   return JSON.stringify(normalize(v));
@@ -8611,6 +8712,16 @@ var MIGRATIONS = [
       'CREATE TABLE `loan` (\n	`account_id` text PRIMARY KEY,\n	`funding_account_id` text NOT NULL,\n	`interest_account_id` text NOT NULL,\n	`principal_minor` integer NOT NULL,\n	`commodity` text NOT NULL,\n	`annual_rate_text` text NOT NULL,\n	`method` text NOT NULL,\n	`term_months` integer NOT NULL,\n	`first_payment_date` text NOT NULL,\n	`payment_day` integer NOT NULL,\n	`label` text,\n	CONSTRAINT `fk_loan_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_funding_account_id_account_id_fk` FOREIGN KEY (`funding_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_interest_account_id_account_id_fk` FOREIGN KEY (`interest_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT "loan_principal_positive" CHECK("principal_minor" > 0),\n	CONSTRAINT "loan_term_positive" CHECK("term_months" >= 1),\n	CONSTRAINT "loan_method_enum" CHECK("method" IN (\'annuity\',\'equal_principal\',\'bullet\',\'interest_only\')),\n	CONSTRAINT "loan_payment_day_range" CHECK("payment_day" = -1 OR "payment_day" BETWEEN 1 AND 31),\n	CONSTRAINT "loan_accounts_differ" CHECK("account_id" <> "funding_account_id")\n);',
       'CREATE TABLE `loan_schedule_row` (\n	`loan_id` text NOT NULL,\n	`seq` integer NOT NULL,\n	`due_date` text NOT NULL,\n	`opening_minor` integer NOT NULL,\n	`principal_minor` integer NOT NULL,\n	`interest_minor` integer NOT NULL,\n	`closing_minor` integer NOT NULL,\n	CONSTRAINT `loan_schedule_row_pk` PRIMARY KEY(`loan_id`, `seq`),\n	CONSTRAINT `fk_loan_schedule_row_loan_id_loan_account_id_fk` FOREIGN KEY (`loan_id`) REFERENCES `loan`(`account_id`) ON DELETE CASCADE,\n	CONSTRAINT "loan_schedule_seq_positive" CHECK("seq" >= 1)\n);',
       "CREATE INDEX `loan_schedule_by_date` ON `loan_schedule_row` (`due_date`);"
+    ]
+  },
+  {
+    "name": "20260717105405_ingest",
+    "hash": "dea47ca026d33031e905e65bf8dacbb1463de0dd1488f8763f6e774867189b4c",
+    "statements": [
+      'CREATE TABLE `ingest_batch` (\n	`id` text PRIMARY KEY,\n	`source_sha256` text NOT NULL UNIQUE,\n	`source_name` text,\n	`submitted_at` text NOT NULL,\n	`item_count` integer DEFAULT 0 NOT NULL,\n	CONSTRAINT "ingest_batch_count_nonneg" CHECK("item_count" >= 0)\n);',
+      "CREATE TABLE `ingest_item` (\n	`id` text PRIMARY KEY,\n	`batch_id` text NOT NULL,\n	`dedupe_key` text NOT NULL,\n	`dedupe_authority` text NOT NULL,\n	`external_ref` text,\n	`merchant` text,\n	`txn_id` text,\n	`status` text DEFAULT 'pending' NOT NULL,\n	`reason` text,\n	`parsed_json` text NOT NULL,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_ingest_item_batch_id_ingest_batch_id_fk` FOREIGN KEY (`batch_id`) REFERENCES `ingest_batch`(`id`) ON DELETE CASCADE,\n	CONSTRAINT `fk_ingest_item_txn_id_txn_id_fk` FOREIGN KEY (`txn_id`) REFERENCES `txn`(`id`),\n	CONSTRAINT \"ingest_item_status_enum\" CHECK(\"status\" IN ('pending','accepted','rejected')),\n	CONSTRAINT \"ingest_item_authority_enum\" CHECK(\"dedupe_authority\" IN ('image','external_ref','natural'))\n);",
+      "CREATE INDEX `ingest_item_by_dedupe` ON `ingest_item` (`dedupe_key`);",
+      "CREATE INDEX `ingest_item_by_batch` ON `ingest_item` (`batch_id`);"
     ]
   }
 ];
@@ -9162,6 +9273,30 @@ var SqliteUow = class {
       termMonths: loan2.termMonths
     });
   }
+  async findIngestBatchBySha(sha) {
+    const r = this.db.get("SELECT * FROM ingest_batch WHERE source_sha256 = ?", sha);
+    return r ? mapBatch(r) : null;
+  }
+  async findIngestItemsByDedupeKey(key) {
+    return this.db.all("SELECT * FROM ingest_item WHERE dedupe_key = ? ORDER BY created_at", key).map(mapItem);
+  }
+  async listIngestItems(filter) {
+    const sql = filter?.status ? "SELECT * FROM ingest_item WHERE status = ? ORDER BY created_at" : "SELECT * FROM ingest_item ORDER BY created_at";
+    const params = filter?.status ? [filter.status] : [];
+    return this.db.all(sql, ...params).map(mapItem);
+  }
+  async recordIngestBatch(b) {
+    this.db.run("INSERT INTO ingest_batch (id, source_sha256, source_name, submitted_at, item_count) VALUES (?, ?, ?, ?, ?)", b.id, b.sourceSha256, b.sourceName, b.submittedAt, b.itemCount);
+  }
+  async recordIngestItem(i) {
+    this.db.run(`INSERT INTO ingest_item (id, batch_id, dedupe_key, dedupe_authority, external_ref, merchant,
+                                txn_id, status, reason, parsed_json, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, i.id, i.batchId, i.dedupeKey, i.dedupeAuthority, i.externalRef, i.merchant, i.txnId, i.status, i.reason, i.parsedJson, i.createdAt);
+  }
+  async setIngestItemStatus(id, status, meta) {
+    this.db.run("UPDATE ingest_item SET status = ?, reason = ?, txn_id = COALESCE(?, txn_id) WHERE id = ?", status, meta.reason ?? null, meta.txnId ?? null, id);
+    this.#appendAudit("ingest_item_status", id, { status, reason: meta.reason ?? null });
+  }
   async getCommandResult(idemKey) {
     const r = this.db.get("SELECT * FROM command_log WHERE idem_key = ?", idemKey);
     return r ? {
@@ -9295,6 +9430,30 @@ var SqliteUow = class {
 function chainHeadOf(db) {
   const head = db.get("SELECT seq, hash FROM audit_log ORDER BY seq DESC LIMIT 1");
   return head ? { seq: toInt(head.seq), hash: head.hash } : null;
+}
+function mapBatch(r) {
+  return {
+    id: r.id,
+    sourceSha256: r.source_sha256,
+    sourceName: r.source_name,
+    submittedAt: r.submitted_at,
+    itemCount: toInt(r.item_count)
+  };
+}
+function mapItem(r) {
+  return {
+    id: r.id,
+    batchId: r.batch_id,
+    dedupeKey: r.dedupe_key,
+    dedupeAuthority: r.dedupe_authority,
+    externalRef: r.external_ref,
+    merchant: r.merchant,
+    txnId: r.txn_id,
+    status: r.status,
+    reason: r.reason,
+    parsedJson: r.parsed_json,
+    createdAt: r.created_at
+  };
 }
 function mapLoan(r) {
   return {
@@ -9751,16 +9910,16 @@ installment.command("add").description("record an installment purchase and build
   }
 );
 installment.command("revise <id>").description("overwrite a schedule with what the statement actually says").requiredOption(
-  "--rows <json>",
+  "--data <json>",
   'JSON array: [{"seq":1,"paymentDate":"2026-09-01","principalMinor":"100000","feeMinor":"5000"}, \u2026]. Read off the statement \u2014 this always wins over anything computed.'
 ).action(async (id, o) => {
   const ws = requireWorkspace();
   const store = await openLedger(ws);
   let parsed;
   try {
-    parsed = JSON.parse(o.rows);
+    parsed = JSON.parse(o.data);
   } catch (e) {
-    throw new UsageError(`--rows is not valid JSON: ${e.message}`);
+    throw new UsageError(`--data is not valid JSON: ${e.message}`);
   }
   const rows = REVISION_ROWS.parse(parsed).map((r) => ({
     seq: r.seq,
@@ -9885,6 +10044,227 @@ recurring.command("list").description("active recurring expenses").action(async 
   if (result.length === 0) return note("no active recurring expenses.");
   note("");
   note(`monthly total: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
+});
+var ingest = program2.command("ingest").description("\uCEA1\uCCD0\uC5D0\uC11C \uC77D\uC740 \uAC70\uB798\uB97C \uC6D0\uC7A5\uC5D0 \uB123\uAE30");
+ingest.command("submit").description("record parsed transactions as DRAFTS for review. Never does OCR \u2014 you are the parser.").requiredOption("--data <submission>", "see the schema in src/ingest.ts. Legs, not a flat amount.").option("--image <path>", "the screenshot, so the same file cannot be ingested twice").option("--idem-key <key>", "retry-safe. Same key + same request replays the stored result.").action(async (o) => {
+  const ws = requireWorkspace();
+  const config = readConfig(ws);
+  const store = await openLedger(ws);
+  let parsed;
+  try {
+    parsed = JSON.parse(o.data);
+  } catch (e) {
+    throw new UsageError(`--data is not valid JSON: ${e.message}`);
+  }
+  const submission = INGEST_SUBMISSION.parse(parsed);
+  let sourceSha = submission.sourceSha256 ?? null;
+  if (o.image) {
+    const { readFile } = await import("node:fs/promises");
+    sourceSha = await sha256Bytes(new Uint8Array(await readFile(o.image)));
+  }
+  const requestSha = await sha256(o.data);
+  const replay = o.idemKey ? await store.read((r) => r.getCommandResult(o.idemKey)) : null;
+  if (replay) {
+    await store.close();
+    if (replay.requestSha256 !== requestSha) {
+      throw new UsageError(
+        `idem-key ${o.idemKey} was already used for a DIFFERENT request. Keys are per operation.`
+      );
+    }
+    note("(replayed \u2014 this exact submission already ran)");
+    process.stdout.write(`${replay.responseJson}
+`);
+    return;
+  }
+  const result = await store.unitOfWork(async (uow) => {
+    if (sourceSha) {
+      const seen = await uow.findIngestBatchBySha(sourceSha);
+      if (seen) {
+        throw new LedgerError(
+          "duplicate_image",
+          `this exact image was already ingested on ${seen.submittedAt} (${seen.itemCount} item(s)). Dropping the same file twice is always a mistake.`
+        );
+      }
+    }
+    const accounts = await uow.listAccounts();
+    const byCode = new Map(accounts.map((a) => [a.code, a]));
+    const byId = new Map(accounts.map((a) => [a.id, a]));
+    const resolve2 = (code) => {
+      const a = byCode.get(code);
+      if (!a) throw new UsageError(`no such account: ${code}. Create it before ingesting.`);
+      return a;
+    };
+    const existing = [];
+    for await (const p of uow.streamPostings({ from: addMonthsIso(today(), -2) })) {
+      const t = await uow.getTxn(p.txnId);
+      existing.push({
+        txnId: p.txnId,
+        accountId: p.accountId,
+        date: p.txnDate,
+        unitsMinor: p.unitsMinor,
+        commodity: p.commodity,
+        merchant: t?.txn.payee ?? null
+      });
+    }
+    const batchId = nextUlid();
+    await uow.recordIngestBatch({
+      id: batchId,
+      sourceSha256: sourceSha ?? `no-image:${batchId}`,
+      sourceName: submission.sourceName ?? (o.image ? o.image.split("/").at(-1) : null),
+      submittedAt: nowIso(),
+      itemCount: submission.items.length
+    });
+    const out2 = [];
+    for (const item of submission.items) {
+      const postings = item.legs.map(
+        (l) => parseLeg(
+          `${l.account} ${l.amount} ${l.commodity}${l.weight ? ` @@ ${l.weight}` : ""}`,
+          amounts,
+          config.functionalCurrency,
+          resolve2
+        )
+      );
+      const txn = Txn.create({
+        id: nextUlid(),
+        date: assertIsoDate(item.date),
+        bookingCommodity: config.functionalCurrency,
+        payee: item.payee ?? null,
+        narration: item.narration ?? "",
+        sourceItemId: batchId,
+        postings
+      });
+      if (!txn.ok) throw new LedgerError("unbalanced", txn.error.map(describeTxnError).join("\n"));
+      const moneyLeg = pickMoneyLeg(txn.value.postings, byId, item);
+      const candidate = {
+        accountId: moneyLeg.accountId,
+        date: assertIsoDate(item.date),
+        unitsMinor: moneyLeg.units.minor,
+        commodity: moneyLeg.units.commodity,
+        merchant: item.payee ?? null,
+        externalRef: item.externalRef ?? null
+      };
+      const { key, authority } = await dedupeKey(candidate);
+      const priorItems = await uow.findIngestItemsByDedupeKey(key);
+      if (authority === "external_ref" && priorItems.length > 0) {
+        throw new LedgerError(
+          "duplicate_external_ref",
+          `transaction ${item.externalRef} is already ingested (item ${priorItems[0].id}, ${priorItems[0].status}). The issuer's id says this is the same transaction.`
+        );
+      }
+      const near = findNearDuplicates(candidate, existing);
+      const warnings = near.map(
+        (n) => `possible duplicate of ${n.txnId} (${n.date}, ${n.merchant ?? "?"}): ${n.reason}`
+      );
+      if (authority === "natural" && priorItems.length > 0) {
+        warnings.push(
+          `an earlier ingest had the same account, date, amount and merchant (item ${priorItems[0].id}) \u2014 but two identical purchases in a day are real, so this is only a warning`
+        );
+      }
+      await uow.appendTxn(txn.value, { status: "draft" });
+      const itemId = nextUlid();
+      await uow.recordIngestItem({
+        id: itemId,
+        batchId,
+        dedupeKey: key,
+        dedupeAuthority: authority,
+        externalRef: item.externalRef ?? null,
+        merchant: item.payee ?? null,
+        txnId: txn.value.id,
+        status: "pending",
+        reason: null,
+        // Verbatim, so a misread has an audit trail.
+        parsedJson: JSON.stringify(item),
+        createdAt: nowIso()
+      });
+      out2.push({ itemId, txnId: txn.value.id, status: "pending", warnings });
+    }
+    return { batchId, items: out2 };
+  });
+  const response = JSON.stringify(result);
+  if (o.idemKey) {
+    await store.unitOfWork(
+      (uow) => uow.recordCommandResult({
+        idemKey: o.idemKey,
+        requestSha256: requestSha,
+        responseJson: response,
+        createdAt: nowIso()
+      })
+    );
+  }
+  await store.close();
+  out(result);
+  note(`${result.items.length}\uAC74\uC744 DRAFT\uB85C \uAE30\uB85D\uD588\uC2B5\uB2C8\uB2E4. \uC794\uC561\xB7\uB9AC\uD3EC\uD2B8\uC5D0\uC11C \uC81C\uC678\uB429\uB2C8\uB2E4.`);
+  for (const i of result.items) for (const w of i.warnings) note(`  \u26A0 ${w}`);
+  note(`\uAC80\uD1A0: \`holiday review list\` \u2192 \`holiday review accept <id>\``);
+});
+var review = program2.command("review").description("\uB4DC\uB798\uD504\uD2B8 \uAC80\uD1A0 \u2014 \uC2B9\uC778 \uC804\uC5D4 \uC7A5\uBD80\uAC00 \uC544\uB2C8\uB2E4");
+review.command("list").description("drafts waiting for a human").action(async () => {
+  const ws = requireWorkspace();
+  const config = readConfig(ws);
+  const store = await openLedger(ws);
+  const result = await store.read(async (r) => {
+    const items = await r.listIngestItems({ status: "pending" });
+    const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
+    return Promise.all(
+      items.map(async (i) => ({ item: i, txn: i.txnId ? await r.getTxn(i.txnId) : null, accounts }))
+    );
+  });
+  await store.close();
+  if (jsonMode()) {
+    return out(
+      result.map(({ item, txn }) => ({
+        id: item.id,
+        txnId: item.txnId,
+        date: txn?.txn.date,
+        payee: txn?.txn.payee,
+        merchant: item.merchant
+      }))
+    );
+  }
+  if (result.length === 0) return note("\uAC80\uD1A0\uD560 \uB4DC\uB798\uD504\uD2B8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
+  for (const { item, txn, accounts } of result) {
+    if (!txn) continue;
+    note(`${item.id}  ${txn.txn.date}  ${txn.txn.payee ?? txn.txn.narration}`);
+    for (const p of txn.txn.postings) {
+      note(
+        `    ${(accounts.get(p.accountId)?.code ?? "?").padEnd(36)} ${amounts.formatWithCode(p.units).padStart(16)}`
+      );
+    }
+  }
+  note("");
+  note(`${result.length}\uAC74 \uB300\uAE30. \`holiday review accept <id>\` / \`reject <id> --reason\``);
+});
+review.command("accept <id>").description("promote a draft to posted. Cannot fail \u2014 it is already balanced.").option("--idem-key <key>").action(async (id, o) => {
+  const ws = requireWorkspace();
+  const store = await openLedger(ws);
+  const result = await store.unitOfWork(async (uow) => {
+    const items = await uow.listIngestItems();
+    const item = items.find((i) => i.id === id);
+    if (!item) throw new UsageError(`no such review item: ${id}`);
+    if (item.status !== "pending") throw new UsageError(`item ${id} is already ${item.status}`);
+    if (!item.txnId) throw new UsageError(`item ${id} has no transaction`);
+    await uow.promoteDraft(item.txnId);
+    await uow.setIngestItemStatus(id, "accepted", {});
+    return { id, txnId: item.txnId };
+  });
+  await store.close();
+  out({ ...result, status: "accepted" });
+  note(`\uC2B9\uC778\uB428. \uC774\uC81C \uC794\uC561\uACFC \uD604\uAE08\uD750\uB984\uC5D0 \uB4E4\uC5B4\uAC11\uB2C8\uB2E4.`);
+});
+review.command("reject <id>").description("reject a draft. The row is KEPT \u2014 it is dedup memory.").requiredOption("--reason <text>").action(async (id, o) => {
+  const ws = requireWorkspace();
+  const store = await openLedger(ws);
+  await store.unitOfWork(async (uow) => {
+    const items = await uow.listIngestItems();
+    const item = items.find((i) => i.id === id);
+    if (!item) throw new UsageError(`no such review item: ${id}`);
+    if (item.status !== "pending") throw new UsageError(`item ${id} is already ${item.status}`);
+    if (item.txnId) await uow.rejectDraft(item.txnId, o.reason);
+    await uow.setIngestItemStatus(id, "rejected", { reason: o.reason });
+  });
+  await store.close();
+  out({ id, status: "rejected", reason: o.reason });
+  note(`\uAC70\uBD80\uB428. \uAE30\uB85D\uC740 \uB0A8\uC2B5\uB2C8\uB2E4 \u2014 \uAC19\uC740 \uCEA1\uCCD0\uAC00 \uB2E4\uC2DC \uC81C\uC548\uB418\uB294 \uAC78 \uB9C9\uB294 \uAE30\uC5B5\uC785\uB2C8\uB2E4.`);
 });
 var loan = program2.command("loan").description("\uB300\uCD9C \u2014 \uC0C1\uD658 \uC2A4\uCF00\uC904\uACFC \uB300\uC0AC");
 loan.command("add <code>").description("attach an amortization schedule to a loan liability account").requiredOption("--funding <code>", "the asset account payments come from").requiredOption("--interest <code>", "the expense account interest is booked to").requiredOption("--principal <amount>", "the loan amount").requiredOption("--rate <percent>", "annual rate as the contract writes it, e.g. 4.2").requiredOption("--months <n>", "term", Number).requiredOption("--first-payment <date>", "due date of the first payment").option("--method <m>", "annuity | equal_principal | bullet | interest_only", "annuity").option("--payment-day <n>", "day of month payments land. -1 = \uB9D0\uC77C", Number).option("--label <text>").action(
@@ -10200,6 +10580,26 @@ program2.command("cashflow").description("will the cash survive the card bills t
     note(`Lowest point: ${money(worst.balanceAfterMinor)} ${config.functionalCurrency} on ${worst.date}.`);
   }
 });
+function pickMoneyLeg(postings, byId, item) {
+  if (item.dedupeOn) {
+    const wanted = postings.find((p) => byId.get(p.accountId)?.code === item.dedupeOn);
+    if (!wanted) throw new UsageError(`dedupeOn names ${item.dedupeOn}, which is not one of the legs`);
+    return wanted;
+  }
+  const money = postings.find((p) => {
+    const t = byId.get(p.accountId)?.type;
+    return t === "liability" || t === "asset";
+  });
+  if (!money) {
+    throw new UsageError(
+      'no liability or asset leg to identify this transaction by. Add "dedupeOn" naming the card or bank account.'
+    );
+  }
+  return money;
+}
+function nowIso() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
 function describeOutflow(b) {
   if (b.kind === "loan") return `${b.label ?? "\uB300\uCD9C"} (${b.seq}/${b.termMonths})`;
   if (b.kind === "installment") return `${b.label ?? "\uD560\uBD80"} (${b.seq}/${b.months})`;

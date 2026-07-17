@@ -393,3 +393,60 @@ export const loanScheduleRow = sqliteTable(
     check('loan_schedule_seq_positive', sql`${t.seq} >= 1`),
   ],
 );
+
+/**
+ * Ingest provenance: which image became which transaction.
+ *
+ * A batch is one screenshot. `source_sha256` is the image bytes, and it is UNIQUE
+ * — dropping the identical file twice is always a mistake, and that is the one
+ * duplicate check that can block without ever being wrong.
+ */
+export const ingestBatch = sqliteTable(
+  'ingest_batch',
+  {
+    id: text('id').primaryKey(),
+    // UNIQUE: the same bytes are the same screenshot. Blocks.
+    sourceSha256: text('source_sha256').notNull().unique(),
+    sourceName: text('source_name'),
+    submittedAt: text('submitted_at').notNull(),
+    itemCount: integer('item_count').notNull().default(0),
+  },
+  (t) => [check('ingest_batch_count_nonneg', sql`${t.itemCount} >= 0`)],
+);
+
+/**
+ * One parsed transaction from a screenshot, and what became of it.
+ *
+ * Rows are RETAINED after rejection, deliberately: a rejected item is dedup
+ * memory. Delete it and the same screenshot gets re-proposed forever.
+ *
+ * `dedupe_key` is NOT unique. Its authority varies — see `dedupe_authority`. An
+ * issuer's transaction id can block; account+date+amount+merchant cannot, because
+ * two ₩4,500 americanos on one Tuesday share it and are both real.
+ */
+export const ingestItem = sqliteTable(
+  'ingest_item',
+  {
+    id: text('id').primaryKey(),
+    batchId: text('batch_id')
+      .notNull()
+      .references(() => ingestBatch.id, { onDelete: 'cascade' }),
+    dedupeKey: text('dedupe_key').notNull(),
+    dedupeAuthority: text('dedupe_authority').notNull(),
+    externalRef: text('external_ref'),
+    merchant: text('merchant'),
+    // The transaction this became. Null while pending or if rejected.
+    txnId: text('txn_id').references(() => txn.id),
+    status: text('status').notNull().default('pending'),
+    reason: text('reason'),
+    /** What the vision model actually said, verbatim. The audit trail for a misread. */
+    parsedJson: text('parsed_json').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    index('ingest_item_by_dedupe').on(t.dedupeKey),
+    index('ingest_item_by_batch').on(t.batchId),
+    check('ingest_item_status_enum', sql`${t.status} IN ('pending','accepted','rejected')`),
+    check('ingest_item_authority_enum', sql`${t.dedupeAuthority} IN ('image','external_ref','natural')`),
+  ],
+);

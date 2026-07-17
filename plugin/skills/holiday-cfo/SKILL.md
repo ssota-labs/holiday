@@ -42,7 +42,43 @@ If a command reports `no .holiday/ found`, the user has no ledger here yet.
 `holiday init --currency KRW` creates one — but ask first, and tell them the
 directory must be a **private** repository.
 
-## Recording a transaction
+## From a screenshot
+
+There is a review gate now: what you submit lands as a **draft**, excluded from
+every balance until a human accepts it.
+
+```bash
+holiday ingest submit --idem-key K1 --data '{
+  "items": [{
+    "date": "2026-07-17",
+    "payee": "이마트",
+    "externalRef": "TX-99",
+    "legs": [
+      {"account": "Expenses:Food:Groceries", "amount": "42000", "commodity": "KRW"},
+      {"account": "Liabilities:Card:Shinhan", "amount": "-42000", "commodity": "KRW"}
+    ]
+  }]
+}'
+holiday review list            # show the human what you propose
+holiday review accept <id>     # after they confirm
+holiday review reject <id> --reason "..."
+```
+
+Pass `--idem-key` on every submit. If the call times out and you retry with the
+same key, it replays instead of posting twice.
+
+Read `externalRef` off the screenshot whenever the issuer prints a transaction
+id — it is the only thing that can tell two identical purchases apart, and it
+turns duplicate detection from a guess into a fact.
+
+The draft still has to balance: an unbalanced submission is refused outright, so
+you cannot park a broken entry in the queue for someone else to fix.
+
+**The gate is not permission to guess.** It catches a wrong category, not a
+misread amount — a human confirming `₩1,240,00` will confirm it wrong. Stop and
+ask when the amount is unclear.
+
+## Recording a transaction directly
 
 Legs are `ACCOUNT AMOUNT COMMODITY`, repeated, summing to zero:
 
@@ -82,9 +118,11 @@ Do not read these upfront. Read the one that matches the task.
 
 Say so plainly rather than improvising:
 
-- **No screenshot ingest command.** You read the image yourself and call
-  `holiday txn add`. There is no review queue yet — what you post is posted.
-- **No interest-bearing 할부.** 할부수수료 is refused, not estimated, because a
-  plausible wrong number would corrupt the cash flow projection. Interest-free
-  only.
-- **No period close, no FX rate table, no loans.** Not built.
+- **No OCR.** You are the parser. `holiday ingest submit` takes what you read;
+  it never looks at the image except to hash it.
+- **No auto-accept.** Every draft needs a human. There is no rule engine yet.
+- **할부수수료 is not computed.** Read the per-row fees off the statement and pass
+  `--fees`; issuer formulas differ and a plausible wrong number would corrupt the
+  cash flow projection.
+- **No period close and no FX rate table.** A non-KRW leg needs its total via
+  `@@` — there is nothing to look a rate up in.

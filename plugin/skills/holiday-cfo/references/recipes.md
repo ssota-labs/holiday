@@ -2,21 +2,47 @@
 
 ## From a screenshot
 
-There is no ingest command. You read the image and call `holiday txn add`. Which
-means **you are the parser, and you are the weakest link.**
+You are the parser. `holiday ingest submit` takes what you read and holds it as a
+**draft** until a human accepts it.
 
-1. Read off: date, merchant, amount, currency, which card or account, and whether
-   it says 할부 (e.g. `12개월 할부`).
+1. Read off: date, merchant, amount, currency, which card or account, a
+   transaction id if the issuer prints one, and whether it says 할부.
 2. `holiday account list` — find the real accounts. Do not guess.
-3. State the entry in plain language and get confirmation:
-   > 2026-07-17, 이마트, ₩42,000 on 신한카드 → Expenses:Food:Groceries.
-4. Post it.
+3. `holiday ingest submit --idem-key <fresh> --data '{...}'`
+4. Show the human the proposed double entry and any ⚠ warnings.
+5. `holiday review accept <id>` once they confirm.
 
-**Stop and ask if:** the amount is unclear, you cannot tell which card, the date
-is ambiguous, or the currency symbol could be `$` or `₩`. There is no review
-queue — what you post is posted, and a correction is a whole extra transaction.
+```bash
+holiday ingest submit --idem-key K1 --data '{
+  "items": [{
+    "date": "2026-07-17", "payee": "이마트", "externalRef": "TX-99",
+    "legs": [
+      {"account": "Expenses:Food:Groceries", "amount": "42000", "commodity": "KRW"},
+      {"account": "Liabilities:Card:Shinhan", "amount": "-42000", "commodity": "KRW"}
+    ]
+  }]
+}'
+```
 
-If it says 할부, use `holiday installment add`, not `txn add`.
+`--image <path>` when the file is on disk: it hashes the bytes, and the same
+image can never be ingested twice.
+
+**Stop and ask if** the amount is unclear, you cannot tell which card, the date is
+ambiguous, or the symbol could be `$` or `₩`. The gate catches a wrong category,
+not a misread amount — a human confirming `₩1,240,00` confirms it wrong.
+
+If it says 할부, use `holiday installment add`, not ingest.
+
+### Duplicate warnings
+
+A ⚠ on submit is information, not a blocker. Show it and let the human decide.
+
+- **Blocked outright:** the same image bytes, or the same `externalRef`. Both are
+  facts about the issuer's own record.
+- **Warned only:** same account, amount, date and merchant. Two ₩4,500 americanos
+  at the same cafe on one Tuesday is a normal Tuesday.
+- **Warned only:** same amount within ±3 days. The card app and the statement
+  often disagree about the date, so this catches the same purchase twice.
 
 ## A card purchase
 

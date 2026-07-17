@@ -71,5 +71,15 @@ export const MIGRATIONS: readonly InlinedMigration[] = [
       "CREATE TABLE `loan_schedule_row` (\n\t`loan_id` text NOT NULL,\n\t`seq` integer NOT NULL,\n\t`due_date` text NOT NULL,\n\t`opening_minor` integer NOT NULL,\n\t`principal_minor` integer NOT NULL,\n\t`interest_minor` integer NOT NULL,\n\t`closing_minor` integer NOT NULL,\n\tCONSTRAINT `loan_schedule_row_pk` PRIMARY KEY(`loan_id`, `seq`),\n\tCONSTRAINT `fk_loan_schedule_row_loan_id_loan_account_id_fk` FOREIGN KEY (`loan_id`) REFERENCES `loan`(`account_id`) ON DELETE CASCADE,\n\tCONSTRAINT \"loan_schedule_seq_positive\" CHECK(\"seq\" >= 1)\n);",
       "CREATE INDEX `loan_schedule_by_date` ON `loan_schedule_row` (`due_date`);"
     ]
+  },
+  {
+    "name": "20260717105405_ingest",
+    "hash": "dea47ca026d33031e905e65bf8dacbb1463de0dd1488f8763f6e774867189b4c",
+    "statements": [
+      "CREATE TABLE `ingest_batch` (\n\t`id` text PRIMARY KEY,\n\t`source_sha256` text NOT NULL UNIQUE,\n\t`source_name` text,\n\t`submitted_at` text NOT NULL,\n\t`item_count` integer DEFAULT 0 NOT NULL,\n\tCONSTRAINT \"ingest_batch_count_nonneg\" CHECK(\"item_count\" >= 0)\n);",
+      "CREATE TABLE `ingest_item` (\n\t`id` text PRIMARY KEY,\n\t`batch_id` text NOT NULL,\n\t`dedupe_key` text NOT NULL,\n\t`dedupe_authority` text NOT NULL,\n\t`external_ref` text,\n\t`merchant` text,\n\t`txn_id` text,\n\t`status` text DEFAULT 'pending' NOT NULL,\n\t`reason` text,\n\t`parsed_json` text NOT NULL,\n\t`created_at` text NOT NULL,\n\tCONSTRAINT `fk_ingest_item_batch_id_ingest_batch_id_fk` FOREIGN KEY (`batch_id`) REFERENCES `ingest_batch`(`id`) ON DELETE CASCADE,\n\tCONSTRAINT `fk_ingest_item_txn_id_txn_id_fk` FOREIGN KEY (`txn_id`) REFERENCES `txn`(`id`),\n\tCONSTRAINT \"ingest_item_status_enum\" CHECK(\"status\" IN ('pending','accepted','rejected')),\n\tCONSTRAINT \"ingest_item_authority_enum\" CHECK(\"dedupe_authority\" IN ('image','external_ref','natural'))\n);",
+      "CREATE INDEX `ingest_item_by_dedupe` ON `ingest_item` (`dedupe_key`);",
+      "CREATE INDEX `ingest_item_by_batch` ON `ingest_item` (`batch_id`);"
+    ]
   }
 ];

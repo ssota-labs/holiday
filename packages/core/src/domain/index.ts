@@ -9,4 +9,5 @@ export * from './rate.js';
 export * from './loan.js';
 export * from './installment.js';
 export * from './recurring.js';
+export * from './ingest.js';
 export * from './cashflow.js';
