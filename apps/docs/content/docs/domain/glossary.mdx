@@ -1,56 +1,80 @@
 ---
 title: 유비쿼터스 용어
-description: 기획서·대화·코드·컬럼명이 같은 단어를 쓰게 강제한다
+description: 문서·대화·코드·컬럼이 같은 단어를 쓰도록 정의한 용어집
 type: reference
-summary: 사전이 아니라 강제. 단어가 바뀌면 코드도 바뀐다.
+summary: 도메인 한국어와 코드 영어를 대응시킨다. 각 항목은 구현 위치를 함께 적는다.
 related: ['/docs/domain/policy']
 ---
 
-DDD의 Ubiquitous Language다. 정의보다 **강제**가 핵심이다 — 기획서, 대화, 코드,
-DB 컬럼이 같은 단어를 쓴다. 단어가 바뀌면 코드도 따라 바뀐다.
-
-각 항목마다 **코드 어디에 사는지**를 같이 적는다. 자기 구현을 가리키지 못하는
-용어는 이미 표류했다.
-
-이 프로젝트는 이중언어다. 도메인은 한국 개인 재무고 코드는 영어다. `청구주기`와
-`billing cycle`을 못박아 두지 않으면 둘은 천천히 다른 개념으로 갈라진다.
+도메인(한국 개인 재무)과 코드(영어)가 같은 개념을 가리키도록 용어를 고정한다.
+항목마다 코드/컬럼 위치를 적는다. 구현을 가리키지 못하는 용어는 사용하지 않는다.
 
 <Glossary>
   <Term term="units" ko="단위 / 사실" code="posting.units_minor">
-    무엇이 움직였나. 자기 통화 minor unit의 정수. USD 계정 `-75000`은 −$750.00.
+    계정의 자체 통화 minor unit 정수. USD 계정 `-75000`은 −$750.00.
   </Term>
 
-  <Term term="weight" ko="가중치 / 측정" code="posting.weight_minor" notTo="units와 절대 혼동 말 것. 같은 사건의 서로 다른 두 표현이다.">
-    같은 사건을 기능통화(KRW)로 옮긴 값. 균형 검사는 이것만 본다. 계정 KRW 장부가액은
-    `SUM(weight_minor)`로 바로 나온다.
+  <Term term="weight" ko="가중치 / 측정" code="posting.weight_minor" notTo="units와 혼동하지 않는다. 같은 사건의 다른 표현이다.">
+    같은 사건을 기능통화로 측정한 값. 균형 검사는 `weight_minor` 합만 본다.
+    계정 기능통화 장부가액은 `SUM(weight_minor)`다.
   </Term>
 
-  <Term term="booking commodity" ko="기표통화" code="txn.booking_commodity" notTo="posting의 commodity와 다르다 — 그건 다리마다 다를 수 있다.">
-    book의 기능통화. 항상 KRW. book마다 하나고, 바꾸려면 새 book을 연다.
+  <Term term="functional currency" ko="기능통화 / booking commodity" code="book.functional_currency · txn.booking_commodity" notTo="posting의 commodity와 다르다. posting commodity는 leg마다 다를 수 있다.">
+    book의 기표·균형 통화. `holiday init --currency`로 설정한다(예: KRW).
+    book당 하나이며, 변경하려면 새 book을 연다. `txn.booking_commodity`는 항상
+    이 값과 같다.
   </Term>
 
-  <Term term="plug" code="weight_source = 'plug'" notTo="반올림 오차가 아니다. 실제 비용이다.">
-    어느 다리도 KRW가 아닐 때 남는 잔차. 에러가 아니라 **FX 스프레드**다. 손익계산서에
+  <Term term="weight_source" ko="가중치 출처" code="posting.weight_source">
+    `weight_minor`가 어디서 왔는지. `identity`(기능통화 leg, weight ≡ units),
+    `actual`(양쪽 관측), `rate`(환율표 유도, txn은 `fx_estimated`),
+    `plug`(어느 leg도 기능통화가 아닐 때 남는 FX 잔차).
+  </Term>
+
+  <Term term="plug" code="weight_source = 'plug'" notTo="반올림 오차가 아니다.">
+    비기능통화 leg만으로 거래를 구성할 때 남는 잔차 전기. FX 스프레드로 손익에
     올린다.
   </Term>
 
+  <Term term="draft / posted / rejected" ko="거래 상태" code="txn.status">
+    `draft`: 검토 대기. 잔고·보고서 기본 조회에서 제외. `posted`: 확정 전기.
+    `rejected`: 거절. 인제스트 중복 방지용으로 행은 유지한다. `void`도 타입에
+    있으나 일반 경로와는 별도다.
+  </Term>
+
+  <Term term="assertion" ko="잔고 단언" code="balance_assertion · holiday assert">
+    특정 날짜·계정·통화의 잔고가 명세서와 일치한다고 외부에서 단언한 값.
+    `holiday close`는 실패 assertion이 있으면 마감을 거부한다.
+  </Term>
+
+  <Term term="period / close" ko="기간 / 마감" code="period · holiday close">
+    book의 `close_grain`(기본 `month`)에 대한 hard close. FX 재평가 전기,
+    스냅샷(`snapshot.kind = 'close'`), 저널 잠금을 수행한다. 기간에 draft가
+    남아 있거나 assertion이 실패하면 거부한다.
+  </Term>
+
+  <Term term="checkpoint (snapshot)" ko="소프트 마감 스냅샷" code="snapshot.kind = 'checkpoint'" notTo="CLI 명령 holiday checkpoint와 다른 개념이다.">
+    일·주 등 soft close용 스냅샷. 재평가·저널 잠금을 하지 않는다. hard close
+    grain은 book당 하나뿐이다. 같은 구간에 두 grain으로 재평가하면 FX가 이중
+    계상된다.
+  </Term>
+
+  <Term term="checkpoint (CLI)" ko="WAL 접기" code="holiday checkpoint · store.checkpoint()">
+    SQLite WAL을 `ledger.db`로 접는다. git commit 전에 호출한다. 회계 스냅샷
+    (`snapshot.kind = 'checkpoint'`)과 무관하다.
+  </Term>
+
   <Term term="청구주기" ko="billing cycle" code="card.cycle_close_day">
-    사용분이 어느 청구서에 실리고, 현금이 언제 빠지는지를 정하는 규칙. 없으면
-    원장은 빚진 금액은 알아도 **언제** 나가는지는 모른다.
+    사용분이 어느 청구서에 실리고, 현금이 언제 빠지는지 정하는 규칙.
   </Term>
 
-  <Term term="cash" ko="현금 계정" code="account.cash" notTo="asset과 다르다. 아파트도 자산이지만 현금이 아니다.">
-    `holiday cashflow`가 잔고를 걸어가는 출발점. **접두어 규칙이 아니라 플래그**인 까닭은
-    아래 ADR-004에 있다.
+  <Term term="cash" ko="현금 계정" code="account.cash" notTo="asset과 동일하지 않다. 부동산 등 비현금 자산이 있다.">
+    `holiday cashflow`가 잔고를 걸어가는 출발점. 계정 코드 접두어가 아니라
+    `--cash` 플래그다. 근거는 ADR-004.
   </Term>
 
-  <Term term="schedule" ko="스케줄" code="card / installment / recurring / loan" notTo="원장이 아니다. 절대 전기되지 않는다.">
-    돈이 언제 나갈지에 대한 **예측**. 카드 청구주기·할부·정기지출·대출 네 종류가 있고,
-    넷 모두 `cashRunway` 하나로 들어간다. 근사를 허용하는 유일한 구역이다.
-  </Term>
-
-  <Term term="checkpoint" ko="체크포인트" code="snapshot.kind = 'checkpoint'" notTo="close(마감)와 다르다. 저널을 잠그지도, 재평가를 전기하지도 않는다.">
-    스냅샷만 찍는 소프트 마감. 일별·주별이 여기 속한다. hard close는 book당 그레인
-    하나뿐이다 — 하루는 달 안에 들어가므로, 양쪽에서 재평가하면 FX가 이중 계상된다.
+  <Term term="schedule" ko="스케줄" code="card / installment / recurring / loan" notTo="원장 전기가 아니다. 예측만 한다.">
+    향후 현금 유출 예측. 카드 청구주기·할부·정기지출·대출. 모두 `cashRunway`에
+    합류한다. 근사를 허용하는 유일한 구역이다.
   </Term>
 </Glossary>

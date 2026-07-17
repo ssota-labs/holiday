@@ -1,22 +1,18 @@
 ---
 title: 도메인 정책
-description: 항상 참이어야 하는 것들 — 그리고 그걸 강제하는 테스트
+description: 원장이 항상 만족해야 하는 규칙과, 이를 강제하는 테스트
 type: policy
 version: v0.1
-summary: 모든 규칙이 테스트에 링크된다. 규칙이 조용히 거짓이 될 수 없다.
+summary: 각 POLICY 규칙은 강제 테스트에 링크된다. 링크는 check-rule-links가 검사한다.
 related: ['/docs/domain/glossary', '/docs/dev/data-model']
 ---
 
-**정책이 곧 제품**이다. 아래는 구현 세부가 아니라, 숫자를 믿을 근거 목록이다.
-항목마다 **강제 테스트 링크**가 붙어 있다. 링크가 깨지면
-`scripts/check-rule-links.ts`가 빌드를 죽인다. 풀리지 않는 링크가 달린 정책 문서는
-없는 편이 낫다. **증거처럼 읽히기 때문이다.**
+이 문서는 도메인 **Business Rules Catalog**다. 기능 동작은
+[Features](/docs/features/cashflow)에 두고, 여기서는 반드시 성립해야 하는 조건을
+정한다.
 
-"스펙"이라 부르지 않는다. 스펙(PRD)은 *뭘 만들지*를 적는다. 여기는 DDD 용어로
-**Business Rules Catalog**이자 **Ubiquitous Language**다.
-
-규칙은 한곳에 모인다. 기능 동작은 [Features](/docs/features/cashflow)가 설명하고,
-지켜야 할 조건은 이 카탈로그가 정한다.
+각 정책 Rule 블록은 `test` / `testName`으로 강제 테스트에 연결된다. 링크가
+깨지면 `scripts/check-rule-links.ts`가 실패한다.
 
 ## 원장
 
@@ -27,11 +23,11 @@ related: ['/docs/domain/glossary', '/docs/dev/data-model']
   testName="rejects an unbalanced transaction with the exact residual, and no tolerance"
   consequence="₩50 누락 수수료, off-by-one, 반올림 누수가 조용히 흡수된다 — 정확히 잡고 싶은 크기가."
 >
-전기들의 `weight_minor` 합은 **정확히 0**이어야 한다. 정수 산술만 허용한다. fuzz
-파라미터는 시스템에 없다.
+전기들의 `weight_minor` 합은 정확히 0이어야 한다. 정수 산술만 사용한다. 허용오차
+파라미터는 없다.
 
-환율을 저장한 뒤 상대금액을 끌어내면 정수 스케일에서 lossy하다. 그때 흔히 허용오차를
-발명한다. 상대금액을 사실로 저장하고 환율은 표시용으로 내린 이유다.
+환율로 상대금액을 역산하면 정수 스케일에서 손실이 난다. 상대금액(units)을 사실로
+저장하고, 환율은 표시·유도용으로 둔다.
 </Rule>
 
 <Rule
@@ -42,7 +38,8 @@ related: ['/docs/domain/glossary', '/docs/dev/data-model']
   consequence="기능통화 다리가 자기 자신과 다른 값으로 측정될 수 있게 되고, 잔액이 조용히 표류한다."
 >
 `commodity === bookingCommodity`이면 `weight_minor === units_minor`다. 도메인과
-SQLite 트리거가 함께 강제한다.
+SQLite 트리거가 함께 강제한다. (기능통화는 `init --currency`로 설정하며, 테스트
+픽스처는 흔히 KRW를 쓴다.)
 </Rule>
 
 <Rule
@@ -52,8 +49,8 @@ SQLite 트리거가 함께 강제한다.
   testName="does NOT let a payment of a previous bill cancel out this cycle"
   consequence="지난달 결제가 이번달 청구서를 상쇄해서 청구액이 과소계상된다 — 정확히 사람을 마이너스 통장으로 보내는 방향으로."
 >
-카드 계정에서 구매 금액은 음수다. **환불과 결제는 양수**로 찍힌다. 부호만 보고
-합치면 안 된다. 결제 상대 leg은 funding 계정이고, 환불 상대 leg은 비용 계정이다.
+카드 계정에서 구매는 음수, 환불과 결제는 양수다. 부호만으로 합치면 안 된다.
+결제 상대 leg은 funding 계정, 환불 상대 leg은 비용 계정이다.
 </Rule>
 
 ## 마이그레이션
@@ -65,8 +62,8 @@ SQLite 트리거가 함께 강제한다.
   testName="REFUSES to open a ledger whose applied migration has changed"
   consequence="이 원장이 옛 버전을 실행했는데 새 버전을 다시 돌리면, 다른 어떤 복사본과도 공유하지 않는 상태가 된다. 커밋해둔 지난달 것과도."
 >
-`__holiday_migrations`에 sha256을 남긴 뒤, 다음 열기에서 대조한다. 예전엔
-"마이그레이션은 append-only"가 주석이었다. 지금은 코드가 수정을 막는다.
+`__holiday_migrations`에 sha256을 기록하고, 다음 열기에서 대조한다. 적용된
+마이그레이션 파일 내용이 바뀌면 원장 열기를 거부한다.
 
 ```
 migration 20260717100308_invariant_triggers has changed since it was applied.
@@ -83,8 +80,8 @@ migration 20260717100308_invariant_triggers has changed since it was applied.
   testName="includes the already-closed bill you have not paid yet"
   consequence="다음주에 확실히 빠질 돈을 예측이 통째로 빠뜨린다. 가장 확실한 항목을 놓치는 예측은 예측이 아니다."
 >
-`upcomingBills()` 커서는 오늘이 아니라 **오늘 이전**에서 시작한다. 7/10에 긁고
-7/14에 마감된 청구서는 8/1에 빠진다. 오늘(7/17) 이후만 보면 그 청구서가 빠진다.
+`upcomingBills()` 커서는 오늘이 아니라 **오늘 이전**에서 시작한다. 사용일이
+청구 마감일 이전이고 결제일이 미래인 청구서는, “오늘 이후 마감분만” 보면 누락된다.
 </Rule>
 
 ## 할부
@@ -96,9 +93,9 @@ migration 20260717100308_invariant_triggers has changed since it was applied.
   testName="puts a purchase on the bill that actually takes the cash"
   consequence="120만원 12개월 할부가 첫 청구서를 10만원이 아니라 120만원으로 만든다. 12배 과대계상. 늑대를 외치는 예측은 무시당하고, 그럼 예측이 있을 이유가 없다."
 >
-일반 청구액은 "사용기간 내 posting 합계"다. 할부는 **구매일 전액이 한 번에
-전기된다**. 그래서 `Liabilities:Card:<카드>:Installment`에 따로 둔다. 일반 청구
-합계에서는 빠지고, 회차만 스케줄에서 투영되어 같은 결제일에 합류한다.
+일반 청구액은 사용기간 내 posting 합계다. 할부는 구매일 전액이 한 번에 전기되므로
+`Liabilities:Card:<카드>:Installment`에 둔다. 일반 청구 합계에서는 제외하고,
+회차만 스케줄에서 투영해 같은 결제일에 합류한다.
 </Rule>
 
 <Rule
@@ -108,17 +105,16 @@ migration 20260717100308_invariant_triggers has changed since it was applied.
   testName="accepts OBSERVED 할부수수료 read off a statement"
   consequence="그럴듯하게 틀린 수수료가 현금흐름 예측을 조용히 오염시킨다. 그리고 맞는 것처럼 보인다."
 >
-원장이 긋는 구분과 **같다.** `weight_source: 'actual'`(양쪽 관측)과 `'rate'`(환율
-유도)의 차이다. 명세서에 찍힌 수수료는 **사실**이므로 받는다. 카드사 공식을 우리가
-돌리는 입력은 거절한다. 카드사·프로모션·기간마다 잔액 기준 공식이 달라서다.
+명세서에 찍힌 수수료는 관측값으로 받는다. 카드사 공식을 내부에서 추정해 넣는
+입력은 거절한다. `weight_source: 'actual'`과 `'rate'` 구분과 같다.
 
 ```bash
-holiday installment add … --fees 5000,3400,1700     # 명세서에서 읽어서
-holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
+holiday installment add … --fees 5000,3400,1700     # 명세서에서 읽은 값
+holiday installment revise <id> --data '[…]'        # 명세서 기준으로 덮어쓰기
 ```
 
-`revise`는 **날짜까지** 덮어쓴다. 숫자 권위는 카드사에 있다. 공휴일로 결제일이
-밀리는지도 우리는 모른다.
+`revise`는 날짜·원금·수수료를 `--data` JSON으로 덮어쓴다. 숫자 권위는 카드사
+명세서에 있다.
 </Rule>
 
 <Rule
@@ -128,8 +124,8 @@ holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
   testName="sums to the total for ANY total and term"
   consequence="합계가 ₩999,999인 스케줄은 실제 명세서와 영원히 대사가 안 된다."
 >
-100만원 3개월은 `333,334 + 333,333 + 333,333`다. 나머지는 첫 회차에 붙인다. 한국
-카드사 관행이다.
+100만원 3개월은 `333,334 + 333,333 + 333,333`이다. 나머지는 첫 회차(기본)에
+붙인다. 한국 카드사 관행이다.
 </Rule>
 
 <Rule
@@ -139,12 +135,12 @@ holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
   testName="refuses folding fees into the principal"
   consequence="스케줄이 구매금액을 자기 이자만큼 부풀린 값과 맞기를 요구하게 되고, 그 스케줄은 명세서와 대사가 안 된다."
 >
-수수료는 **이자비용**이다. 불변식은 `sum(원금) === 총액`이다. 수수료는 그 식 밖이다.
+수수료는 이자비용이다. 불변식은 `sum(원금) === 총액`이다. 수수료는 그 식 밖이다.
 
 ```
 구매:   Expenses:가전  +1,200,000 / Liabilities:Installment -1,200,000
 회차:   Liabilities:Installment +100,000
-        Expenses:Interest:Installment +5,000     ← 수수료 자리
+        Expenses:Interest:Installment +5,000     ← 수수료
         Assets:Bank                   -105,000
 ```
 </Rule>
@@ -158,10 +154,10 @@ holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
   testName="does NOT project an occurrence on or before today"
   consequence="지난달 넷플릭스가 posting으로도 세어지고 카덴스로도 세어져서 두 번 청구된다. 이중계상하는 예측은 한 번 틀리면 아무도 다시 안 믿는다."
 >
-`occurrence > today`인 것만 투영한다. 이미 난 일은 원장 몫이지 예측 몫이 아니다.
+`occurrence > today`인 것만 투영한다. 이미 난 일은 원장 posting 몫이다.
 
-**대가:** 오늘 발생분이 아직 안 찍혔으면 빠진다. 두 번 세는 쪽보다 한 번 빠지는 쪽이
-안전하다.
+오늘 발생분이 아직 전기되지 않았으면 예측에서도 빠진다. 이중 계상보다 누락을
+택한다.
 </Rule>
 
 <Rule
@@ -171,11 +167,8 @@ holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
   testName="rides the billing cycle when funded from a CARD"
   consequence="같은 카덴스·같은 금액인데 현금이 6주 어긋난다. 월세와 넷플릭스를 똑같이 취급하면 예측이 틀린다."
 >
-월세는 25일에 통장에서 **바로** 빠진다. 넷플릭스는 17일에 **카드 부채만 만들고**
-현금은 청구주기를 타고 나중에 빠진다. 8/17 결제분이 10/1에 나가는 식이다.
-
-출력에 `넷플릭스 (2026-08-17 결제분)`처럼 발생일을 같이 찍는 이유다. 안 그러면
-"이게 왜 10월에 있지"에 답할 길이 없다.
+통장 funding은 발생일에 현금이 빠진다. 카드 funding은 발생일에 카드 부채만 만들고,
+현금은 청구주기 결제일에 빠진다. 출력에 발생일을 병기한다(예: `넷플릭스 (2026-08-17 결제분)`).
 </Rule>
 
 ## 대출
@@ -187,9 +180,9 @@ holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
   testName="catches a missed payment"
   consequence="미납·중도상환·미기록 금리변경·수수료가 잔액만 봐선 안 보인다. 넷 다 알아야 할 일이다."
 >
-잔액을 **장부 밖에서 독립적으로 알 수 있는 부채는 대출뿐이다.** 차이가 나면 뜻이
-있다 — 미납, 중도상환(중도상환), 기록하지 않은 금리 변경, 붙은 수수료. 대출 모듈
-전체가 이 대사 때문에 존재한다.
+대출은 장부 밖에서 잔액을 독립적으로 알 수 있는 부채다. 스케줄과 원장 차이는
+미납, 중도상환, 미기록 금리 변경, 수수료 등을 의미한다. 대출 모듈은 이 대사를
+위해 존재한다.
 </Rule>
 
 <Rule
@@ -199,10 +192,8 @@ holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
   testName="repays exactly the principal for ANY amount, rate and term"
   consequence="30년짜리 대출이 마지막에 ₩3 남거나 ₩3 더 갚는다. 그리고 그걸 30년 뒤에 안다."
 >
-남은 전액은 마지막 회차가 흡수한다. 편법이 아니다. **은행이 실제로 그렇게 한다.**
-원 단위로 짠 균등 납입액이 잔액을 정확히 나누는 경우는 없다.
-
-`interest_only`(거치)만 예외다. 원금을 갚지 않으므로 합은 0이다.
+원금 잔여분은 마지막 회차가 흡수한다. 원 단위 균등 납입이 잔액을 정확히 나누는
+경우는 없다. `interest_only`(거치)만 예외로, 원금을 갚지 않으므로 합은 0이다.
 </Rule>
 
 <Rule
@@ -212,8 +203,8 @@ holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
   testName="never repays principal, and does NOT invent a balloon"
   consequence="계약에 없는 만기 일시상환을 장부에 올리고, 현금흐름이 있지도 않은 거대한 지출을 예고한다."
 >
-거치기간도 실제 대출처럼 흘러간다. 출구(만기 일시상환 등)는 이 스케줄이 만들지
-않는다. 모르는 사실을 아는 척하지 않는다. 잔액은 끝까지 유지된다.
+거치 스케줄은 원금을 상환하지 않는다. 만기 일시상환 등 출구는 이 스케줄이
+만들지 않는다. 잔액은 기간 끝까지 유지된다.
 </Rule>
 
 <Rule
@@ -223,7 +214,8 @@ holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
   testName="refuses a 0% annuity instead of dividing by zero"
   consequence="((1+r)^n − 1)이 0이라 0으로 나눈다."
 >
-0%면 원리금균등이 아니라 **원금균등**이다. 그 이름으로 거절한다.
+연이율 0%면 원리금균등(`annuity`)이 아니라 원금균등이다. `annuity` 이름으로
+거부한다.
 </Rule>
 
 <Rule
@@ -233,5 +225,17 @@ holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
   testName="rounds half AWAY FROM ZERO, like a lender does"
   consequence="은행 명세서와 매달 ₩1씩 어긋나고, loan check가 영원히 거짓 경보를 낸다."
 >
-비교 대상은 **대주 명세서**다. 내부 일관성보다 명세서와 맞는 쪽이 우선이다.
+이자 반올림은 half away from zero다. 대주 명세서와 맞추는 것이 내부 일관성보다
+우선이다.
 </Rule>
+
+## POLICY 번호가 아직 없는 규칙
+
+아래는 코드·테스트에 존재하지만 이 카탈로그에 `POLICY-*` id가 아직 없다.
+새 id를 발명하지 않는다. 동작만 요약한다.
+
+| 영역 | 동작 요약 | 구현 |
+| --- | --- | --- |
+| draft / 검토 | 불균형 draft는 적재 거부. `close`는 기간 내 draft가 있으면 거부. `review accept`는 이미 균형인 draft를 posted로 승격 | `ingest`, `closeGate`, CLI `review` |
+| FX | 과거 posted weight를 소급 변경하지 않음. `rate` 유도 weight는 `fx_estimated`. 삼각환산은 기능통화 경유 | `packages/core/src/domain/fx.ts`, `txn.ts` |
+| close / assertion | hard close grain은 book당 하나. assertion 불일치 시 마감 거부. soft close는 `snapshot.kind = 'checkpoint'`(재평가·잠금 없음) | `close.ts`, CLI `assert` / `close` |
