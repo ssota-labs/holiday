@@ -1,0 +1,6 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+allowBuilds:
+  # Needed by vitest and by the tsup bundle that becomes plugin/bin/holiday.mjs.
+  esbuild: true

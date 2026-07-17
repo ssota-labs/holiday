@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+.DS_Store
+
+# Never let a developer's own ledger leak into this PUBLIC repo.
+# User data belongs in the user's own private repo, never here.
+.holiday/
