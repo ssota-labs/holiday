@@ -117,7 +117,7 @@ summary: 코드·정책·CLI가 같은 말로 말한다. 섹션별 Term.
   </Term>
 </Glossary>
 
-## 스케줄·현금흐름
+## 스케줄
 
 <Glossary>
   <Term term="schedule / forecast" ko="스케줄·예측" code="card|installment|recurring|loan" notTo="저널 사실">
@@ -147,8 +147,19 @@ summary: 코드·정책·CLI가 같은 말로 말한다. 섹션별 Term.
   <Term term="amortization method" ko="상환 방식" code="annuity|equal_principal|bullet|interest_only">
     원리금균등 / 원금균등 / 만기일시 / 거치. 0% annuity 거부 (POLICY-014).
   </Term>
+</Glossary>
+
+## 현금흐름
+
+<Glossary>
   <Term term="cash runway" ko="현금 런웨이" code="cashRunway · cashflow">
     cash 계정 opening에서 스케줄 유출을 날짜별로 빼 잔액을 본다. 저장 테이블 아님.
+  </Term>
+  <Term term="opening cash" ko="기초 현금" code="account.cash 합">
+    `--cash` 계정들의 잔액 합. cashflow의 시작점.
+  </Term>
+  <Term term="projected outflow" ko="투영 유출" code="ProjectedOutflow">
+    카드·할부·정기·대출이 특정 날짜에 현금으로 나가는 예측분.
   </Term>
   <Term term="SHORT" ko="부족" code="⚠ SHORT">
     잔액이 음수가 되는 날. cashflow의 payoff 신호.
