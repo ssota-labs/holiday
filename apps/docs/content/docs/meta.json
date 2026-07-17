@@ -1,3 +1,21 @@
 {
-  "pages": ["index", "---도메인---", "domain", "---Features---", "features", "---개발---", "dev"]
+  "pages": [
+    "index",
+    "---도메인---",
+    "domain/policy",
+    "domain/glossary",
+    "---Features---",
+    "features/ingest",
+    "features/cards",
+    "features/installments",
+    "features/recurring",
+    "features/loans",
+    "features/cashflow",
+    "---개발---",
+    "dev/system",
+    "dev/data-model",
+    "dev/cli",
+    "dev/skill",
+    "dev/adr"
+  ]
 }

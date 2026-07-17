@@ -1,5 +1,0 @@
-{
-  "title": "개발",
-  "description": "엔지니어가 보는 스펙",
-  "pages": ["system", "data-model", "cli", "skill", "adr"]
-}

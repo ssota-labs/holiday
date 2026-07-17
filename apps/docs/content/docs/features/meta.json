@@ -1,5 +1,0 @@
-{
-  "title": "Features",
-  "description": "무엇을 하는 기능인가",
-  "pages": ["ingest", "cards", "installments", "recurring", "loans", "cashflow"]
-}
