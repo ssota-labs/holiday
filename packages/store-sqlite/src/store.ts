@@ -41,7 +41,8 @@ import {
 
 import { CHAIN_HASH_VERSION, chainHash, GENESIS_HASH, stableJson, txnContentHash } from './chain.js';
 import { Db, type SqlValue, toBigInt, toBool, toInt } from './db.js';
-import { MIGRATIONS, PRAGMAS, SCHEMA_VERSION } from './schema.js';
+import { runMigrations } from './migrate.js';
+import { PRAGMAS, SCHEMA_VERSION } from './schema.js';
 
 export interface SqliteStoreOptions {
   readonly path: string;
@@ -85,21 +86,11 @@ export class SqliteLedgerStore implements LedgerStore {
   }
 
   async migrate(): Promise<{ from: number; to: number }> {
-    const from = this.#userVersion();
-    for (const m of MIGRATIONS) {
-      if (m.version <= from) continue;
-      this.#db.transaction(() => {
-        this.#db.exec(m.sql);
-        this.#db.exec(`PRAGMA user_version = ${m.version}`);
-      });
-    }
+    // Hash-checked and append-only: editing an applied migration throws rather
+    // than letting this ledger diverge from every other copy. See migrate.ts.
+    const result = runMigrations(this.#db, this.#now);
     this.#seedBook();
-    return { from, to: this.#userVersion() };
-  }
-
-  #userVersion(): number {
-    const row = this.#db.get<{ user_version: bigint }>('PRAGMA user_version');
-    return row ? toInt(row.user_version) : 0;
+    return { from: result.alreadyApplied, to: result.alreadyApplied + result.applied.length };
   }
 
   #seedBook(): void {

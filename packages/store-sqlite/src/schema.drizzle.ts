@@ -1,0 +1,331 @@
+import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+
+/**
+ * The schema, as Drizzle tables. drizzle-kit diffs this and generates the SQL.
+ *
+ * **This file defines the DDL only. It is not used to query.** Reads and writes go
+ * through the `Db` wrapper in db.ts, and that is deliberate: Drizzle's SQLite
+ * session never calls `setReadBigInts(true)` — its `integer()` is typed
+ * `'number int53'` internally — so any INTEGER past 2^53 throws ERR_OUT_OF_RANGE
+ * with no hook to fix it. Money in this ledger is i64 minor units and the
+ * conformance suite pins a 2^53+1 round-trip, so the query layer stays ours.
+ * The DDL Drizzle emits for `integer()` is plain `INTEGER`, which is exactly what
+ * we want, so the split costs nothing.
+ *
+ * Two things Drizzle cannot express, both of which live in a hand-written custom
+ * migration instead:
+ *
+ * - **Triggers.** There is no DSL for them, and they are ring 3 of the invariant
+ *   defense (balance-on-seal, commodity conformance, append-only audit).
+ * - **STRICT tables.** Not supported by drizzle-kit. This is a real loss: STRICT
+ *   rejected a TEXT written into an INTEGER column at the storage layer. The
+ *   typed mappers and the audit chain still cover the app path; a hand edit via
+ *   the sqlite3 CLI now gets caught by `holiday verify` rather than refused
+ *   outright.
+ */
+
+export const commodity = sqliteTable(
+  'commodity',
+  {
+    code: text('code').primaryKey(),
+    // Capped at 9 because amounts are i64: 18-decimal ERC-20s are not
+    // representable, and ETH is defined at 8dp. Documented, accepted.
+    exponent: integer('exponent').notNull(),
+    kind: text('kind').notNull(),
+    name: text('name').notNull(),
+  },
+  (t) => [
+    check('commodity_exponent_range', sql`${t.exponent} BETWEEN 0 AND 9`),
+    check('commodity_kind_enum', sql`${t.kind} IN ('fiat','crypto','security','unit')`),
+  ],
+);
+
+export const book = sqliteTable(
+  'book',
+  {
+    id: text('id').primaryKey(),
+    schemaVersion: integer('schema_version').notNull(),
+    functionalCurrency: text('functional_currency')
+      .notNull()
+      .references(() => commodity.code),
+    // Exactly ONE hard-close grain. A day sits inside a month; revaluing FX at
+    // both double-counts it. Daily/weekly are checkpoints, not closes.
+    closeGrain: text('close_grain').notNull().default('month'),
+    timezone: text('timezone').notNull().default('Asia/Seoul'),
+    dedupeKeyVersion: integer('dedupe_key_version').notNull().default(1),
+    fxMaxStalenessDays: integer('fx_max_staleness_days').notNull().default(7),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    check('book_singleton', sql`${t.id} = 'book'`),
+    check('book_close_grain_enum', sql`${t.closeGrain} IN ('day','week','month','quarter','year')`),
+  ],
+);
+
+export const account = sqliteTable(
+  'account',
+  {
+    id: text('id').primaryKey(),
+    // A materialized path. Subtree query = code = ? OR code GLOB ? || ':*'.
+    code: text('code').notNull().unique(),
+    type: text('type').notNull(),
+    parentId: text('parent_id'),
+    // NULL means opt-in multi-commodity (brokerage, crypto, Wise). Non-null is
+    // the default and is enforced on every posting by trigger.
+    commodity: text('commodity').references(() => commodity.code),
+    monetary: integer('monetary').notNull().default(1),
+    // Spendable cash. A flag, not a code prefix: the prefix was a convention
+    // pretending to be a fact, and cash held elsewhere vanished from the
+    // projection silently.
+    cash: integer('cash').notNull().default(0),
+    placeholder: integer('placeholder').notNull().default(0),
+    openedOn: text('opened_on').notNull(),
+    closedOn: text('closed_on'),
+  },
+  (t) => [
+    index('account_by_code').on(t.code),
+    check('account_type_enum', sql`${t.type} IN ('asset','liability','equity','income','expense')`),
+    check('account_monetary_bool', sql`${t.monetary} IN (0,1)`),
+    check('account_cash_bool', sql`${t.cash} IN (0,1)`),
+    check('account_placeholder_bool', sql`${t.placeholder} IN (0,1)`),
+  ],
+);
+
+export const period = sqliteTable(
+  'period',
+  {
+    id: text('id').primaryKey(),
+    grain: text('grain').notNull(),
+    start: text('start').notNull(),
+    end: text('end').notNull(),
+    status: text('status').notNull().default('open'),
+  },
+  (t) => [
+    uniqueIndex('period_grain_start').on(t.grain, t.start),
+    check('period_grain_enum', sql`${t.grain} IN ('day','week','month','quarter','year')`),
+    check('period_status_enum', sql`${t.status} IN ('open','closed','locked')`),
+  ],
+);
+
+export const txn = sqliteTable(
+  'txn',
+  {
+    id: text('id').primaryKey(),
+    date: text('date').notNull(),
+    bookingCommodity: text('booking_commodity')
+      .notNull()
+      .references(() => commodity.code),
+    payee: text('payee'),
+    narration: text('narration').notNull().default(''),
+    status: text('status').notNull(),
+    systemKind: text('system_kind'),
+    correctsTxnId: text('corrects_txn_id'),
+    sourceItemId: text('source_item_id'),
+    fxEstimated: integer('fx_estimated').notNull().default(0),
+    tagsJson: text('tags_json').notNull().default('[]'),
+    metaJson: text('meta_json').notNull().default('{}'),
+    // SQLite has no deferred CHECK constraints, and a running sum is legitimately
+    // non-zero mid-write, so the balance rule cannot be a trigger on posting
+    // insert. Instead: write postings against an unsealed txn, then seal it. The
+    // seal is the enforcement point; nothing unsealed is readable as a fact.
+    sealed: integer('sealed').notNull().default(0),
+    reason: text('reason'),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    index('txn_by_date').on(t.date, t.id),
+    index('txn_by_status').on(t.status),
+    check('txn_status_enum', sql`${t.status} IN ('draft','posted','void','rejected')`),
+    check(
+      'txn_system_kind_enum',
+      sql`${t.systemKind} IS NULL OR ${t.systemKind} IN ('fx_revaluation','closing_entry','opening_balance')`,
+    ),
+    check('txn_fx_estimated_bool', sql`${t.fxEstimated} IN (0,1)`),
+    check('txn_sealed_bool', sql`${t.sealed} IN (0,1)`),
+  ],
+);
+
+export const posting = sqliteTable(
+  'posting',
+  {
+    txnId: text('txn_id')
+      .notNull()
+      .references(() => txn.id),
+    seq: integer('seq').notNull(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => account.id),
+    // The FACT: what moved, in its own commodity. i64 — read through Db, not Drizzle.
+    unitsMinor: integer('units_minor').notNull(),
+    commodity: text('commodity')
+      .notNull()
+      .references(() => commodity.code),
+    // The MEASUREMENT: the same movement in the booking commodity. Stored, never
+    // derived from a rate — that is what makes SUM(weight_minor) = 0 exact.
+    weightMinor: integer('weight_minor').notNull(),
+    weightSource: text('weight_source').notNull(),
+    // Audit only. Never the source of truth for balancing.
+    fxRateText: text('fx_rate_text'),
+    fxRateId: text('fx_rate_id'),
+    // Nullable seam for cost-basis lots. Balancing never consults it.
+    lotId: text('lot_id'),
+    kind: text('kind').notNull().default('normal'),
+    memo: text('memo'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.txnId, t.seq] }),
+    index('posting_by_account').on(t.accountId),
+    check('posting_weight_source_enum', sql`${t.weightSource} IN ('identity','actual','rate','plug')`),
+    check('posting_kind_enum', sql`${t.kind} IN ('normal','fx_revaluation','rounding')`),
+  ],
+);
+
+export const card = sqliteTable(
+  'card',
+  {
+    accountId: text('account_id')
+      .primaryKey()
+      .references(() => account.id),
+    fundingAccountId: text('funding_account_id')
+      .notNull()
+      .references(() => account.id),
+    // Inclusive. 31 means "closes at month end" and clamps in February.
+    cycleCloseDay: integer('cycle_close_day').notNull(),
+    paymentMonthOffset: integer('payment_month_offset').notNull(),
+    // -1 means the last day of the month (말일).
+    paymentDay: integer('payment_day').notNull(),
+    label: text('label'),
+  },
+  (t) => [
+    check('card_close_day_range', sql`${t.cycleCloseDay} BETWEEN 1 AND 31`),
+    check('card_offset_range', sql`${t.paymentMonthOffset} BETWEEN 0 AND 3`),
+    check('card_payment_day_range', sql`${t.paymentDay} = -1 OR ${t.paymentDay} BETWEEN 1 AND 31`),
+  ],
+);
+
+export const installment = sqliteTable(
+  'installment',
+  {
+    id: text('id').primaryKey(),
+    // Whose statement carries the rows. Decides the payment dates.
+    cardAccountId: text('card_account_id')
+      .notNull()
+      .references(() => account.id),
+    // Deliberately NOT the ordinary card account: ordinary billing sums postings
+    // inside a cycle, and an installment posts its whole amount on the purchase
+    // date, so sharing would bill ₩1,200,000 when ₩100,000 is due.
+    liabilityAccountId: text('liability_account_id')
+      .notNull()
+      .references(() => account.id),
+    txnId: text('txn_id').references(() => txn.id),
+    purchasedOn: text('purchased_on').notNull(),
+    months: integer('months').notNull(),
+    totalMinor: integer('total_minor').notNull(),
+    commodity: text('commodity')
+      .notNull()
+      .references(() => commodity.code),
+    interestFree: integer('interest_free').notNull().default(1),
+    label: text('label'),
+  },
+  (t) => [
+    index('installment_by_card').on(t.cardAccountId),
+    check('installment_months_positive', sql`${t.months} >= 1`),
+    check('installment_total_positive', sql`${t.totalMinor} > 0`),
+    check('installment_accounts_differ', sql`${t.cardAccountId} <> ${t.liabilityAccountId}`),
+    check('installment_interest_free_bool', sql`${t.interestFree} IN (0,1)`),
+  ],
+);
+
+export const installmentRow = sqliteTable(
+  'installment_row',
+  {
+    installmentId: text('installment_id')
+      .notNull()
+      .references(() => installment.id, { onDelete: 'cascade' }),
+    // 1-based, the way a statement numbers them (1/12, 2/12 …).
+    seq: integer('seq').notNull(),
+    paymentDate: text('payment_date').notNull(),
+    principalMinor: integer('principal_minor').notNull(),
+    // 할부수수료. Observed off a statement, never computed — see POLICY-006.
+    feeMinor: integer('fee_minor').notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.installmentId, t.seq] }),
+    index('installment_row_by_date').on(t.paymentDate),
+    check('installment_row_seq_positive', sql`${t.seq} >= 1`),
+  ],
+);
+
+export const recurring = sqliteTable(
+  'recurring',
+  {
+    id: text('id').primaryKey(),
+    label: text('label').notNull(),
+    expenseAccountId: text('expense_account_id')
+      .notNull()
+      .references(() => account.id),
+    // Carries the whole subtlety: a bank account debits on the due date; a CARD
+    // only creates debt then, and the cash leaves through its billing cycle.
+    fundingAccountId: text('funding_account_id')
+      .notNull()
+      .references(() => account.id),
+    amountMinor: integer('amount_minor').notNull(),
+    commodity: text('commodity')
+      .notNull()
+      .references(() => commodity.code),
+    cadenceKind: text('cadence_kind').notNull(),
+    // -1 means the last day of the month (말일).
+    dayOfMonth: integer('day_of_month').notNull(),
+    // Only meaningful for 'yearly'.
+    month: integer('month'),
+    activeFrom: text('active_from').notNull(),
+    activeTo: text('active_to'),
+  },
+  (t) => [
+    index('recurring_by_funding').on(t.fundingAccountId),
+    check('recurring_amount_positive', sql`${t.amountMinor} > 0`),
+    check('recurring_cadence_enum', sql`${t.cadenceKind} IN ('monthly','yearly')`),
+    check('recurring_day_range', sql`${t.dayOfMonth} = -1 OR ${t.dayOfMonth} BETWEEN 1 AND 31`),
+    check('recurring_month_range', sql`${t.month} IS NULL OR ${t.month} BETWEEN 1 AND 12`),
+    check('recurring_yearly_needs_month', sql`${t.cadenceKind} <> 'yearly' OR ${t.month} IS NOT NULL`),
+  ],
+);
+
+export const fxRate = sqliteTable(
+  'fx_rate',
+  {
+    id: text('id').primaryKey(),
+    asOf: text('as_of').notNull(),
+    base: text('base')
+      .notNull()
+      .references(() => commodity.code),
+    quote: text('quote')
+      .notNull()
+      .references(() => commodity.code),
+    // A decimal STRING. Never a float. Floats do not belong near money.
+    rate: text('rate').notNull(),
+    source: text('source').notNull(),
+    fetchedAt: text('fetched_at').notNull(),
+  },
+  (t) => [uniqueIndex('fx_rate_unique').on(t.asOf, t.base, t.quote, t.source)],
+);
+
+export const commandLog = sqliteTable('command_log', {
+  idemKey: text('idem_key').primaryKey(),
+  requestSha256: text('request_sha256').notNull(),
+  responseJson: text('response_json').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const auditLog = sqliteTable('audit_log', {
+  // Assigned explicitly, not autoincrement: the hash covers the seq, so the seq
+  // must be known before the row is built.
+  seq: integer('seq').primaryKey(),
+  at: text('at').notNull(),
+  event: text('event').notNull(),
+  subject: text('subject').notNull(),
+  detail: text('detail').notNull().default('{}'),
+  prevHash: text('prev_hash').notNull(),
+  hash: text('hash').notNull().unique(),
+});

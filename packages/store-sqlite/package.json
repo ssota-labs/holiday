@@ -6,16 +6,23 @@
   "exports": {
     ".": "./dist/index.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "pnpm run migrations:inline && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "migrations:generate": "drizzle-kit generate",
+    "migrations:inline": "node --experimental-strip-types scripts/inline-migrations.ts",
+    "migrations:build": "pnpm run migrations:generate && pnpm run migrations:inline"
   },
   "dependencies": {
     "@holiday/core": "workspace:*"
   },
   "devDependencies": {
-    "@holiday/store-testkit": "workspace:*"
+    "@holiday/store-testkit": "workspace:*",
+    "drizzle-kit": "1.0.0-rc.4",
+    "drizzle-orm": "1.0.0-rc.4"
   }
 }
