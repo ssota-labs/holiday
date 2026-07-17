@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { CURRENT_VERSION } from '@/lib/versions';
 
 export default function Home() {
   return (
@@ -8,7 +7,7 @@ export default function Home() {
       <p className="text-fd-muted-foreground">
         1인용 복식부기 원장. 가계부·부채·자산·현금흐름.
       </p>
-      <Link className="text-fd-primary underline underline-offset-4" href={`/docs/${CURRENT_VERSION.slug}`}>
+      <Link className="text-fd-primary underline underline-offset-4" href="/docs">
         문서 읽기 →
       </Link>
     </main>

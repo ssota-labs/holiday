@@ -1,10 +1,18 @@
 ---
-title: 스킬
+title: 스킬 스펙
 description: holiday-cfo의 progressive disclosure 구조
 type: conceptual
-version: v0.1
 summary: SKILL.md는 항상 로드된다. references/는 작업이 요구할 때만.
 ---
+
+<SpecVersion
+  spec="스킬"
+  version="0.1.0"
+  source="plugin/.claude-plugin/plugin.json"
+  history={[
+    { version: '0.1.0', date: '2026-07-17', summary: 'holiday-cfo — SKILL.md + references 4개. 인제스트·리뷰 포함', ref: 'plugin/skills/holiday-cfo/SKILL.md' },
+  ]}
+/>
 
 플러그인은 스킬 하나를 싣는다: `holiday-cfo`.
 
@@ -72,14 +80,17 @@ summary: SKILL.md는 항상 로드된다. references/는 작업이 요구할 때
 <CanvasLegend />
 
 CLI의 방어선은 균형·통화 적합성·트리거뿐이다. **"모델이 ₩1,240,000을 ₩1,240,00으로
-안 읽었다"는 보장이 없다** — 둘 다 완벽하게 균형 잡힌 거래니까. 그래서 SKILL.md가
-"금액을 지어내지 마라, 계정을 추측하지 마라, 쓰기 전에 전표를 말로 보여줘라,
+안 읽었다"는 보장이 없다** — 둘 다 완벽하게 균형 잡힌 거래니까.
+
+리뷰 게이트가 생겼지만 그게 답은 아니다. 게이트는 **잘못된 카테고리**를 잡지 **오독한
+금액**을 못 잡는다 — `₩1,240,00`을 사람이 승인하면 틀린 채로 승인된다. 그래서 SKILL.md는
+여전히 "금액을 지어내지 마라, 계정을 추측하지 마라, 쓰기 전에 전표를 말로 보여줘라,
 `$`인지 `₩`인지 헷갈리면 멈춰라"에 지면을 쓴다.
 
 ## 없는 걸 없다고 말한다
 
-SKILL.md 마지막 섹션이 **못 하는 것 목록**이다: 캡쳐 인제스트 명령 없음, 리뷰 큐 없음,
-유이자 할부 없음, 마감·환율·대출 없음.
+SKILL.md 마지막 섹션이 **못 하는 것 목록**이다: OCR 없음(모델이 파서다), 자동 승인 없음,
+할부수수료 계산 없음, 마감·환율 테이블 없음.
 
 빈칸을 즉흥으로 메우는 스킬이 "지원 안 함"이라고 말하는 스킬보다 나쁘다. 전자는
 그럴듯하게 틀린 장부를 만들고, 후자는 사용자가 다음 수를 고르게 한다.

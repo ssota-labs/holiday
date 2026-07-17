@@ -1,0 +1,35 @@
+---
+title: 정기지출
+description: 월세와 넷플릭스는 같은 카덴스지만 6주 다르다
+type: conceptual
+summary: funding이 통장이냐 카드냐가 전부를 가른다.
+related: ['/docs/domain/policy', '/docs/dev/cli']
+---
+
+> **지켜야 하는 규칙:** [POLICY-005](/docs/domain/policy#policy-005) · [POLICY-010](/docs/domain/policy#policy-010)
+> 무엇을 하는지는 여기, 항상 참이어야 하는 것은 [도메인 정책](/docs/domain/policy)에 있다.
+
+<CommandSpec
+  command="recurring add"
+  mutates={true}
+  summary="정기지출을 등록한다. funding이 통장이냐 카드냐가 전부를 가른다."
+  signature={`holiday recurring add <LABEL>
+  --expense <EXPENSE_ACCOUNT>
+  --funding <BANK | CARD>
+  --amount <amount>
+  [--day <1-31 | -1>] [--yearly <1-12>] [--from <date>] [--to <date>]`}
+  flags={[
+    { name: '--funding', type: 'account', required: true, description: '통장 = 당일 인출. 카드 = 청구주기를 탐' },
+    { name: '--day', type: 'integer', default: '1', description: '-1이면 말일' },
+    { name: '--yearly', type: 'integer', description: '연 1회로 만들고, 그 달을 지정' },
+    { name: '--to', type: 'date', description: '해지일. 없으면 무기한' },
+  ]}
+  exits={[
+    { code: 0, meaning: '등록됨. 카드면 결제가 언제 도는지 같이 출력' },
+    { code: 2, meaning: 'funding이 자산도 부채도 아님' },
+  ]}
+  example={`$ holiday recurring add "넷플릭스" --expense Expenses:Subscription:Netflix \\
+    --funding Liabilities:Card:Shinhan --amount 17000 --day 17
+넷플릭스: 17000 KRW, 매월 17일, on Liabilities:Card:Shinhan.
+Charged to the card — cash follows its cycle (a charge today would settle 2026-09-01).`}
+/>

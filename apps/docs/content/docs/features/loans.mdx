@@ -1,0 +1,94 @@
+---
+title: 대출
+description: 원리금균등·원금균등·만기일시상환·거치, 그리고 대사
+type: conceptual
+summary: 명세서의 총액 하나를 원금/이자로 쪼갠다. 사람도 모델도 못 하는 일이다.
+related: ['/docs/domain/policy', '/docs/dev/cli']
+---
+
+> **지켜야 하는 규칙:** [POLICY-011](/docs/domain/policy#policy-011) · [POLICY-012](/docs/domain/policy#policy-012) · [POLICY-013](/docs/domain/policy#policy-013) · [POLICY-014](/docs/domain/policy#policy-014) · [POLICY-015](/docs/domain/policy#policy-015)
+> 무엇을 하는지는 여기, 항상 참이어야 하는 것은 [도메인 정책](/docs/domain/policy)에 있다.
+
+<CommandSpec
+  command="loan add"
+  mutates={true}
+  summary="상환 스케줄을 만든다. 원리금균등·원금균등·만기일시상환·거치."
+  signature={`holiday loan add <LOAN_ACCOUNT>
+  --funding <ASSET_ACCOUNT>  --interest <EXPENSE_ACCOUNT>
+  --principal <amount>  --rate <percent>  --months <n>
+  --first-payment <date>
+  [--method annuity|equal_principal|bullet|interest_only]
+  [--payment-day <1-31 | -1>] [--label <text>]`}
+  flags={[
+    { name: '--rate', type: 'percent', required: true, description: '연이율을 계약서 그대로. "4.2" = 4.2%' },
+    { name: '--interest', type: 'account', required: true, description: '이자가 기표될 비용 계정' },
+    { name: '--method', type: 'enum', default: 'annuity', description: '원리금균등 | 원금균등 | 만기일시상환 | 거치' },
+    { name: '--payment-day', type: 'integer', description: '없으면 --first-payment의 일자' },
+  ]}
+  exits={[
+    { code: 0, meaning: '등록됨. 1회차 분해와 총이자 출력' },
+    { code: 1, meaning: '0% 원리금균등, 이자도 못 갚는 납입액 등' },
+    { code: 2, meaning: '계정 종류가 안 맞음 (대출은 부채, 이자는 비용, funding은 자산)' },
+  ]}
+  example={`$ holiday loan add Liabilities:Loans:KB:Mortgage \\
+    --funding Assets:Bank:KB:Checking --interest Expenses:Interest:Mortgage \\
+    --principal 300000000 --rate 4.2 --months 360 --first-payment 2026-08-25 --label "KB 주담대"
+원리금균등 300000000 @ 4.200% × 360개월. 2026-08-25 ~ 2056-07-25.
+1회차 1467052 (원금 417052 + 이자 1050000)
+총 이자 228138372
+이건 예측입니다. 실제 잔액과 어긋나는지는 \`holiday loan check\`.`}
+/>
+
+<CommandSpec
+  command="loan pay"
+  mutates={true}
+  summary="상환을 기록하고 스케줄로 원금/이자를 쪼갠다."
+  signature={`holiday loan pay <LOAN_ACCOUNT> --date <due_date> [--amount <actual>]`}
+  flags={[
+    { name: '--date', type: 'date', required: true, description: '스케줄상의 회차 날짜' },
+    { name: '--amount', type: 'amount', description: '실제 빠진 금액이 스케줄과 다를 때' },
+  ]}
+  exits={[
+    { code: 0, meaning: '3-leg 거래로 기표됨' },
+    { code: 2, meaning: '그 날짜에 회차가 없음, 또는 금액이 이자도 못 덮음' },
+  ]}
+  example={`$ holiday loan pay Liabilities:Loans:KB:Mortgage --date 2026-08-25
+1회차 1467052 = 원금 417052 + 이자 1050000`}
+/>
+
+**이게 대출 모듈의 존재 이유다.** 명세서엔 "KB에 ₩1,247,300 납부"만 있고 원금/이자
+분해가 없다. **사람도 vision 모델도 계산기 없이는 못 한다.** 스케줄만 안다.
+
+<LedgerExample
+  date="2026-08-25"
+  payee="KB 주담대"
+  narration="1/360 상환"
+  legs={[
+    { account: 'Liabilities:Loans:KB:Mortgage', units: '417,052 KRW', weight: 417052, source: 'identity', note: '빚이 줄어든 만큼' },
+    { account: 'Expenses:Interest:Mortgage', units: '1,050,000 KRW', weight: 1050000, source: 'identity', note: '300,000,000 × 4.2%/12' },
+    { account: 'Assets:Bank:KB:Checking', units: '-1,467,052 KRW', weight: -1467052, source: 'identity', note: '실제로 빠진 현금' },
+  ]}
+/>
+
+### loan check — 부채의 상시 감사
+
+<CommandSpec
+  command="loan check"
+  mutates={false}
+  summary="원장이 스케줄과 맞는지 대사한다. 차이는 노이즈가 아니라 정보다."
+  signature={`holiday loan check [LOAN_ACCOUNT] [--as-of <date>]`}
+  flags={[{ name: '--as-of', type: 'date', default: 'today' }]}
+  exits={[
+    { code: 0, meaning: '전부 스케줄대로' },
+    { code: 1, meaning: '하나 이상 어긋남 — 차액과 가능한 원인을 출력' },
+  ]}
+  example={`$ holiday loan check --as-of 2026-09-25
+KB 주담대  (2026-09-25)
+  스케줄:         299164436
+  원장:           299582948
+  ⚠ 차이 418512
+    you owe 418512 more than the schedule expects. Usually a missed or partial
+    payment, an unrecorded rate change, or a fee added to the balance.`}
+/>
+
+### 두 가지 거부

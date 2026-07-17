@@ -1,0 +1,41 @@
+---
+title: 카드 청구주기
+description: 사용기간이 닫히고 결제일에 현금이 나간다
+type: conceptual
+summary: 없으면 원장은 얼마를 빚졌는지는 알아도 언제 나가는지를 모른다.
+related: ['/docs/domain/policy', '/docs/dev/cli']
+---
+
+> **지켜야 하는 규칙:** [POLICY-008](/docs/domain/policy#policy-008)
+> 무엇을 하는지는 여기, 항상 참이어야 하는 것은 [도메인 정책](/docs/domain/policy)에 있다.
+
+없으면 원장은 얼마를 빚졌는지는 알아도 **언제** 나가는지를 모르고, `cashflow`는 카드를
+아예 못 본다.
+
+<CommandSpec
+  command="card add"
+  mutates={true}
+  summary="부채 계정에 청구주기를 붙인다. 규칙과 함께 계산된 날짜를 되돌려준다."
+  signature={`holiday card add <ACCOUNT>
+  --funding <ASSET_ACCOUNT>
+  --close-day <1-31>          # 31 = 말일 (2월엔 28일로 clamp)
+  --payment-day <1-31 | -1>   # -1 = 말일
+  [--payment-month-offset <0-3>]  [--label <text>]`}
+  flags={[
+    { name: '--funding', type: 'account', required: true, description: '결제일에 현금이 빠지는 자산 계정' },
+    { name: '--close-day', type: 'integer', required: true, description: '사용기간이 닫히는 날. 이 날 긁은 건 이번 청구서' },
+    { name: '--payment-day', type: 'integer', required: true, description: '-1이면 말일' },
+    { name: '--payment-month-offset', type: 'integer', default: '1', description: '마감에서 결제까지 몇 달' },
+  ]}
+  exits={[
+    { code: 0, meaning: '등록됨. 오늘 긁으면 언제 빠지는지를 같이 출력' },
+    { code: 2, meaning: '계정 없음, 또는 결제일이 마감보다 앞선 불가능한 규칙' },
+  ]}
+  example={`$ holiday card add Liabilities:Card:Shinhan --funding Assets:Bank:KB:Checking \\
+    --close-day 14 --payment-day 1 --label "신한"
+A purchase today (2026-07-17) closes 2026-08-14 and takes cash on 2026-09-01.`}
+/>
+
+마지막 줄이 중요하다. **"14일 마감 → 익월 1일 결제"는 사람이 검증할 수 없지만 "오늘
+긁으면 9/1에 빠집니다"는 검증된다.** 한국 카드사가 제각각이라 이게 설정이 틀렸는지
+알아채는 유일한 방법이다.

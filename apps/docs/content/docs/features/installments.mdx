@@ -1,0 +1,39 @@
+---
+title: 할부
+description: 구매일에 부채 전액, 현금은 N개월에 걸쳐
+type: conceptual
+summary: 잔액은 별도 계정에 산다. 안 그러면 첫 청구서가 12배 부푼다.
+related: ['/docs/domain/policy', '/docs/dev/cli']
+---
+
+> **지켜야 하는 규칙:** [POLICY-003](/docs/domain/policy#policy-003) · [POLICY-006](/docs/domain/policy#policy-006) · [POLICY-007](/docs/domain/policy#policy-007) · [POLICY-009](/docs/domain/policy#policy-009)
+> 무엇을 하는지는 여기, 항상 참이어야 하는 것은 [도메인 정책](/docs/domain/policy)에 있다.
+
+<CommandSpec
+  command="installment add"
+  mutates={true}
+  summary="할부 구매를 기록하고 스케줄을 만든다. 부채는 구매일에 전액 선다."
+  signature={`holiday installment add
+  --card <CARD_ACCOUNT>  --expense <EXPENSE_ACCOUNT>
+  --total <amount>  --months <n>
+  [--date <date>] [--label <text>] [--liability <ACCOUNT>]
+  [--fees <a,b,c,…>]          # 명세서에서 읽은 회차별 수수료
+  [--remainder-on first|last]`}
+  flags={[
+    { name: '--total', type: 'amount', required: true, description: '할부원금. 수수료 제외' },
+    { name: '--months', type: 'integer', required: true },
+    { name: '--fees', type: 'csv amounts', description: '유이자 할부. 개월 수만큼. 계산하지 않고 받기만 함' },
+    { name: '--liability', type: 'account', default: '<card>:Installment', description: '없으면 자동 생성' },
+  ]}
+  exits={[
+    { code: 0, meaning: '기록됨. 회차 목록 출력' },
+    { code: 1, meaning: '수수료 개수가 개월 수와 불일치 등' },
+    { code: 2, meaning: '카드에 청구주기가 없음 — 회차 날짜를 계산할 수 없다' },
+  ]}
+  example={`$ holiday installment add --card Liabilities:Card:Shinhan \\
+    --expense Expenses:Home:Appliance --total 1200000 --months 12 --label "냉장고"
+created Liabilities:Card:Shinhan:Installment (installment balances are kept apart…)
+12개월 무이자 할부, 1200000 KRW. First 2026-09-01, last 2027-08-01.`}
+/>
+
+### 유이자 할부 — 받되, 계산하지 않는다

@@ -1,0 +1,94 @@
+---
+title: 현금흐름
+description: 잔고가 버티나 — 네 스케줄이 모이는 곳
+type: conceptual
+summary: 과거는 원장에서 유도하고 미래는 스케줄에서 투영한다. 유지하는 테이블이 아니다.
+related: ['/docs/features/cards', '/docs/features/loans', '/docs/domain/policy']
+---
+
+원장은 **과거만** 안다. "다음달 카드값 나가면 통장이 버티나"에 원장은 답을 못 한다.
+스케줄은 그 반대편 — **언제 돈이 나갈지**를 안다.
+
+## 유지하는 게 아니라 유도한다
+
+현금흐름표의 **과거 절반은 쿼리다** — 현금 계정을 건드린 posting. 그래서 원장과 어긋날
+수가 없다. 손으로 맞추는 두 테이블은 반드시 언젠가 어긋난다.
+
+계산이 필요한 건 **미래 절반**뿐이고, 그건 스케줄에서 나온다.
+
+## 네 개가 같은 것이다
+
+카드·할부·대출은 회계적으로 **전부 부채**다. 나뉘는 건 계정 종류가 아니라 **스케줄의
+모양**이고, 정기지출은 아예 계정이 아니다.
+
+| | 모양 | 계정 |
+|---|---|---|
+| **카드 청구주기** | 회전 — 사용기간이 닫히고 결제일에 전액 | `Liabilities:Card:*` |
+| **할부** | 고정 N개월 분할 | `Liabilities:Card:*:Installment` ← **별도** |
+| **대출** | 분할상환 (원금+이자) | `Liabilities:Loans:*` |
+| **정기지출** | 반복 발생 | 계정 아님 |
+
+<Canvas
+  height={380}
+  nodes={[
+    { id: 'card', type: 'doc', position: { x: 0, y: 0 }, data: { label: 'card', description: '청구주기', kind: 'forecast', handles: { target: false } } },
+    { id: 'inst', type: 'doc', position: { x: 0, y: 90 }, data: { label: 'installment', description: '할부 N회차', kind: 'forecast', handles: { target: false } } },
+    { id: 'rec', type: 'doc', position: { x: 0, y: 180 }, data: { label: 'recurring', description: '정기지출 카덴스', kind: 'forecast', handles: { target: false } } },
+    { id: 'loan', type: 'doc', position: { x: 0, y: 270 }, data: { label: 'loan', description: '상환 스케줄', kind: 'forecast', handles: { target: false } } },
+    { id: 'ledger', type: 'doc', position: { x: 0, y: 360 }, data: { label: 'posting', description: '원장 — 이미 쓴 돈', kind: 'fact', handles: { target: false } } },
+    { id: 'runway', type: 'doc', position: { x: 300, y: 170 }, data: { label: 'cashRunway', description: '날짜별로 묶어 잔고를 걸어감', kind: 'derived' } },
+    { id: 'answer', type: 'doc', position: { x: 560, y: 170 }, data: { label: '⚠ SHORT', description: '버티나 못 버티나', kind: 'derived', handles: { source: false } } },
+  ]}
+  edges={[
+    { id: 'l1', source: 'card', target: 'runway' },
+    { id: 'l2', source: 'inst', target: 'runway' },
+    { id: 'l3', source: 'rec', target: 'runway' },
+    { id: 'l4', source: 'loan', target: 'runway' },
+    { id: 'l5', source: 'ledger', target: 'runway', animated: true },
+    { id: 'l6', source: 'runway', target: 'answer', animated: true },
+  ]}
+/>
+
+<CanvasLegend />
+
+**스케줄에서 원장으로 가는 화살표가 없다.** 예측은 절대 전기되지 않는다 — 금리가
+바뀌거나 구독을 해지할 때마다 과거가 오염된다.
+
+## 실제 출력
+
+```
+cash on hand (2026-07-17):  350000000 KRW
+
+2026-07-25   -      800000   →     349200000
+             월세                                   800000
+2026-08-01   -      400000   →     348800000
+             신한  2026-06-15..2026-07-14           400000
+2026-08-25   -     2267052   →     346532948
+             월세                                   800000
+             KB 주담대 (1/360)                      1467052
+2026-09-01   -      100000   →     346432948
+             냉장고 (1/12)                           100000
+```
+
+8/25에 월세와 주담대가 **같은 날 합류**한다. 실제 통장이 하는 일 그대로다.
+
+`⚠ SHORT`가 답이다. 잔액은 숫자 하나를 주지만 현금흐름은 **어느 날 터지는지**를 준다.
+
+## 현금이 뭔지는 플래그가 정한다
+
+`account.cash`다. 예전엔 `Assets:Bank*` 접두어 규칙이었는데, 그건 관례를 사실인 척한
+것이었다 — 다른 이름 밑의 현금이 투영에서 **조용히** 빠졌고, 그럼 숫자는 여전히
+자신만만하게 틀린다. [ADR-004](/docs/dev/adr#adr-004).
+
+표시 안 된 자산 계정이 있으면 `cashflow`가 소리내어 말한다. 예측에서 항목이 조용히
+빠지면 "모르겠다"여야 할 게 "괜찮다"로 읽힌다.
+
+## 스케줄은 예측이다 — 근사가 허용되는 유일한 곳
+
+원장의 "허용오차 없음"과 모순처럼 보이지만 아니다. **사실/예측 구분의 반대편**일 뿐이다.
+
+- **사실**(원장): 정확. 허용오차 0. `SUM(weight) = 0`.
+- **예측**(스케줄): 근사 가능. `loan check`가 정직하게 유지한다.
+
+다만 **행의 합만은 정확**하다. 합이 안 맞는 스케줄은 명세서와 영원히 대사가 안 되고,
+그럼 예측을 정직하게 유지할 방법 자체가 없어진다.

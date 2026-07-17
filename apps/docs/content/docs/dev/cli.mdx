@@ -2,14 +2,22 @@
 title: CLI 스펙
 description: 에이전트가 코드로 상대하는 계약
 type: reference
-version: v0.1
 summary: 모든 변경 명령은 exit code와 stderr 봉투가 계약이다.
 ---
 
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/package.json"
+  history={[
+    { version: '0.1.0', date: '2026-07-17', summary: 'init · account · txn · balance · card · installment · recurring · loan · ingest · review · cashflow · verify · checkpoint', ref: 'packages/cli/package.json' },
+  ]}
+/>
+
 CLI가 코어다. Claude Code 스킬도 Codex도 이걸 shell out 한다 — 분기가 0이다.
 
-여기 있는 건 원장 명령이다. 스케줄 명령(`card`·`installment`·`recurring`·`loan`)은
-[스케줄 네 개](/docs/v0.1/schedules)에 각각의 함정과 함께 있다.
+여기 있는 건 원장 명령이다. 스케줄 명령(`card`·`installment`·`recurring`·`loan`)과 `ingest`는
+[Features](/docs/features/cashflow)에 각각의 함정과 함께 있다.
 
 에러는 항상 stderr에 JSON 봉투 하나로 나온다:
 

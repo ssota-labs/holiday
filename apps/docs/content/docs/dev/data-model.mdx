@@ -2,10 +2,29 @@
 title: 데이터 모델
 description: 계정, 거래, 전기 — 그리고 units/weight 분리
 type: reference
-version: v0.1
 summary: posting마다 두 정수를 저장한다. units는 사실, weight는 측정.
-related: ['/docs/v0.1/policy']
+related: ['/docs/domain/policy', '/docs/dev/system']
 ---
+
+<SpecVersion
+  spec="데이터 모델"
+  version="migration 4"
+  source="packages/store-sqlite/migrations/"
+  history={[
+    { version: '1', date: '2026-07-17', summary: '초기 스키마 — book, commodity, account, txn, posting, card, installment, recurring, audit_log', ref: 'packages/store-sqlite/migrations/20260717100240_init' },
+    { version: '2', date: '2026-07-17', summary: '불변식 트리거 11개. drizzle-kit이 트리거를 모델링하지 않아 손으로 쓴 custom 마이그레이션', ref: 'packages/store-sqlite/migrations/20260717100308_invariant_triggers' },
+    { version: '3', date: '2026-07-17', summary: 'loan + loan_schedule_row', ref: 'packages/store-sqlite/migrations/20260717101844_loans' },
+    { version: '4', date: '2026-07-17', summary: 'ingest_batch + ingest_item', ref: 'packages/store-sqlite/migrations/20260717105405_ingest' },
+  ]}
+/>
+
+버전이 사이트 전체가 아니라 **이 스펙의 것**인 이유: 데이터 모델은 마이그레이션 4개를
+거쳤고 CLI는 0.1.0이며 도메인 정책은 버전이 없다. 하나의 번호를 셋에 찍으면 같이
+움직인다고 말하는 셈인데, 그렇지 않다.
+
+그리고 이 이력은 지어낸 게 아니다. `__holiday_migrations`가 각 마이그레이션의 sha256을
+기록하고, 적용된 걸 수정하면 원장이 열리길 거부한다 —
+[POLICY-016](/docs/domain/policy#policy-016).
 
 ## 무엇이 사실이고 무엇이 예측인가
 
@@ -80,7 +99,7 @@ related: ['/docs/v0.1/policy']
 
 ## 스케줄 테이블
 
-넷 다 부채 계정에 붙는 **예측**이고, 원장 밖에 산다. [스케줄 네 개](/docs/v0.1/schedules)에
+넷 다 부채 계정에 붙는 **예측**이고, 원장 밖에 산다. [Features](/docs/features/cashflow)에
 자세히.
 
 <SchemaTable

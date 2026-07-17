@@ -8,6 +8,7 @@ import { CommandSpec } from './blocks/command-spec';
 import { Decision } from './blocks/decision';
 import { LedgerExample } from './blocks/ledger-example';
 import { Rule } from './blocks/rule';
+import { SpecVersion } from './blocks/spec-version';
 import { SchemaTable } from './blocks/schema-table';
 import { Glossary, Term } from './blocks/term';
 
@@ -38,6 +39,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Decision,
     SchemaTable,
     CommandSpec,
+    SpecVersion,
     LedgerExample,
     Canvas,
     CanvasLegend,
