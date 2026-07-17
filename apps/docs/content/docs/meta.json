@@ -2,8 +2,8 @@
   "pages": [
     "index",
     "---도메인---",
-    "domain/policy",
     "domain/glossary",
+    "domain/policy",
     "---Features---",
     "features/ingest",
     "features/fx",

@@ -31,12 +31,12 @@ holiday verify
 ## 문서 구성
 
 <Cards>
-  <Card title="도메인" href="/docs/domain/policy" description="정책 카탈로그(POLICY-*)와 용어 정의" />
+  <Card title="도메인" href="/docs/domain/policy" description="용어집과 정책 카탈로그(POLICY-*)" />
   <Card title="Features" href="/docs/features/cashflow" description="인제스트, 환율, 마감, 스케줄, 현금흐름" />
   <Card title="개발" href="/docs/dev/system" description="시스템 설계, 데이터 모델, CLI, 스킬, ADR" />
 </Cards>
 
-정책 본문은 [`/docs/domain/policy`](/docs/domain/policy)다. 각 정책 Rule 블록은
+정책 문서는 [`/docs/domain/policy`](/docs/domain/policy)다. 각 정책 Rule 블록은
 강제 테스트에 링크되며, `scripts/check-rule-links.ts`가 링크를 검사한다.
 
 ## 현재 기능
@@ -63,7 +63,7 @@ holiday verify
 ## 버전
 
 사이트 전역 단일 버전 번호는 없다. 데이터 모델은 마이그레이션으로, CLI는
-`package.json` 버전으로, 도메인 정책은 테스트 링크로 각각 추적한다. 스펙 페이지의
+`package.json` 버전으로, 정책은 테스트 링크로 각각 추적한다. 스펙 페이지의
 `<SpecVersion>`이 해당 영역의 근거 산출물을 가리킨다.
 
 ## 에이전트용 원문
