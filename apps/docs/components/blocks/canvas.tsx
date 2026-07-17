@@ -41,6 +41,11 @@ export function Canvas({
         panOnDrag
         zoomOnScroll={false}
         zoomOnDoubleClick={false}
+        // React Flow defaults preventScrolling to TRUE, which swallows the wheel
+        // event over the canvas. In an app that is correct; in an article it means
+        // a reader scrolling down gets stuck the moment the cursor crosses a
+        // diagram. The page must always win.
+        preventScrolling={false}
         proOptions={{ hideAttribution: false }}
       >
         <Background bgColor="var(--color-fd-card)" />
@@ -77,13 +82,19 @@ const KIND_STYLE: Record<string, string> = {
  */
 function DocNode({ data }: NodeProps) {
   const d = data as DocNodeData;
-  const handles = d.handles ?? { target: true, source: true };
+  // Each side defaults independently. `d.handles ?? {target:true, source:true}`
+  // looks equivalent and is not: passing `{ target: false }` satisfies the ??,
+  // leaving `source` undefined and the node with no source handle — and React
+  // Flow silently DROPS every edge that has nowhere to attach. The page still
+  // renders, the nodes still look right, and the diagram is just a list.
+  const showTarget = d.handles?.target ?? true;
+  const showSource = d.handles?.source ?? true;
   return (
     <div className={`min-w-40 rounded-lg border-2 px-3 py-2 shadow-sm ${KIND_STYLE[d.kind ?? 'fact']}`}>
-      {handles.target ? <Handle type="target" position={Position.Left} /> : null}
+      {showTarget ? <Handle type="target" position={Position.Left} /> : null}
       <div className="text-sm font-semibold">{d.label}</div>
       {d.description ? <div className="text-fd-muted-foreground mt-0.5 text-xs">{d.description}</div> : null}
-      {handles.source ? <Handle type="source" position={Position.Right} /> : null}
+      {showSource ? <Handle type="source" position={Position.Right} /> : null}
     </div>
   );
 }
