@@ -79,3 +79,23 @@ export function openStore(ws: string): SqliteLedgerStore {
     },
   });
 }
+
+/**
+ * Open a ledger and bring its schema up to date. Every command uses this.
+ *
+ * Migrating on open rather than only in `init` is not a convenience — it is the
+ * difference between a ledger that survives an upgrade and one that does not.
+ * ledger.db is the user's system of record and is meant to be committed; the
+ * plugin binary that reads it updates independently. If only `init` migrated, a
+ * plugin update would leave every existing ledger unopenable, failing on a column
+ * the new code expects and the old file has never heard of.
+ *
+ * Migrations are append-only and each runs in its own transaction, so this is
+ * a no-op on an up-to-date file and atomic on an old one.
+ */
+export async function openLedger(ws: string): Promise<SqliteLedgerStore> {
+  const store = openStore(ws);
+  await store.init();
+  await store.migrate();
+  return store;
+}

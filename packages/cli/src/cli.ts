@@ -1,6 +1,7 @@
 // Loaded dynamically by main.ts, AFTER env.ts has patched process.emitWarning.
 // Do not make this the bin entry point — see the comment in main.ts.
 import { Command } from 'commander';
+import { z } from 'zod';
 
 import {
   type Account,
@@ -32,10 +33,27 @@ import {
   describeTxnError,
   displaySignOf,
   projectCardBills,
+  reviseSchedule,
 } from '@holiday/core';
 
 import { UsageError, parseLeg } from './legs.js';
-import { createWorkspace, openStore, readConfig, requireWorkspace } from './workspace.js';
+import { createWorkspace, openLedger, readConfig, requireWorkspace } from './workspace.js';
+
+/**
+ * Amounts cross the JSON boundary as decimal STRINGS, never numbers.
+ * JSON.stringify throws on a bigint, and a number silently loses precision past
+ * 2^53 — the exact failure this ledger uses bigint everywhere to avoid.
+ */
+const REVISION_ROWS = z
+  .array(
+    z.object({
+      seq: z.number().int().min(1),
+      paymentDate: z.string(),
+      principalMinor: z.string().regex(/^-?\d+$/),
+      feeMinor: z.string().regex(/^\d+$/).optional(),
+    }),
+  )
+  .min(1);
 
 const nextUlid = createUlidFactory();
 const registry = CommodityRegistry.from(WELL_KNOWN_COMMODITIES);
@@ -58,9 +76,9 @@ program
       timezone: o.timezone,
       store: 'sqlite',
     });
-    const store = openStore(ws);
-    await store.init();
-    await store.migrate();
+    // openLedger already migrates — every command does, so an existing ledger
+    // survives a plugin upgrade.
+    const store = await openLedger(ws);
     await store.unitOfWork(async (uow) => {
       for (const c of registry.all()) await uow.upsertCommodity(c);
     });
@@ -77,12 +95,16 @@ account
   .description('add an account, e.g. Assets:Bank:KB:Checking')
   .option('--commodity <code>', 'restrict to one commodity (recommended); omit for multi-commodity')
   .option('--non-monetary', 'exclude from FX revaluation (equipment, prepaid)', false)
+  .option('--cash', 'spendable cash — `holiday cashflow` walks forward from these', false)
   .option('--placeholder', 'a grouping node that cannot be posted to', false)
   .option('--opened <date>', 'ISO date', today())
-  .action(async (code: string, o: { commodity?: string; nonMonetary: boolean; placeholder: boolean; opened: string }) => {
+  .action(
+    async (
+      code: string,
+      o: { commodity?: string; nonMonetary: boolean; cash: boolean; placeholder: boolean; opened: string },
+    ) => {
     const ws = requireWorkspace();
-    const store = openStore(ws);
-    await store.init();
+    const store = await openLedger(ws);
     const c = assertAccountCode(code);
     const acct: Account = {
       id: nextUlid() as AccountId,
@@ -91,27 +113,35 @@ account
       parentId: null,
       commodity: o.commodity ? registry.get(o.commodity).code : null,
       monetary: !o.nonMonetary,
+      cash: o.cash,
       placeholder: o.placeholder,
       openedOn: assertIsoDate(o.opened),
       closedOn: null,
     };
     await store.unitOfWork((uow) => uow.upsertAccount(acct));
     await store.close();
-    out({ id: acct.id, code: acct.code, type: acct.type, commodity: acct.commodity });
-  });
+    out({ id: acct.id, code: acct.code, type: acct.type, commodity: acct.commodity, cash: acct.cash });
+    if (acct.type === 'asset' && !o.cash) {
+      // Silence here is how an account full of money vanishes from the projection.
+      note(`${code} is not marked --cash, so it is NOT counted in \`holiday cashflow\`.`);
+    }
+  },
+);
 
 account
   .command('list')
   .description('list accounts')
   .action(async () => {
     const ws = requireWorkspace();
-    const store = openStore(ws);
-    await store.init();
+    const store = await openLedger(ws);
     const accounts = await store.read((r) => r.listAccounts());
     await store.close();
     if (jsonMode()) return out(accounts);
     for (const a of accounts) {
-      note(`${a.code.padEnd(40)} ${(a.commodity ?? '(multi)').padEnd(8)}${a.placeholder ? ' [placeholder]' : ''}`);
+      const tags = [a.cash ? 'cash' : null, a.placeholder ? 'placeholder' : null, a.monetary ? null : 'non-monetary']
+        .filter(Boolean)
+        .join(' ');
+      note(`${a.code.padEnd(40)} ${(a.commodity ?? '(multi)').padEnd(8)} ${tags}`);
     }
   });
 
@@ -130,8 +160,7 @@ program
   .action(async (o: { date: string; payee?: string; narration: string; leg: string[]; draft: boolean }) => {
     const ws = requireWorkspace();
     const config = readConfig(ws);
-    const store = openStore(ws);
-    await store.init();
+    const store = await openLedger(ws);
 
     const byCode = new Map<string, Account>();
     for (const a of await store.read((r) => r.listAccounts())) byCode.set(a.code, a);
@@ -167,8 +196,7 @@ program
   .action(async (o: { asOf?: string; account?: string }) => {
     const ws = requireWorkspace();
     const config = readConfig(ws);
-    const store = openStore(ws);
-    await store.init();
+    const store = await openLedger(ws);
     const rows = await store.read((r) =>
       r.getBalances({
         ...(o.asOf ? { asOf: assertIsoDate(o.asOf) } : {}),
@@ -208,8 +236,7 @@ card
       o: { funding: string; closeDay: number; paymentDay: number; paymentMonthOffset: number; label?: string },
     ) => {
       const ws = requireWorkspace();
-      const store = openStore(ws);
-      await store.init();
+      const store = await openLedger(ws);
       await store.unitOfWork(async (uow) => {
         const acct = await uow.getAccount(code);
         if (!acct) throw new UsageError(`no such account: ${code}`);
@@ -245,8 +272,7 @@ card
   .description('cards and their billing rules')
   .action(async () => {
     const ws = requireWorkspace();
-    const store = openStore(ws);
-    await store.init();
+    const store = await openLedger(ws);
     const now = assertIsoDate(today());
     const result = await store.read(async (r) => {
       const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
@@ -285,6 +311,10 @@ installment
   .option('--payee <name>')
   .option('--label <text>')
   .option('--remainder-on <first|last>', 'which row absorbs the odd won', 'first')
+  .option(
+    '--fees <list>',
+    '할부수수료 per row, comma-separated, READ OFF THE STATEMENT. One per month. Omit if 무이자.',
+  )
   .action(
     async (o: {
       card: string;
@@ -296,11 +326,11 @@ installment
       payee?: string;
       label?: string;
       remainderOn: string;
+      fees?: string;
     }) => {
       const ws = requireWorkspace();
       const config = readConfig(ws);
-      const store = openStore(ws);
-      await store.init();
+      const store = await openLedger(ws);
 
       const purchasedOn = assertIsoDate(o.date);
       const totalAmount = amounts.parse(o.total, config.functionalCurrency);
@@ -330,6 +360,7 @@ installment
             parentId: cardAccount.id,
             commodity: cardAccount.commodity,
             monetary: true,
+            cash: false, // a liability is never cash on hand
             placeholder: false,
             openedOn: purchasedOn,
             closedOn: null,
@@ -337,12 +368,18 @@ installment
           note(`created ${liabilityCode} (installment balances are kept apart from ordinary card charges)`);
         }
 
+        // Observed fees only. We will not compute 할부수수료 — see POLICY-006.
+        const fees = o.fees
+          ? o.fees.split(',').map((f: string) => amounts.parse(f.trim(), config.functionalCurrency).minor)
+          : undefined;
+
         const rows = buildInstallmentSchedule({
           purchasedOn,
           months: o.months,
           totalMinor: totalAmount.minor,
           cardRule: card.rule,
           remainderOn: o.remainderOn === 'last' ? 'last' : 'first',
+          ...(fees ? { fees } : {}),
         });
 
         // The debt is real the moment you walk out with the thing: the full amount
@@ -372,7 +409,7 @@ installment
             months: o.months,
             totalMinor: totalAmount.minor,
             commodity: totalAmount.commodity,
-            interestFree: true,
+            interestFree: !fees,
             label: o.label ?? null,
           },
           rows,
@@ -390,12 +427,77 @@ installment
           amountMinor: (r.principalMinor + r.feeMinor).toString(),
         })),
       });
+      const feeTotal = result.rows.reduce((s2, r) => s2 + r.feeMinor, 0n);
       note(
-        `${o.months}개월 무이자 할부, ${amounts.format(totalAmount)} ${config.functionalCurrency}. ` +
+        `${o.months}개월 ${feeTotal === 0n ? '무이자' : '유이자'} 할부, ` +
+          `${amounts.format(totalAmount)} ${config.functionalCurrency}. ` +
           `First ${result.rows[0]!.paymentDate}, last ${result.rows.at(-1)!.paymentDate}.`,
       );
+      if (feeTotal > 0n) {
+        note(`할부수수료 합계 ${amounts.format({ minor: feeTotal, commodity: totalAmount.commodity })} — 명세서에서 읽은 값 그대로. 계산하지 않음.`);
+      }
+      note(`실제 명세서와 다르면 \`holiday installment revise ${result.id}\`로 덮어쓰세요.`);
     },
   );
+
+installment
+  .command('revise <id>')
+  .description('overwrite a schedule with what the statement actually says')
+  // NOT --json: that is the global flag for machine-readable output, and reusing
+  // the name makes commander resolve one of them and silently ignore the other.
+  .requiredOption(
+    '--rows <json>',
+    'JSON array: [{"seq":1,"paymentDate":"2026-09-01","principalMinor":"100000","feeMinor":"5000"}, …]. ' +
+      'Read off the statement — this always wins over anything computed.',
+  )
+  .action(async (id: string, o: { rows: string }) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(o.rows);
+    } catch (e) {
+      throw new UsageError(`--rows is not valid JSON: ${(e as Error).message}`);
+    }
+    const rows = REVISION_ROWS.parse(parsed).map((r) => ({
+      seq: r.seq,
+      paymentDate: assertIsoDate(r.paymentDate),
+      principalMinor: BigInt(r.principalMinor),
+      feeMinor: BigInt(r.feeMinor ?? '0'),
+    }));
+
+    const result = await store.unitOfWork(async (uow) => {
+      const existing = await uow.getInstallment(id);
+      if (!existing) throw new UsageError(`no such installment: ${id}`);
+
+      // The issuer is the authority on its own numbers. The only thing checked is
+      // that the principal still sums to the purchase — that is already posted as
+      // debt, so a mismatch means one of us is looking at the wrong plan.
+      const revised = reviseSchedule(rows, existing.plan.totalMinor);
+      const feeTotal = revised.reduce((s2, r) => s2 + r.feeMinor, 0n);
+      await uow.upsertInstallment(
+        { ...existing.plan, months: revised.length, interestFree: feeTotal === 0n },
+        revised,
+      );
+      return { revised, feeTotal, commodity: existing.plan.commodity };
+    });
+    await store.close();
+
+    out({
+      id,
+      rows: result.revised.map((r) => ({
+        seq: r.seq,
+        paymentDate: r.paymentDate,
+        principalMinor: r.principalMinor.toString(),
+        feeMinor: r.feeMinor.toString(),
+      })),
+    });
+    note(
+      `${result.revised.length}회차로 덮어썼습니다. ` +
+        `할부수수료 합계 ${amounts.format({ minor: result.feeTotal, commodity: result.commodity })}.`,
+    );
+  });
 
 installment
   .command('list')
@@ -403,8 +505,7 @@ installment
   .action(async () => {
     const ws = requireWorkspace();
     const config = readConfig(ws);
-    const store = openStore(ws);
-    await store.init();
+    const store = await openLedger(ws);
     const now = assertIsoDate(today());
     const plans = await store.read((r) => r.listInstallments({ activeOn: now }));
     await store.close();
@@ -448,8 +549,7 @@ recurring
     ) => {
       const ws = requireWorkspace();
       const config = readConfig(ws);
-      const store = openStore(ws);
-      await store.init();
+      const store = await openLedger(ws);
 
       const amount = amounts.parse(o.amount, config.functionalCurrency);
       const cadence = assertCadence(
@@ -504,8 +604,7 @@ recurring
   .action(async () => {
     const ws = requireWorkspace();
     const config = readConfig(ws);
-    const store = openStore(ws);
-    await store.init();
+    const store = await openLedger(ws);
     const now = assertIsoDate(today());
     const result = await store.read(async (r) => {
       const items = await r.listRecurring({ activeOn: now });
@@ -537,8 +636,7 @@ program
   .action(async (o: { until: string }) => {
     const ws = requireWorkspace();
     const config = readConfig(ws);
-    const store = openStore(ws);
-    await store.init();
+    const store = await openLedger(ws);
 
     const now = assertIsoDate(today());
     const until = assertIsoDate(o.until);
@@ -556,10 +654,15 @@ program
 
       // The historical half of a cash flow statement is a QUERY, never a
       // maintained table — that is what stops it drifting from the ledger.
+      const cashIds = new Set(accounts.filter((a) => a.cash).map((a) => a.id));
       const balances = await r.getBalances({ asOf: now });
       const openingCash = balances
-        .filter((b) => isCashAccount(b.accountCode) && b.commodity === config.functionalCurrency)
+        .filter((b) => cashIds.has(b.accountId))
         .reduce((s, b) => s + b.weightMinor, 0n);
+      // An asset account nobody marked as cash is either deliberate or an
+      // oversight, and only the user knows which. Saying nothing makes the
+      // oversight invisible.
+      const unmarked = accounts.filter((a) => a.type === 'asset' && !a.cash && !a.placeholder && !a.closedOn);
 
       const postings: ProjectionPosting[] = [];
       for await (const p of r.streamPostings({ from: addMonthsIso(today(), -4) as IsoDate })) {
@@ -583,7 +686,7 @@ program
         rows: i.rows,
       }));
       const recurring = await r.listRecurring({ activeOn: now });
-      return { cards, openingCash, postings, installments, recurring };
+      return { cards, openingCash, postings, installments, recurring, unmarked };
     });
     await store.close();
 
@@ -621,6 +724,9 @@ program
     for (const o of orphaned) {
       note(`⚠ installment "${o.label ?? o.id}" is on a card with no billing cycle and is NOT in this projection.`);
     }
+    for (const a of result.unmarked) {
+      note(`⚠ ${a.code} is not marked --cash and is NOT counted as cash on hand.`);
+    }
     note(`cash on hand (${now}):  ${money(result.openingCash)} ${config.functionalCurrency}`);
     if (runway.length === 0) {
       note(`no card bills projected through ${until}.`);
@@ -653,17 +759,6 @@ function describeOutflow(b: ProjectedOutflow): string {
   return `${b.cardLabel ?? b.cardCode}  ${b.cycleFrom}..${b.cycleTo}`;
 }
 
-/**
- * Which accounts hold spendable cash.
- *
- * A prefix rule rather than a flag on the account, for now. It is the one thing
- * here that is a convention instead of a fact, and it will want to become an
- * account flag the first time someone keeps cash somewhere these do not match.
- */
-function isCashAccount(code: string): boolean {
-  return code.startsWith('Assets:Bank') || code.startsWith('Assets:Cash');
-}
-
 function addMonthsIso(date: string, delta: number): string {
   const [y, m, d] = date.split('-').map(Number) as [number, number, number];
   const zero = m - 1 + delta;
@@ -679,8 +774,7 @@ program
   .option('--head', 'print the audit chain head — anchor this outside the file', false)
   .action(async (o: { head: boolean }) => {
     const ws = requireWorkspace();
-    const store = openStore(ws);
-    await store.init();
+    const store = await openLedger(ws);
     const report = await store.unitOfWork((uow) => uow.verify());
     const head = await store.chainHead();
     await store.close();
@@ -700,8 +794,7 @@ program
   .description('fold the WAL back into ledger.db — run before committing')
   .action(async () => {
     const ws = requireWorkspace();
-    const store = openStore(ws);
-    await store.init();
+    const store = await openLedger(ws);
     await store.checkpoint();
     await store.close();
     note('WAL checkpointed. ledger.db is safe to commit.');

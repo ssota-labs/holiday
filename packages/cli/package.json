@@ -9,7 +9,9 @@
   "exports": {
     ".": "./dist/index.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -20,6 +22,7 @@
   "dependencies": {
     "@holiday/core": "workspace:*",
     "@holiday/store-sqlite": "workspace:*",
-    "commander": "^13.0.0"
+    "commander": "^13.0.0",
+    "zod": "^3.24.1"
   }
 }

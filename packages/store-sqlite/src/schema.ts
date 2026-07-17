@@ -8,7 +8,7 @@
  * Inlining the schema is what makes the bundle actually self-contained.
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const PRAGMAS = `
 PRAGMA journal_mode = WAL;
@@ -345,5 +345,28 @@ BEGIN
 END;
 `;
 
-/** Adding a migration means appending to this list. Never editing a past entry. */
-export const MIGRATIONS: readonly { version: number; sql: string }[] = [{ version: 1, sql: MIGRATION_001 }];
+/**
+ * `account.cash` — is this account spendable cash?
+ *
+ * Replaces a hardcoded prefix rule (`Assets:Bank*` / `Assets:Cash*`) in the
+ * cashflow projection. The prefix was a convention masquerading as a fact: an
+ * account holding real cash under any other name was **silently** left out of the
+ * projection, which is the worst way to be wrong — the number looks fine.
+ *
+ * The backfill applies the old convention once, so existing ledgers keep working
+ * and anything outside it surfaces as a question rather than a silent omission.
+ */
+export const MIGRATION_002 = `
+ALTER TABLE account ADD COLUMN cash INTEGER NOT NULL DEFAULT 0 CHECK (cash IN (0,1));
+
+UPDATE account
+   SET cash = 1
+ WHERE type = 'asset'
+   AND (code GLOB 'Assets:Bank:*' OR code = 'Assets:Cash' OR code GLOB 'Assets:Cash:*');
+`;
+
+/** Append-only. Editing a past entry rewrites history on machines that already ran it. */
+export const MIGRATIONS: readonly { version: number; sql: string }[] = [
+  { version: 1, sql: MIGRATION_001 },
+  { version: 2, sql: MIGRATION_002 },
+];

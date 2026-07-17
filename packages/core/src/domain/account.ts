@@ -48,6 +48,15 @@ export interface Account {
    * This cannot be inferred from the type, so it has to be a flag.
    */
   readonly monetary: boolean;
+  /**
+   * Spendable cash — what `holiday cashflow` walks forward from.
+   *
+   * A flag rather than a prefix rule (`Assets:Bank*`) because the prefix was a
+   * convention pretending to be a fact: cash kept under any other name was
+   * silently dropped from the projection, and a projection that quietly omits an
+   * account still prints a confident number.
+   */
+  readonly cash: boolean;
   /** Placeholders exist only to hold children and cannot be posted to. */
   readonly placeholder: boolean;
   readonly openedOn: IsoDate;

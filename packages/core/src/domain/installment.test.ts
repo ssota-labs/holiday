@@ -3,7 +3,14 @@ import fc from 'fast-check';
 
 import type { IsoDate } from './account.js';
 import type { CardCycleRule } from './billing.js';
-import { InstallmentError, buildInstallmentSchedule, scheduleTotal, splitTotal, unpaidRows } from './installment.js';
+import {
+  InstallmentError,
+  buildInstallmentSchedule,
+  reviseSchedule,
+  scheduleTotal,
+  splitTotal,
+  unpaidRows,
+} from './installment.js';
 
 const d = (s: string) => s as IsoDate;
 
@@ -98,18 +105,50 @@ describe('buildInstallmentSchedule', () => {
     expect(rows.map((r) => r.paymentDate)).toEqual(['2027-01-01', '2027-02-01', '2027-03-01']);
   });
 
-  it('REFUSES an interest-bearing plan rather than guessing 할부수수료', () => {
-    // A plausible wrong fee would quietly poison the projection this feeds.
-    // Better to say "I don't know" than to be confidently wrong about money.
+  it('accepts OBSERVED 할부수수료 read off a statement', () => {
+    // The line this draws is observation vs derivation — the same one the ledger
+    // draws between weight_source 'actual' and 'rate'. A fee the user can see on
+    // their card app is a fact. A fee we computed from a formula is a guess.
+    const rows = buildInstallmentSchedule({
+      purchasedOn: d('2026-07-17'),
+      months: 3,
+      totalMinor: 300000n,
+      cardRule: SHINHAN,
+      fees: [5000n, 3400n, 1700n],
+    });
+    expect(rows.map((r) => [r.principalMinor, r.feeMinor])).toEqual([
+      [100000n, 5000n],
+      [100000n, 3400n],
+      [100000n, 1700n],
+    ]);
+    // Fees are interest, not purchase: the principal still sums to what was bought.
+    expect(rows.reduce((s, r) => s + r.principalMinor, 0n)).toBe(300000n);
+  });
+
+  it('refuses a fee list that does not match the term', () => {
+    // Declining-balance fees are not all the same, so a short list means the user
+    // guessed rather than read. Reject it.
     expect(() =>
       buildInstallmentSchedule({
         purchasedOn: d('2026-07-17'),
         months: 12,
         totalMinor: 1200000n,
         cardRule: SHINHAN,
-        interestFree: false,
+        fees: [5000n],
       }),
-    ).toThrow(/할부수수료/);
+    ).toThrow(/12 fee values, got 1/);
+  });
+
+  it('refuses a negative fee', () => {
+    expect(() =>
+      buildInstallmentSchedule({
+        purchasedOn: d('2026-07-17'),
+        months: 2,
+        totalMinor: 200000n,
+        cardRule: SHINHAN,
+        fees: [1000n, -1n],
+      }),
+    ).toThrow(/negative/);
   });
 
   it('a one-month "installment" is just a normal charge', () => {
@@ -152,5 +191,75 @@ describe('unpaidRows', () => {
     expect(rows.map((r) => r.paymentDate)[0]).toBe('2026-02-01');
     expect(unpaidRows(rows, d('2026-04-15')).map((r) => r.seq)).toEqual([4, 5, 6]);
     expect(unpaidRows(rows, d('2027-01-01'))).toEqual([]);
+  });
+});
+
+describe('reviseSchedule', () => {
+  const base = buildInstallmentSchedule({
+    purchasedOn: d('2026-07-17'),
+    months: 3,
+    totalMinor: 300000n,
+    cardRule: SHINHAN,
+  });
+
+  it('takes the statement over anything we computed', () => {
+    // The issuer is the authority on its own numbers — including dates, which can
+    // shift for holidays.
+    const revised = reviseSchedule(
+      [
+        { seq: 1, paymentDate: d('2026-09-02'), principalMinor: 100000n, feeMinor: 4500n },
+        { seq: 2, paymentDate: d('2026-10-01'), principalMinor: 100000n, feeMinor: 3000n },
+        { seq: 3, paymentDate: d('2026-11-02'), principalMinor: 100000n, feeMinor: 1500n },
+      ],
+      300000n,
+    );
+    expect(revised.map((r) => r.paymentDate)).toEqual(['2026-09-02', '2026-10-01', '2026-11-02']);
+    expect(revised.map((r) => r.feeMinor)).toEqual([4500n, 3000n, 1500n]);
+    expect(base[0]!.paymentDate).toBe('2026-09-01'); // what we had guessed
+  });
+
+  it('refuses rows whose principal disagrees with the purchase', () => {
+    // The one thing the issuer cannot disagree with us about: the purchase is
+    // already posted as debt. A mismatch means one of us is on the wrong plan.
+    expect(() =>
+      reviseSchedule([{ seq: 1, paymentDate: d('2026-09-01'), principalMinor: 299999n, feeMinor: 0n }], 300000n),
+    ).toThrow(/principal summing to 299999/);
+  });
+
+  it('refuses folding fees into the principal', () => {
+    expect(() =>
+      reviseSchedule(
+        [
+          { seq: 1, paymentDate: d('2026-09-01'), principalMinor: 105000n, feeMinor: 0n },
+          { seq: 2, paymentDate: d('2026-10-01'), principalMinor: 100000n, feeMinor: 0n },
+          { seq: 3, paymentDate: d('2026-11-01'), principalMinor: 100000n, feeMinor: 0n },
+        ],
+        300000n,
+      ),
+    ).toThrow(/Fees are separate/);
+  });
+
+  it('refuses gaps in the numbering', () => {
+    expect(() =>
+      reviseSchedule(
+        [
+          { seq: 1, paymentDate: d('2026-09-01'), principalMinor: 150000n, feeMinor: 0n },
+          { seq: 3, paymentDate: d('2026-10-01'), principalMinor: 150000n, feeMinor: 0n },
+        ],
+        300000n,
+      ),
+    ).toThrow(/1\.\.2 with no gaps/);
+  });
+
+  it('refuses two rows on one date, which would double-count', () => {
+    expect(() =>
+      reviseSchedule(
+        [
+          { seq: 1, paymentDate: d('2026-09-01'), principalMinor: 150000n, feeMinor: 0n },
+          { seq: 2, paymentDate: d('2026-09-01'), principalMinor: 150000n, feeMinor: 0n },
+        ],
+        300000n,
+      ),
+    ).toThrow(/double-count/);
   });
 });

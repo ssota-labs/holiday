@@ -34,7 +34,7 @@ export interface Fixture {
   readonly fxSpread: Account;
 }
 
-function account(code: string, commodity: CommodityCode | null): Account {
+function account(code: string, commodity: CommodityCode | null, cash = false): Account {
   const c = assertAccountCode(code);
   return {
     id: newAccountId(),
@@ -43,6 +43,7 @@ function account(code: string, commodity: CommodityCode | null): Account {
     parentId: null,
     commodity,
     monetary: true,
+    cash,
     placeholder: false,
     openedOn: '2020-01-01' as IsoDate,
     closedOn: null,
@@ -54,8 +55,8 @@ export async function seed(uow: LedgerUow): Promise<Fixture> {
   for (const c of registry.all()) await uow.upsertCommodity(c);
 
   const fixture: Fixture = {
-    checking: account('Assets:Bank:KB:Checking', KRW),
-    wiseUsd: account('Assets:Bank:Wise:USD', 'USD' as CommodityCode),
+    checking: account('Assets:Bank:KB:Checking', KRW, true),
+    wiseUsd: account('Assets:Bank:Wise:USD', 'USD' as CommodityCode, true),
     card: account('Liabilities:Card:Shinhan', KRW),
     dining: account('Expenses:Food:Dining', KRW),
     fxSpread: account('Expenses:FX:Conversion', KRW),

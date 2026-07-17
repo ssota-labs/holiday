@@ -40,8 +40,11 @@ export default defineConfig({
   banner: {
     js: [
       '#!/usr/bin/env node',
-      "import { createRequire } from 'node:module';",
-      'const require = createRequire(import.meta.url);',
+      // Aliased: bundled source imports createRequire under its own name, and two
+      // top-level declarations of it is a SyntaxError that only appears in the
+      // bundle.
+      "import { createRequire as __nodeCreateRequire } from 'node:module';",
+      'const require = __nodeCreateRequire(import.meta.url);',
     ].join('\n'),
   },
   /**

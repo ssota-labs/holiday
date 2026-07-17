@@ -289,6 +289,10 @@ class SqliteUow implements LedgerUow {
       where.push('(code = ? OR code GLOB ?)');
       params.push(filter.prefix, `${filter.prefix}:*`);
     }
+    if (filter?.cash !== undefined) {
+      where.push('cash = ?');
+      params.push(filter.cash ? 1 : 0);
+    }
     if (!filter?.includeClosed) where.push('closed_on IS NULL');
     const sql = `SELECT * FROM account ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY code`;
     return this.db.all<AccountRowRaw>(sql, ...params).map(mapAccount);
@@ -296,18 +300,19 @@ class SqliteUow implements LedgerUow {
 
   async upsertAccount(a: Account): Promise<Account> {
     this.db.run(
-      `INSERT INTO account (id, code, type, parent_id, commodity, monetary, placeholder, opened_on, closed_on)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO account (id, code, type, parent_id, commodity, monetary, cash, placeholder, opened_on, closed_on)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          code = excluded.code, type = excluded.type, parent_id = excluded.parent_id,
          commodity = excluded.commodity, monetary = excluded.monetary,
-         placeholder = excluded.placeholder, closed_on = excluded.closed_on`,
+         cash = excluded.cash, placeholder = excluded.placeholder, closed_on = excluded.closed_on`,
       a.id,
       a.code,
       a.type,
       a.parentId,
       a.commodity,
       a.monetary ? 1 : 0,
+      a.cash ? 1 : 0,
       a.placeholder ? 1 : 0,
       a.openedOn,
       a.closedOn,
@@ -645,11 +650,23 @@ class SqliteUow implements LedgerUow {
           `billing will count the whole purchase on the first bill`,
       );
     }
-    const total = rows.reduce((s, r) => s + r.principalMinor + r.feeMinor, 0n);
-    if (total !== plan.totalMinor) {
+    // Principal only. 할부수수료 is interest expense, not part of what you bought:
+    // the purchase posts ₩1,200,000 of debt, and the fees accrue on top as they
+    // are charged. Summing them in here would demand a schedule that overstates
+    // the purchase by its own interest.
+    const principal = rows.reduce((s, r) => s + r.principalMinor, 0n);
+    if (principal !== plan.totalMinor) {
       // A schedule that does not sum to the purchase never reconciles against a
       // real statement. Same reason there is no tolerance anywhere else here.
-      throw new Error(`holiday: schedule rows sum to ${total} but the plan total is ${plan.totalMinor}`);
+      throw new Error(
+        `holiday: schedule principal sums to ${principal} but the purchase was ${plan.totalMinor}`,
+      );
+    }
+    if (rows.some((r) => r.feeMinor < 0n)) {
+      throw new Error('holiday: a 할부수수료 cannot be negative');
+    }
+    if (plan.interestFree && rows.some((r) => r.feeMinor !== 0n)) {
+      throw new Error('holiday: plan is marked interest-free but has non-zero fees');
     }
     if (rows.length !== plan.months) {
       throw new Error(`holiday: plan says ${plan.months} months but got ${rows.length} rows`);
@@ -1016,6 +1033,7 @@ interface AccountRowRaw {
   parent_id: string | null;
   commodity: string | null;
   monetary: bigint;
+  cash: bigint;
   placeholder: bigint;
   opened_on: string;
   closed_on: string | null;
@@ -1029,6 +1047,7 @@ function mapAccount(r: AccountRowRaw): Account {
     parentId: r.parent_id as AccountId | null,
     commodity: r.commodity as CommodityCode | null,
     monetary: toBool(r.monetary),
+    cash: toBool(r.cash),
     placeholder: toBool(r.placeholder),
     openedOn: r.opened_on as IsoDate,
     closedOn: r.closed_on as IsoDate | null,

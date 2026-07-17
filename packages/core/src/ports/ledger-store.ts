@@ -127,6 +127,7 @@ export interface AccountFilter {
   readonly type?: AccountType;
   readonly prefix?: AccountCode;
   readonly includeClosed?: boolean;
+  readonly cash?: boolean;
 }
 
 export interface TxnQuery extends PostingQuery {

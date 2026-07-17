@@ -89,29 +89,35 @@ export interface BuildScheduleOptions {
   readonly cardRule: CardCycleRule;
   readonly remainderOn?: 'first' | 'last';
   /**
-   * v1 computes interest-free schedules only.
+   * 할부수수료 per row, **observed** — read off the statement, never computed.
    *
-   * This is a deliberate limit, not an oversight. Korean issuers compute 할부수수료
-   * on the declining balance at rates that differ per issuer, per promotion, and
-   * per term, and a plausible-looking wrong number here is worse than no number:
-   * it would quietly poison the cash flow projection this exists to feed. So an
-   * interest-bearing plan is rejected rather than guessed at, `feeMinor` is
-   * reserved on every row, and `installment check` will reconcile against the
-   * real statement when it lands.
+   * This is the same distinction the ledger already draws between
+   * `weight_source: 'actual'` and `'rate'`: a number both sides observed is a
+   * fact, a number derived from a formula is an estimate. Fees the user can see
+   * on their card app are facts and belong here.
+   *
+   * What is still refused is *computing* them. Korean issuers apply declining-
+   * balance formulas that differ per issuer, per promotion, and per term, and a
+   * plausible-looking wrong fee is worse than no fee — it would quietly poison
+   * the cash flow projection this feeds, and look right doing it.
+   *
+   * Omit for an interest-free plan. One value per month if supplied.
    */
-  readonly interestFree?: boolean;
+  readonly fees?: readonly bigint[];
 }
 
 export function buildInstallmentSchedule(opts: BuildScheduleOptions): InstallmentRow[] {
-  const { purchasedOn, months, totalMinor, cardRule } = opts;
+  const { purchasedOn, months, totalMinor, cardRule, fees } = opts;
   assertCardCycleRule(cardRule);
-  if (opts.interestFree === false) {
+
+  if (fees && fees.length !== months) {
     throw new InstallmentError(
-      `interest-bearing installments are not computed yet: 할부수수료 depends on the issuer's ` +
-        `declining-balance formula, and a plausible wrong number would silently corrupt your cash ` +
-        `flow projection. Record the plan as interest-free and reconcile against the statement, or ` +
-        `enter each row by hand.`,
+      `a ${months}-month plan needs ${months} fee values, got ${fees.length}. ` +
+        `Read one per row off the statement — they are not all the same, and they are not computed.`,
     );
+  }
+  if (fees?.some((f) => f < 0n)) {
+    throw new InstallmentError('a 할부수수료 cannot be negative');
   }
 
   const principals = splitTotal(totalMinor, months, opts.remainderOn ?? 'first');
@@ -130,9 +136,49 @@ export function buildInstallmentSchedule(opts: BuildScheduleOptions): Installmen
       seq: i + 1,
       paymentDate: assertIsoDate(`${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`),
       principalMinor,
-      feeMinor: 0n,
+      feeMinor: fees?.[i] ?? 0n,
     };
   });
+}
+
+/**
+ * Overwrite a schedule with what the statement actually says.
+ *
+ * The issuer is the authority on its own numbers. When the user screenshots their
+ * 할부 detail screen, that beats anything computed here — including the payment
+ * dates, which can shift for holidays.
+ *
+ * Only the principal is checked, because that is the one thing the issuer cannot
+ * disagree with us about: it is the purchase, and it is already posted as debt.
+ * If their principals do not sum to it, one of the two is about the wrong
+ * purchase, and failing loudly is the only useful answer.
+ */
+export function reviseSchedule(rows: readonly InstallmentRow[], totalMinor: bigint): InstallmentRow[] {
+  if (rows.length === 0) throw new InstallmentError('a revised schedule needs at least one row');
+
+  const principal = rows.reduce((s, r) => s + r.principalMinor, 0n);
+  if (principal !== totalMinor) {
+    throw new InstallmentError(
+      `revised rows have principal summing to ${principal}, but the purchase was ${totalMinor}. ` +
+        `Fees are separate — do not fold them into the principal.`,
+    );
+  }
+  if (rows.some((r) => r.feeMinor < 0n)) throw new InstallmentError('a 할부수수료 cannot be negative');
+
+  const seqs = rows.map((r) => r.seq).sort((a, b) => a - b);
+  if (seqs.some((s, i) => s !== i + 1)) {
+    throw new InstallmentError(`rows must be numbered 1..${rows.length} with no gaps, got ${seqs.join(',')}`);
+  }
+  const sorted = [...rows].sort((a, b) => a.seq - b.seq);
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i]!.paymentDate <= sorted[i - 1]!.paymentDate) {
+      throw new InstallmentError(
+        `row ${sorted[i]!.seq} is due ${sorted[i]!.paymentDate}, not after row ${sorted[i - 1]!.seq} ` +
+          `(${sorted[i - 1]!.paymentDate}). Two rows on one date would double-count.`,
+      );
+    }
+  }
+  return sorted;
 }
 
 /** Rows whose money has not moved yet. `paidThrough` is the last settled seq. */

@@ -1,4 +1,24 @@
-import { DatabaseSync, type StatementSync } from 'node:sqlite';
+import { createRequire } from 'node:module';
+import type { DatabaseSync as DatabaseSyncType, StatementSync } from 'node:sqlite';
+
+/**
+ * node:sqlite is loaded with a runtime require, not a static import. That is
+ * deliberate and it is load-bearing.
+ *
+ * Loading it prints an ExperimentalWarning to stderr, and stderr is where the CLI
+ * writes its machine-readable error envelope for the agent calling it. The CLI
+ * filters that one warning — but a *static* import is loaded during module
+ * linking, and whether the filter is installed by then depends on the shape of
+ * the module graph: with a small graph the tick that emits the warning drains
+ * late enough to be caught, and with one more module in the way it drains first
+ * and leaks. Measured, not guessed — and a suppression that works by accident of
+ * graph shape breaks the next time anything is refactored or bundled.
+ *
+ * A runtime require happens in program order, strictly after the filter is
+ * installed, and does not care what the graph looks like or whether a bundler has
+ * flattened it.
+ */
+const DatabaseSync = createRequire(import.meta.url)('node:sqlite').DatabaseSync as typeof DatabaseSyncType;
 
 /**
  * A thin wrapper whose entire job is to make `setReadBigInts(true)` unforgettable.
@@ -15,7 +35,7 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite';
  * bigint too, which is why the row mappers narrow them explicitly at one boundary.
  */
 export class Db {
-  readonly #db: DatabaseSync;
+  readonly #db: DatabaseSyncType;
   readonly #cache = new Map<string, StatementSync>();
 
   constructor(path: string) {
