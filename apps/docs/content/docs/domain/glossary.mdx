@@ -198,7 +198,7 @@ summary: 코드·정책·CLI가 같은 말로 말한다. 섹션별 Term.
   </Term>
 </Glossary>
 
-## 수집·에이전트
+## 수집
 
 <Glossary>
   <Term term="ingest" ko="데이터 수집" code="holiday ingest submit" notTo="OCR">
@@ -213,8 +213,22 @@ summary: 코드·정책·CLI가 같은 말로 말한다. 섹션별 Term.
   <Term term="dedupe authority" ko="중복 권위" code="image|external_ref|natural">
     image/external_ref는 hard-block. natural(유사)은 경고만.
   </Term>
+</Glossary>
+
+## 에이전트
+
+<Glossary>
   <Term term="--json" ko="기계 출력" code="global --json">
     stdout JSON. 에러는 stderr 봉투. 에이전트와의 계약.
+  </Term>
+  <Term term="exit code" ko="종료 코드" code="0|1|2">
+    0=성공, 1=LedgerError/internal, 2=UsageError. 에이전트가 분기하는 계약.
+  </Term>
+  <Term term="error envelope" ko="에러 봉투" code='{"error":{"code","message"}}'>
+    실패 시 stderr에 단일 JSON. 스택 트레이스가 계약이 아니다.
+  </Term>
+  <Term term="skill" ko="스킬" code="plugin/skills/holiday-cfo">
+    채팅에서 CLI를 shell-out하는 에이전트 계약. 금액·계정 추정 기표 금지.
   </Term>
 </Glossary>
 
