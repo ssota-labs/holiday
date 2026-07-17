@@ -8,6 +8,9 @@ summary: 모든 변경 명령은 exit code와 stderr 봉투가 계약이다.
 
 CLI가 코어다. Claude Code 스킬도 Codex도 이걸 shell out 한다 — 분기가 0이다.
 
+여기 있는 건 원장 명령이다. 스케줄 명령(`card`·`installment`·`recurring`·`loan`)은
+[스케줄 네 개](/docs/v0.1/schedules)에 각각의 함정과 함께 있다.
+
 에러는 항상 stderr에 JSON 봉투 하나로 나온다:
 
 ```json
@@ -91,3 +94,39 @@ content_tampered  01KXQHYP5M5RKACZ4PYW1PR4DC
   transaction content hashes to 97d901… but the audit chain recorded 3933bc…
   — it balances, but it is not what was originally written`}
 />
+
+<CommandSpec
+  command="account add"
+  mutates={true}
+  summary="계정을 만든다. --cash와 --commodity를 빠뜨리면 조용히 틀린다."
+  signature={`holiday account add <CODE>
+  [--commodity <CODE>] [--cash] [--non-monetary] [--placeholder] [--opened <date>]`}
+  flags={[
+    { name: '--commodity', type: 'code', description: '단일 통화로 제한. 생략하면 다중 통화 — 그럼 $/₩ 오독을 잡는 링이 꺼진다' },
+    { name: '--cash', type: 'boolean', default: 'false', description: 'cashflow가 세는 현금. 안 주면 자산이어도 예측에서 빠진다 (경고함)' },
+    { name: '--non-monetary', type: 'boolean', default: 'false', description: 'FX 재평가 제외 (부동산·장비)' },
+    { name: '--placeholder', type: 'boolean', default: 'false', description: '기표 불가한 그룹 노드' },
+  ]}
+  exits={[
+    { code: 0, meaning: '생성됨' },
+    { code: 2, meaning: '코드 형식 오류, 없는 통화' },
+  ]}
+  example={`$ holiday account add Assets:Bank:KB:Checking --commodity KRW --cash
+$ holiday account add Assets:Property:Apartment --commodity KRW --non-monetary
+Assets:Property:Apartment is not marked --cash, so it is NOT counted in \`holiday cashflow\`.`}
+/>
+
+`--cash`가 없을 때 **소리내어 말하는** 게 중요하다. 예측에서 항목이 조용히 빠지면
+"모르겠다"여야 할 게 "괜찮다"로 읽힌다.
+
+<CommandSpec
+  command="checkpoint"
+  mutates={true}
+  summary="WAL을 ledger.db로 접는다. 커밋 전에 실행."
+  signature={`holiday checkpoint`}
+  exits={[{ code: 0, meaning: 'ledger.db를 커밋해도 안전함' }]}
+/>
+
+ledger.db는 커밋하라고 만든 파일이다. checkpoint 없이 커밋하면 최근 거래가 git이
+(올바르게) 무시하는 `-wal`에 남아 있다. **지난주가 조용히 빠진 백업은 백업이 없는 것보다
+나쁘다.**

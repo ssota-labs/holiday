@@ -22,10 +22,18 @@ summary: 에이전트가 운전하는 개인 재무 원장. 정책이 곧 제품
 
 <Cards>
   <Card title="데이터 모델" href="/docs/v0.1/data-model" description="계정·거래·전기, 그리고 units/weight 분리" />
+  <Card title="스케줄 네 개" href="/docs/v0.1/schedules" description="카드·할부·정기지출·대출 — 하나의 투영 엔진" />
   <Card title="CLI 스펙" href="/docs/v0.1/cli" description="에이전트가 코드로 상대하는 계약" />
   <Card title="정책과 용어" href="/docs/v0.1/policy" description="항상 참이어야 하는 것들 + 테스트 링크" />
   <Card title="스킬" href="/docs/v0.1/skill" description="holiday-cfo의 progressive disclosure 구조" />
 </Cards>
+
+## 지금 있는 것
+
+원장은 선다. 복식부기·다통화·감사 체인이 동작하고, 네 스케줄이 현금흐름 하나로 모인다.
+
+**아직 없는 것:** 캡쳐 인제스트 명령(에이전트가 직접 읽고 `txn add`를 호출한다), 리뷰
+큐, 기간 마감, 환율 테이블, Supabase 어댑터, 대시보드.
 
 ## 버전
 

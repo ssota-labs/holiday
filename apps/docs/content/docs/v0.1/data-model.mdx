@@ -13,12 +13,13 @@ related: ['/docs/v0.1/policy']
 현금흐름은 둘에서 유도된다 — 저장되지 않는다.
 
 <Canvas
-  height={340}
+  height={420}
   nodes={[
     { id: 'txn', type: 'doc', position: { x: 0, y: 60 }, data: { label: 'txn + posting', description: '원장. append-only', kind: 'fact', handles: { target: false } } },
     { id: 'card', type: 'doc', position: { x: 0, y: 170 }, data: { label: 'card', description: '청구주기', kind: 'forecast', handles: { target: false } } },
     { id: 'inst', type: 'doc', position: { x: 0, y: 250 }, data: { label: 'installment', description: '할부 스케줄', kind: 'forecast', handles: { target: false } } },
     { id: 'rec', type: 'doc', position: { x: 0, y: 330 }, data: { label: 'recurring', description: '정기지출', kind: 'forecast', handles: { target: false } } },
+    { id: 'loan', type: 'doc', position: { x: 0, y: 410 }, data: { label: 'loan', description: '상환 스케줄', kind: 'forecast', handles: { target: false } } },
     { id: 'balance', type: 'doc', position: { x: 300, y: 20 }, data: { label: 'balance', description: 'SUM(weight) — 과거', kind: 'derived' } },
     { id: 'cashflow', type: 'doc', position: { x: 300, y: 200 }, data: { label: 'cashflow', description: '과거 + 미래', kind: 'derived' } },
     { id: 'audit', type: 'doc', position: { x: 300, y: 110 }, data: { label: 'audit_log', description: '해시 체인', kind: 'fact' } },
@@ -30,6 +31,7 @@ related: ['/docs/v0.1/policy']
     { id: 'e4', source: 'card', target: 'cashflow' },
     { id: 'e5', source: 'inst', target: 'cashflow' },
     { id: 'e6', source: 'rec', target: 'cashflow' },
+    { id: 'e7', source: 'loan', target: 'cashflow' },
   ]}
 />
 
@@ -43,7 +45,7 @@ related: ['/docs/v0.1/policy']
 <SchemaTable
   name="posting"
   kind="table"
-  source="packages/store-sqlite/src/schema.ts"
+  source="packages/store-sqlite/src/schema.drizzle.ts"
   description="한 거래의 한 다리. 두 정수가 핵심이다."
   fields={[
     { name: 'txn_id', type: 'TEXT', required: true, description: 'ULID' },
@@ -55,6 +57,45 @@ related: ['/docs/v0.1/policy']
     { name: 'weight_source', type: 'TEXT', required: true, invariant: "identity|actual|rate|plug", description: '출처. rate면 잠정치' },
     { name: 'fx_rate_text', type: 'TEXT', unit: 'decimal string', description: '감사용. 절대 균형의 근거가 아님' },
     { name: 'lot_id', type: 'TEXT', description: '원가 basis용 seam. 균형은 절대 참조 안 함' },
+  ]}
+/>
+
+## account
+
+<SchemaTable
+  name="account"
+  kind="table"
+  source="packages/store-sqlite/src/schema.drizzle.ts"
+  description="코드가 곧 경로다. 서브트리 조회는 code = ? OR code GLOB ? || ':*'."
+  fields={[
+    { name: 'id', type: 'TEXT', required: true, description: 'ULID. posting은 code가 아니라 이걸 참조한다 — 그래서 계정 이름을 바꿔도 과거가 안 바뀐다' },
+    { name: 'code', type: 'TEXT', required: true, unit: 'materialized path', invariant: 'UNIQUE', description: 'Assets:Bank:KB:Checking' },
+    { name: 'type', type: 'TEXT', required: true, invariant: "asset|liability|equity|income|expense" },
+    { name: 'commodity', type: 'TEXT', invariant: 'posting과 일치 (트리거)', description: 'NULL이면 다중 통화 opt-in. 기본은 단일이고, $를 ₩로 오독하는 걸 잡는 링' },
+    { name: 'cash', type: 'INTEGER', required: true, unit: '0|1', description: 'cashflow가 잔고를 걸어가는 출발점. 접두어 규칙이 아니라 플래그 — ADR-004' },
+    { name: 'monetary', type: 'INTEGER', required: true, unit: '0|1', description: 'IAS 21. 화폐성 항목만 마감 때 재평가. 타입에서 추론 불가라 플래그' },
+    { name: 'placeholder', type: 'INTEGER', required: true, unit: '0|1', invariant: '1이면 기표 불가 (트리거)' },
+  ]}
+/>
+
+## 스케줄 테이블
+
+넷 다 부채 계정에 붙는 **예측**이고, 원장 밖에 산다. [스케줄 네 개](/docs/v0.1/schedules)에
+자세히.
+
+<SchemaTable
+  name="loan"
+  kind="table"
+  source="packages/store-sqlite/src/schema.drizzle.ts"
+  description="상환 스케줄. loan_schedule_row가 회차를 담는다."
+  fields={[
+    { name: 'account_id', type: 'TEXT', required: true, invariant: 'type = liability', description: 'Liabilities:Loans:*' },
+    { name: 'funding_account_id', type: 'TEXT', required: true, invariant: 'type = asset' },
+    { name: 'interest_account_id', type: 'TEXT', required: true, invariant: 'type = expense', description: '상환의 이자 절반이 기표될 곳' },
+    { name: 'principal_minor', type: 'INTEGER', required: true, unit: 'minor units', invariant: 'sum(행 원금) = 이 값' },
+    { name: 'annual_rate_text', type: 'TEXT', required: true, unit: 'decimal string %', description: '"4.2" = 4.2%. float 아님 — 360번 복리로 굴린다' },
+    { name: 'method', type: 'TEXT', required: true, invariant: 'annuity|equal_principal|bullet|interest_only' },
+    { name: 'payment_day', type: 'INTEGER', required: true, unit: '1-31 or -1', description: '-1이면 말일. 2월엔 clamp' },
   ]}
 />
 

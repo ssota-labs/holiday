@@ -1,5 +1,15 @@
 {
   "title": "v0.1",
   "root": true,
-  "pages": ["index", "---스펙---", "data-model", "cli", "---도메인---", "policy", "---스킬---", "skill"]
+  "pages": [
+    "index",
+    "---설계---",
+    "data-model",
+    "schedules",
+    "---참조---",
+    "cli",
+    "policy",
+    "---에이전트---",
+    "skill"
+  ]
 }

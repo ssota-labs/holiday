@@ -1,0 +1,440 @@
+---
+title: 스케줄 네 개
+description: 카드 청구주기, 할부, 정기지출, 대출 — 하나의 투영 엔진
+type: conceptual
+version: v0.1
+summary: 넷 다 부채에 붙는 예측이고, 하나의 runway에 모인다.
+related: ['/docs/v0.1/policy', '/docs/v0.1/cli']
+---
+
+원장은 **과거만** 안다. "다음달 카드값 나가면 통장이 버티나"에 원장은 답을 못 한다.
+스케줄은 그 반대편 — **언제 돈이 나갈지**를 안다.
+
+## 네 개가 같은 것이다
+
+카드·할부·대출은 회계적으로 **전부 부채**다. 나뉘는 건 계정 종류가 아니라 **스케줄의
+모양**이고, 정기지출은 아예 계정이 아니다.
+
+| | 모양 | 계정 |
+|---|---|---|
+| **카드 청구주기** | 회전 — 사용기간이 닫히고 결제일에 전액 | `Liabilities:Card:*` |
+| **할부** | 고정 N개월 분할 | `Liabilities:Card:*:Installment` ← **별도** |
+| **대출** | 분할상환 (원금+이자) | `Liabilities:Loans:*` |
+| **정기지출** | 반복 발생 | 계정 아님 |
+
+넷 다 `holiday cashflow` 하나로 들어간다. 주담대 상환과 넷플릭스 결제는 결국 **날짜에
+돈이 나가는 일**로 같고, "잔고가 버티나"는 넷이 한자리에 있어야만 답할 수 있다.
+
+<Canvas
+  height={380}
+  nodes={[
+    { id: 'card', type: 'doc', position: { x: 0, y: 0 }, data: { label: 'card', description: '청구주기', kind: 'forecast', handles: { target: false } } },
+    { id: 'inst', type: 'doc', position: { x: 0, y: 90 }, data: { label: 'installment', description: '할부 N회차', kind: 'forecast', handles: { target: false } } },
+    { id: 'rec', type: 'doc', position: { x: 0, y: 180 }, data: { label: 'recurring', description: '정기지출 카덴스', kind: 'forecast', handles: { target: false } } },
+    { id: 'loan', type: 'doc', position: { x: 0, y: 270 }, data: { label: 'loan', description: '상환 스케줄', kind: 'forecast', handles: { target: false } } },
+    { id: 'ledger', type: 'doc', position: { x: 0, y: 360 }, data: { label: 'posting', description: '원장 — 이미 쓴 돈', kind: 'fact', handles: { target: false } } },
+    { id: 'runway', type: 'doc', position: { x: 300, y: 170 }, data: { label: 'cashRunway', description: '날짜별로 묶어 잔고를 걸어감', kind: 'derived' } },
+    { id: 'answer', type: 'doc', position: { x: 560, y: 170 }, data: { label: '⚠ SHORT', description: '버티나 못 버티나', kind: 'derived', handles: { source: false } } },
+  ]}
+  edges={[
+    { id: 'l1', source: 'card', target: 'runway' },
+    { id: 'l2', source: 'inst', target: 'runway' },
+    { id: 'l3', source: 'rec', target: 'runway' },
+    { id: 'l4', source: 'loan', target: 'runway' },
+    { id: 'l5', source: 'ledger', target: 'runway', animated: true },
+    { id: 'l6', source: 'runway', target: 'answer', animated: true },
+  ]}
+/>
+
+<CanvasLegend />
+
+**스케줄에서 원장으로 가는 화살표가 없다.** 예측은 절대 전기되지 않는다 — 금리가
+바뀌거나 구독을 해지할 때마다 과거가 오염된다.
+
+## 실제 출력
+
+```
+cash on hand (2026-07-17):  350000000 KRW
+
+2026-07-25   -      800000   →     349200000
+             월세                                   800000
+2026-08-01   -      400000   →     348800000
+             신한  2026-06-15..2026-07-14           400000
+2026-08-25   -     2267052   →     346532948
+             월세                                   800000
+             KB 주담대 (1/360)                      1467052
+2026-09-01   -      100000   →     346432948
+             냉장고 (1/12)                           100000
+```
+
+8/25에 월세와 주담대가 **같은 날 합류**한다. 실제 통장이 하는 일 그대로다.
+
+---
+
+## 1. 카드 청구주기
+
+없으면 원장은 얼마를 빚졌는지는 알아도 **언제** 나가는지를 모르고, `cashflow`는 카드를
+아예 못 본다.
+
+<CommandSpec
+  command="card add"
+  mutates={true}
+  summary="부채 계정에 청구주기를 붙인다. 규칙과 함께 계산된 날짜를 되돌려준다."
+  signature={`holiday card add <ACCOUNT>
+  --funding <ASSET_ACCOUNT>
+  --close-day <1-31>          # 31 = 말일 (2월엔 28일로 clamp)
+  --payment-day <1-31 | -1>   # -1 = 말일
+  [--payment-month-offset <0-3>]  [--label <text>]`}
+  flags={[
+    { name: '--funding', type: 'account', required: true, description: '결제일에 현금이 빠지는 자산 계정' },
+    { name: '--close-day', type: 'integer', required: true, description: '사용기간이 닫히는 날. 이 날 긁은 건 이번 청구서' },
+    { name: '--payment-day', type: 'integer', required: true, description: '-1이면 말일' },
+    { name: '--payment-month-offset', type: 'integer', default: '1', description: '마감에서 결제까지 몇 달' },
+  ]}
+  exits={[
+    { code: 0, meaning: '등록됨. 오늘 긁으면 언제 빠지는지를 같이 출력' },
+    { code: 2, meaning: '계정 없음, 또는 결제일이 마감보다 앞선 불가능한 규칙' },
+  ]}
+  example={`$ holiday card add Liabilities:Card:Shinhan --funding Assets:Bank:KB:Checking \\
+    --close-day 14 --payment-day 1 --label "신한"
+A purchase today (2026-07-17) closes 2026-08-14 and takes cash on 2026-09-01.`}
+/>
+
+마지막 줄이 중요하다. **"14일 마감 → 익월 1일 결제"는 사람이 검증할 수 없지만 "오늘
+긁으면 9/1에 빠집니다"는 검증된다.** 한국 카드사가 제각각이라 이게 설정이 틀렸는지
+알아채는 유일한 방법이다.
+
+<Rule
+  id="POLICY-008"
+  title="이미 마감됐지만 안 나간 청구서가 가장 임박한 지출이다"
+  test="packages/core/src/domain/cashflow.test.ts"
+  testName="includes the already-closed bill you have not paid yet"
+  consequence="다음주에 확실히 빠질 돈을 예측이 통째로 빠뜨린다. 가장 확실한 항목을 놓치는 예측은 예측이 아니다."
+>
+`upcomingBills()`는 오늘이 아니라 **오늘 이전부터** 커서를 돌린다. 7/10에 긁고 7/14에
+마감된 청구서는 8/1에 빠지는데, 오늘(7/17)부터 앞으로만 보면 안 보인다.
+</Rule>
+
+---
+
+## 2. 할부
+
+<CommandSpec
+  command="installment add"
+  mutates={true}
+  summary="할부 구매를 기록하고 스케줄을 만든다. 부채는 구매일에 전액 선다."
+  signature={`holiday installment add
+  --card <CARD_ACCOUNT>  --expense <EXPENSE_ACCOUNT>
+  --total <amount>  --months <n>
+  [--date <date>] [--label <text>] [--liability <ACCOUNT>]
+  [--fees <a,b,c,…>]          # 명세서에서 읽은 회차별 수수료
+  [--remainder-on first|last]`}
+  flags={[
+    { name: '--total', type: 'amount', required: true, description: '할부원금. 수수료 제외' },
+    { name: '--months', type: 'integer', required: true },
+    { name: '--fees', type: 'csv amounts', description: '유이자 할부. 개월 수만큼. 계산하지 않고 받기만 함' },
+    { name: '--liability', type: 'account', default: '<card>:Installment', description: '없으면 자동 생성' },
+  ]}
+  exits={[
+    { code: 0, meaning: '기록됨. 회차 목록 출력' },
+    { code: 1, meaning: '수수료 개수가 개월 수와 불일치 등' },
+    { code: 2, meaning: '카드에 청구주기가 없음 — 회차 날짜를 계산할 수 없다' },
+  ]}
+  example={`$ holiday installment add --card Liabilities:Card:Shinhan \\
+    --expense Expenses:Home:Appliance --total 1200000 --months 12 --label "냉장고"
+created Liabilities:Card:Shinhan:Installment (installment balances are kept apart…)
+12개월 무이자 할부, 1200000 KRW. First 2026-09-01, last 2027-08-01.`}
+/>
+
+<Rule
+  id="POLICY-003"
+  title="할부 잔액은 카드 일반 계정에 둘 수 없다"
+  test="packages/core/src/domain/cashflow.test.ts"
+  testName="puts a purchase on the bill that actually takes the cash"
+  consequence="120만원 12개월 할부가 첫 청구서를 10만원이 아니라 120만원으로 만든다. 12배 과대계상. 늑대를 외치는 예측은 무시당하고, 그럼 예측이 있을 이유가 없다."
+>
+일반 청구는 "사용기간 내 posting 합계"로 계산되는데, 할부는 **구매일에 전액이
+전기된다**. 그래서 `Liabilities:Card:<카드>:Installment`라는 별도 계정에 산다. 일반 청구
+계산에서 자동으로 빠지고, 회차는 스케줄에서 따로 투영돼 같은 결제일에 합류한다.
+</Rule>
+
+<Rule
+  id="POLICY-007"
+  title="스케줄 행의 원금 합은 정확히 구매금액이다"
+  test="packages/core/src/domain/installment.test.ts"
+  testName="sums to the total for ANY total and term"
+  consequence="합계가 ₩999,999인 스케줄은 실제 명세서와 영원히 대사가 안 된다."
+>
+100만원 3개월은 `333,334 + 333,333 + 333,333`. 나머지는 첫 회차에 — 한국 카드사 관행이다.
+</Rule>
+
+### 유이자 할부 — 받되, 계산하지 않는다
+
+<Rule
+  id="POLICY-006"
+  title="할부수수료는 관측하면 받고, 추정하면 거부한다"
+  test="packages/core/src/domain/installment.test.ts"
+  testName="accepts OBSERVED 할부수수료 read off a statement"
+  consequence="그럴듯하게 틀린 수수료가 현금흐름 예측을 조용히 오염시킨다. 그리고 맞는 것처럼 보인다."
+>
+이건 원장이 이미 긋는 선과 **정확히 같다** — `weight_source: 'actual'`(양쪽 다 관측)과
+`'rate'`(환율로 유도)의 차이. 명세서에 찍힌 수수료는 **사실**이니 받는다. 카드사 공식을
+우리가 계산하는 건 거부한다 — 카드사·프로모션·기간마다 잔액 기준 공식이 다르다.
+
+```bash
+holiday installment add … --fees 5000,3400,1700     # 명세서에서 읽어서
+holiday installment revise <id> --rows '[…]'        # 나중에 덮어쓰기
+```
+
+`revise`는 **날짜까지** 덮어쓴다. 카드사가 자기 숫자의 권위자고, 공휴일에 결제일이
+밀리는 것도 우리는 모른다.
+</Rule>
+
+<Rule
+  id="POLICY-009"
+  title="수수료는 구매금액의 일부가 아니다"
+  test="packages/core/src/domain/installment.test.ts"
+  testName="refuses folding fees into the principal"
+  consequence="스케줄이 구매금액을 자기 이자만큼 부풀린 값과 맞기를 요구하게 되고, 그 스케줄은 명세서와 대사가 안 된다."
+>
+수수료는 **이자비용**이다. 불변식은 `sum(원금) === 총액`이고 수수료는 자유다.
+
+```
+구매:   Expenses:가전  +1,200,000 / Liabilities:Installment -1,200,000
+회차:   Liabilities:Installment +100,000
+        Expenses:Interest:Installment +5,000     ← 수수료 자리
+        Assets:Bank                   -105,000
+```
+</Rule>
+
+---
+
+## 3. 정기지출
+
+<CommandSpec
+  command="recurring add"
+  mutates={true}
+  summary="정기지출을 등록한다. funding이 통장이냐 카드냐가 전부를 가른다."
+  signature={`holiday recurring add <LABEL>
+  --expense <EXPENSE_ACCOUNT>
+  --funding <BANK | CARD>
+  --amount <amount>
+  [--day <1-31 | -1>] [--yearly <1-12>] [--from <date>] [--to <date>]`}
+  flags={[
+    { name: '--funding', type: 'account', required: true, description: '통장 = 당일 인출. 카드 = 청구주기를 탐' },
+    { name: '--day', type: 'integer', default: '1', description: '-1이면 말일' },
+    { name: '--yearly', type: 'integer', description: '연 1회로 만들고, 그 달을 지정' },
+    { name: '--to', type: 'date', description: '해지일. 없으면 무기한' },
+  ]}
+  exits={[
+    { code: 0, meaning: '등록됨. 카드면 결제가 언제 도는지 같이 출력' },
+    { code: 2, meaning: 'funding이 자산도 부채도 아님' },
+  ]}
+  example={`$ holiday recurring add "넷플릭스" --expense Expenses:Subscription:Netflix \\
+    --funding Liabilities:Card:Shinhan --amount 17000 --day 17
+넷플릭스: 17000 KRW, 매월 17일, on Liabilities:Card:Shinhan.
+Charged to the card — cash follows its cycle (a charge today would settle 2026-09-01).`}
+/>
+
+<Rule
+  id="POLICY-010"
+  title="카드로 결제되는 정기지출은 발생일에 현금이 나가지 않는다"
+  test="packages/core/src/domain/recurring.test.ts"
+  testName="rides the billing cycle when funded from a CARD"
+  consequence="같은 카덴스·같은 금액인데 현금이 6주 어긋난다. 월세와 넷플릭스를 똑같이 취급하면 예측이 틀린다."
+>
+월세는 25일에 통장에서 **바로** 나간다. 넷플릭스는 17일에 **카드 부채만 만들고**, 현금은
+청구주기를 타고 나중에 나간다. 8/17 결제분이 10/1에 빠지는 식이다.
+
+그래서 출력이 `넷플릭스 (2026-08-17 결제분)`처럼 발생일을 같이 찍는다 — 안 그러면
+"이게 왜 10월에 있지"에 답할 방법이 없다.
+</Rule>
+
+<Rule
+  id="POLICY-005"
+  title="발생하지 않은 것만 투영한다"
+  test="packages/core/src/domain/recurring.test.ts"
+  testName="does NOT project an occurrence on or before today"
+  consequence="지난달 넷플릭스가 posting으로도 세어지고 카덴스로도 세어져서 두 번 청구된다. 이중계상하는 예측은 한 번 틀리면 아무도 다시 안 믿는다."
+>
+`occurrence > today`인 것만. 이미 발생한 건 원장의 일이지 예측의 일이 아니다.
+
+**대가:** 오늘 발생분이 아직 기록 안 됐으면 놓친다. 놓치는 쪽과 두 번 세는 쪽 중
+놓치는 쪽이 안전하다.
+</Rule>
+
+---
+
+## 4. 대출
+
+<CommandSpec
+  command="loan add"
+  mutates={true}
+  summary="상환 스케줄을 만든다. 원리금균등·원금균등·만기일시상환·거치."
+  signature={`holiday loan add <LOAN_ACCOUNT>
+  --funding <ASSET_ACCOUNT>  --interest <EXPENSE_ACCOUNT>
+  --principal <amount>  --rate <percent>  --months <n>
+  --first-payment <date>
+  [--method annuity|equal_principal|bullet|interest_only]
+  [--payment-day <1-31 | -1>] [--label <text>]`}
+  flags={[
+    { name: '--rate', type: 'percent', required: true, description: '연이율을 계약서 그대로. "4.2" = 4.2%' },
+    { name: '--interest', type: 'account', required: true, description: '이자가 기표될 비용 계정' },
+    { name: '--method', type: 'enum', default: 'annuity', description: '원리금균등 | 원금균등 | 만기일시상환 | 거치' },
+    { name: '--payment-day', type: 'integer', description: '없으면 --first-payment의 일자' },
+  ]}
+  exits={[
+    { code: 0, meaning: '등록됨. 1회차 분해와 총이자 출력' },
+    { code: 1, meaning: '0% 원리금균등, 이자도 못 갚는 납입액 등' },
+    { code: 2, meaning: '계정 종류가 안 맞음 (대출은 부채, 이자는 비용, funding은 자산)' },
+  ]}
+  example={`$ holiday loan add Liabilities:Loans:KB:Mortgage \\
+    --funding Assets:Bank:KB:Checking --interest Expenses:Interest:Mortgage \\
+    --principal 300000000 --rate 4.2 --months 360 --first-payment 2026-08-25 --label "KB 주담대"
+원리금균등 300000000 @ 4.200% × 360개월. 2026-08-25 ~ 2056-07-25.
+1회차 1467052 (원금 417052 + 이자 1050000)
+총 이자 228138372
+이건 예측입니다. 실제 잔액과 어긋나는지는 \`holiday loan check\`.`}
+/>
+
+<CommandSpec
+  command="loan pay"
+  mutates={true}
+  summary="상환을 기록하고 스케줄로 원금/이자를 쪼갠다."
+  signature={`holiday loan pay <LOAN_ACCOUNT> --date <due_date> [--amount <actual>]`}
+  flags={[
+    { name: '--date', type: 'date', required: true, description: '스케줄상의 회차 날짜' },
+    { name: '--amount', type: 'amount', description: '실제 빠진 금액이 스케줄과 다를 때' },
+  ]}
+  exits={[
+    { code: 0, meaning: '3-leg 거래로 기표됨' },
+    { code: 2, meaning: '그 날짜에 회차가 없음, 또는 금액이 이자도 못 덮음' },
+  ]}
+  example={`$ holiday loan pay Liabilities:Loans:KB:Mortgage --date 2026-08-25
+1회차 1467052 = 원금 417052 + 이자 1050000`}
+/>
+
+**이게 대출 모듈의 존재 이유다.** 명세서엔 "KB에 ₩1,247,300 납부"만 있고 원금/이자
+분해가 없다. **사람도 vision 모델도 계산기 없이는 못 한다.** 스케줄만 안다.
+
+<LedgerExample
+  date="2026-08-25"
+  payee="KB 주담대"
+  narration="1/360 상환"
+  legs={[
+    { account: 'Liabilities:Loans:KB:Mortgage', units: '417,052 KRW', weight: 417052, source: 'identity', note: '빚이 줄어든 만큼' },
+    { account: 'Expenses:Interest:Mortgage', units: '1,050,000 KRW', weight: 1050000, source: 'identity', note: '300,000,000 × 4.2%/12' },
+    { account: 'Assets:Bank:KB:Checking', units: '-1,467,052 KRW', weight: -1467052, source: 'identity', note: '실제로 빠진 현금' },
+  ]}
+/>
+
+### loan check — 부채의 상시 감사
+
+<CommandSpec
+  command="loan check"
+  mutates={false}
+  summary="원장이 스케줄과 맞는지 대사한다. 차이는 노이즈가 아니라 정보다."
+  signature={`holiday loan check [LOAN_ACCOUNT] [--as-of <date>]`}
+  flags={[{ name: '--as-of', type: 'date', default: 'today' }]}
+  exits={[
+    { code: 0, meaning: '전부 스케줄대로' },
+    { code: 1, meaning: '하나 이상 어긋남 — 차액과 가능한 원인을 출력' },
+  ]}
+  example={`$ holiday loan check --as-of 2026-09-25
+KB 주담대  (2026-09-25)
+  스케줄:         299164436
+  원장:           299582948
+  ⚠ 차이 418512
+    you owe 418512 more than the schedule expects. Usually a missed or partial
+    payment, an unrecorded rate change, or a fee added to the balance.`}
+/>
+
+<Rule
+  id="POLICY-011"
+  title="대출 스케줄과 원장의 차이는 항상 무언가를 뜻한다"
+  test="packages/core/src/domain/loan.test.ts"
+  testName="catches a missed payment"
+  consequence="미납·중도상환·미기록 금리변경·수수료가 잔액만 봐선 안 보인다. 넷 다 알아야 할 일이다."
+>
+대출은 잔액을 **독립적으로 알 수 있는 유일한 부채**다. 그래서 차이가 의미를 갖는다 —
+미납, 중도상환(중도상환), 기록 안 한 금리 변경, 붙은 수수료. 이 대사가 대출 모듈 전체를
+정당화한다.
+</Rule>
+
+<Rule
+  id="POLICY-012"
+  title="상환 스케줄의 원금 합은 정확히 대출금이다"
+  test="packages/core/src/domain/loan.test.ts"
+  testName="repays exactly the principal for ANY amount, rate and term"
+  consequence="30년짜리 대출이 마지막에 ₩3 남거나 ₩3 더 갚는다. 그리고 그걸 30년 뒤에 안다."
+>
+마지막 회차가 남은 전액을 흡수한다. 이건 편법이 아니라 **은행이 실제로 하는 일**이다 —
+원 단위로 계산한 균등 납입액이 잔액을 정확히 나누는 경우는 없다.
+
+`interest_only`(거치)만 예외다. 원금을 애초에 갚지 않으니 합이 0이다.
+</Rule>
+
+### 두 가지 거부
+
+<Rule
+  id="POLICY-013"
+  title="거치(interest_only)는 balloon을 지어내지 않는다"
+  test="packages/core/src/domain/loan.test.ts"
+  testName="never repays principal, and does NOT invent a balloon"
+  consequence="계약에 없는 만기 일시상환을 장부에 올리고, 현금흐름이 있지도 않은 거대한 지출을 예고한다."
+>
+거치기간은 진짜 대출로 굴러간다. 이 스케줄은 그 출구를 모델링하지 않고, 모르는 걸 아는
+척하지 않는다. 잔액은 끝까지 그대로다.
+</Rule>
+
+<Rule
+  id="POLICY-014"
+  title="0% 원리금균등은 던진다"
+  test="packages/core/src/domain/loan.test.ts"
+  testName="refuses a 0% annuity instead of dividing by zero"
+  consequence="((1+r)^n − 1)이 0이라 0으로 나눈다."
+>
+0%면 그건 원리금균등이 아니라 **원금균등**이다. 그렇게 말해준다.
+</Rule>
+
+---
+
+## 왜 이자율이 float이 아닌가
+
+<Decision
+  id="ADR-003"
+  title="이율은 스케일드 bigint. float도 decimal.js도 아니다"
+  status="accepted"
+  date="2026-07-17"
+  commit="45b293c"
+  rejected={[
+    { option: 'IEEE 754 double', because: '0.1 + 0.2 !== 0.3이 블로그 글에선 웃기지만 360번 복리로 굴리면 안 웃기다. 이 원장은 금액에 float을 쓰지 않는데 이율에만 쓸 이유가 없다.' },
+    { option: 'decimal.js', because: '순수 JS라 번들은 되지만, @holiday/core는 설치 스텝 없는 단일파일 플러그인 바이너리에 인라인된다. 의존성은 값어치를 증명해야 하고, 이건 40줄 고정소수점으로 된다.' },
+  ]}
+>
+18자리 스케일 정수. 360회 곱셈에 누적 오차가 원 단위로 1e-10 수준이라 무의미하다.
+
+반올림은 **half away from zero** — 은행이 하는 방식이다. banker's rounding으로 영리하게
+굴면 `loan check`가 매달 ₩1 차이를 영원히 보고한다.
+</Decision>
+
+<Rule
+  id="POLICY-015"
+  title="반올림은 0에서 멀어지는 쪽으로"
+  test="packages/core/src/domain/loan.test.ts"
+  testName="rounds half AWAY FROM ZERO, like a lender does"
+  consequence="은행 명세서와 매달 ₩1씩 어긋나고, loan check가 영원히 거짓 경보를 낸다."
+>
+이 숫자는 **대주의 명세서와 비교될 값**이다. 우리끼리 일관된 것보다 그쪽과 맞는 게
+중요하다.
+</Rule>
+
+## 스케줄은 예측이다 — 근사가 허용되는 유일한 곳
+
+원장의 "허용오차 없음"과 모순처럼 보이지만 아니다. **사실/예측 구분의 반대편**일 뿐이다.
+
+- **사실**(원장): 정확. 허용오차 0. `SUM(weight) = 0`.
+- **예측**(스케줄): 근사 가능. `loan check`가 정직하게 유지한다.
+
+다만 **행의 합만은 정확**하다. 합이 안 맞는 스케줄은 명세서와 영원히 대사가 안 되고,
+그럼 예측을 정직하게 유지할 방법 자체가 없어진다.

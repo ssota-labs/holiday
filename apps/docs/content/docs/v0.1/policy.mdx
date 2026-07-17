@@ -8,12 +8,16 @@ related: ['/docs/v0.1/data-model']
 ---
 
 이 프로젝트는 **정책이 곧 제품**이다. 아래는 구현 세부가 아니라 숫자를 믿을 수 있는
-이유 전부고, 각각이 테스트로 박혀 있다.
+이유 전부고, 각각이 **그걸 강제하는 테스트에 링크**돼 있다. 링크가 안 맞으면
+`scripts/check-rule-links.ts`가 빌드를 죽인다 — 링크가 해결되지 않는 정책 문서는 없는
+것보다 나쁘다. **증거처럼 읽히니까.**
 
-이 문서를 "스펙"이라고 부르지 않는 이유: 스펙(PRD)은 *뭘 만들지*를 말한다. 이건
-DDD 용어로 **Business Rules Catalog**와 **Ubiquitous Language**다.
+이 문서를 "스펙"이라고 부르지 않는 이유: 스펙(PRD)은 *뭘 만들지*를 말한다. 이건 DDD
+용어로 **Business Rules Catalog**와 **Ubiquitous Language**다.
 
-## 규칙
+스케줄(카드·할부·정기지출·대출) 관련 규칙은 [스케줄 네 개](/docs/v0.1/schedules)에 있다.
+
+## 원장 규칙
 
 <Rule
   id="POLICY-001"
@@ -41,18 +45,6 @@ DDD 용어로 **Business Rules Catalog**와 **Ubiquitous Language**다.
 </Rule>
 
 <Rule
-  id="POLICY-003"
-  title="할부 잔액은 카드 일반 계정에 둘 수 없다"
-  test="packages/core/src/domain/cashflow.test.ts"
-  testName="puts a purchase on the bill that actually takes the cash"
-  consequence="120만원 12개월 할부가 첫 청구서를 10만원이 아니라 120만원으로 만든다. 12배 과대계상. 늑대를 외치는 예측은 무시당하고, 그럼 예측이 있을 이유가 없다."
->
-일반 청구는 "사용기간 내 posting 합계"로 계산되는데, 할부는 구매일에 전액이 전기된다.
-그래서 `Liabilities:Card:<issuer>:Installment`라는 **별도 계정**에 산다. 그러면 일반
-청구 계산에서 자동으로 빠지고, 회차는 스케줄에서 따로 투영돼 같은 결제일에 합류한다.
-</Rule>
-
-<Rule
   id="POLICY-004"
   title="결제와 환불은 상대 leg으로 구분한다"
   test="packages/core/src/domain/cashflow.test.ts"
@@ -61,40 +53,6 @@ DDD 용어로 **Business Rules Catalog**와 **Ubiquitous Language**다.
 >
 카드 계정에서 구매는 음수지만 **환불과 결제가 둘 다 양수**다. 순진하게 합산하면 안
 된다. 결제의 상대 leg은 funding 계정이고 환불의 상대 leg은 비용 계정이다.
-</Rule>
-
-<Rule
-  id="POLICY-005"
-  title="발생하지 않은 것만 투영한다"
-  test="packages/core/src/domain/recurring.test.ts"
-  testName="does NOT project an occurrence on or before today"
-  consequence="지난달 넷플릭스가 posting으로도 세어지고 카덴스로도 세어져서 두 번 청구된다. 이중계상하는 예측은 한 번 틀리면 아무도 다시 안 믿는다."
->
-`occurrence > today`인 것만. 이미 발생한 건 원장의 일이지 예측의 일이 아니다.
-
-**대가:** 오늘 발생분이 아직 기록 안 됐으면 놓친다. 놓치는 쪽과 두 번 세는 쪽 중
-놓치는 쪽이 안전하다.
-</Rule>
-
-<Rule
-  id="POLICY-006"
-  title="유이자 할부는 추정하지 않고 거부한다"
-  test="packages/core/src/domain/installment.test.ts"
-  testName="REFUSES an interest-bearing plan rather than guessing 할부수수료"
-  consequence="그럴듯하게 틀린 수수료가 현금흐름 예측을 조용히 오염시킨다. 돈에 대해 자신 있게 틀리는 것보다 모른다고 하는 게 낫다."
->
-할부수수료는 카드사·프로모션·기간마다 잔액 기준 공식이 다르다. `fee_minor`는 예약만
-해두고, 실제 명세서와 대사하는 `installment check`가 그 자리를 채울 것이다.
-</Rule>
-
-<Rule
-  id="POLICY-007"
-  title="스케줄 행의 합은 정확히 원금이다"
-  test="packages/core/src/domain/installment.test.ts"
-  testName="sums to the total for ANY total and term"
-  consequence="합계가 ₩999,999인 스케줄은 실제 명세서와 영원히 대사가 안 된다."
->
-100만원 3개월은 333,334 + 333,333 + 333,333. 나머지는 첫 회차에 — 한국 카드사 관행이다.
 </Rule>
 
 ## 용어
@@ -121,6 +79,16 @@ DDD 용어로 **Business Rules Catalog**와 **Ubiquitous Language**다.
   <Term term="청구주기" ko="billing cycle" code="card.cycle_close_day">
     사용분이 어느 청구서에 실리고 언제 현금이 나가는지를 정하는 규칙. 이게 없으면
     원장은 얼마를 빚졌는지는 알아도 **언제** 나가는지를 모른다.
+  </Term>
+
+  <Term term="cash" ko="현금 계정" code="account.cash" notTo="asset과 다르다. 아파트도 자산이지만 현금이 아니다.">
+    `holiday cashflow`가 잔고를 걸어가는 출발점. **접두어 규칙이 아니라 플래그**인 이유는
+    아래 ADR-004에 있다.
+  </Term>
+
+  <Term term="schedule" ko="스케줄" code="card / installment / recurring / loan" notTo="원장이 아니다. 절대 전기되지 않는다.">
+    언제 돈이 나갈지에 대한 **예측**. 카드 청구주기·할부·정기지출·대출 네 종류이고, 넷 다
+    `cashRunway` 하나로 들어간다. 예측이라 근사가 허용되는 유일한 곳이다.
   </Term>
 
   <Term term="checkpoint" ko="체크포인트" code="snapshot.kind = 'checkpoint'" notTo="close(마감)와 다르다. 저널을 잠그지도, 재평가를 전기하지도 않는다.">
@@ -171,3 +139,68 @@ DDD 용어로 **Business Rules Catalog**와 **Ubiquitous Language**다.
 저널과 달리 해시는 버전 dispatch가 된다. `CHAIN_HASH_VERSION`을 올리면 과거 행은 자기
 버전으로 계속 검증된다. byte-stable 저널엔 없던 탈출구다.
 </Decision>
+
+<Decision
+  id="ADR-004"
+  title="현금은 계정 플래그다. 코드 접두어가 아니다"
+  status="accepted"
+  date="2026-07-17"
+  commit="5036abe"
+  rejected={[
+    { option: '`Assets:Bank*` / `Assets:Cash*` 접두어 규칙', because: '관례를 사실인 척한 것이었다. 다른 이름 밑에 있는 현금이 투영에서 **조용히** 빠졌고, 그럼 숫자는 여전히 자신만만하게 틀린다. 틀리는 방식 중 최악이다.' },
+  ]}
+>
+`account.cash`. 마이그레이션이 옛 관례에서 백필하고, `account add`와 `cashflow` 양쪽이
+현금으로 표시되지 않은 자산 계정을 **소리내어 말한다**.
+
+이걸 만들다가 더 심각한 버그를 찾았다: 마이그레이션을 `init` 명령만 실행하고 있어서,
+기존 원장을 새 바이너리로 열면 없는 컬럼을 읽고 죽었다. ledger.db는 사용자가 커밋해두는
+원장이고 플러그인 바이너리는 따로 업데이트되니, **플러그인을 한 번 업데이트하면 모든
+기존 장부가 안 열렸을 것이다.** 새 DB로만 테스트했으면 못 봤다.
+</Decision>
+
+<Decision
+  id="ADR-005"
+  title="스키마는 drizzle-kit. 쿼리는 우리 것"
+  status="accepted"
+  date="2026-07-17"
+  commit="75a75e8"
+  rejected={[
+    { option: 'drizzle-orm 전면 도입 (쿼리 포함)', because: 'Drizzle의 SQLite 세션은 setReadBigInts(true)를 절대 호출하지 않고 integer()가 내부적으로 `number int53`으로 타이핑돼 있다. 2^53을 넘으면 ERR_OUT_OF_RANGE로 죽고 주입할 훅이 없다(prepareQuery 안의 지역 변수). 이 원장의 금액은 i64이고 적합성 스위트가 2^53+1 왕복을 못박는다.' },
+    { option: "blob({mode:'bigint'})", because: 'bigint를 십진수 ASCII로 BLOB에 저장한다. 정확하지만 SUM()이 안 되고 ORDER BY가 바이트 정렬이라 getBalances가 통째로 날아간다.' },
+    { option: '손으로 쓴 SQL 유지', because: '마이그레이션 관리가 원시적이었고, 무엇보다 "적용된 마이그레이션 수정 금지"가 강제되지 않는 주석이었다.' },
+  ]}
+>
+DDL은 Drizzle이 만들고 읽기는 `Db` 래퍼가 한다. `integer()`가 뱉는 DDL은 평범한
+`INTEGER`라 이 분리는 비용이 0이다.
+
+**도입 동기였던 전제는 성립하지 않았다.** Drizzle은 SQLite와 Postgres에 하나의 스키마를
+주지 않는다 — `sqliteTable`과 `pgTable`은 별개 빌더고 컬럼 타입도 안 겹친다. Supabase는
+어차피 자기 스키마를 쓴다. SQLite의 `RAISE(ABORT)`와 Postgres의 plpgsql `RAISE
+EXCEPTION`은 방언이 다른 거지 툴체인 문제가 아니고, 포트 경계가 이미 그걸 허용한다.
+
+**진짜 얻은 건 해시 추적이다.** `__holiday_migrations`가 각 마이그레이션의 sha256을
+기록해서, 적용된 걸 수정하면 다음 열기에서 터진다. Drizzle의 `__drizzle_migrations`에서
+가져온 아이디어인데 테이블은 우리 것이다 — Drizzle의 `migrate()`는 런타임에 디스크에서
+`.sql`을 읽고, 이 CLI는 옆에 아무것도 없는 단일파일이다.
+
+**대가:** STRICT 테이블을 잃었다(drizzle-kit 미지원). 손편집으로 INTEGER 컬럼에 TEXT를
+넣는 걸 막던 ring 3 하나가 빠졌다. 그리고 RC(`1.0.0-rc.4`)에 핀됐다 — stable에는
+node:sqlite 드라이버가 없다.
+</Decision>
+
+<Rule
+  id="POLICY-016"
+  title="적용된 마이그레이션은 수정할 수 없다"
+  test="packages/store-sqlite/src/store.test.ts"
+  testName="REFUSES to open a ledger whose applied migration has changed"
+  consequence="이 원장이 옛 버전을 실행했는데 새 버전을 다시 돌리면, 다른 어떤 복사본과도 공유하지 않는 상태가 된다. 커밋해둔 지난달 것과도."
+>
+`__holiday_migrations`가 sha256을 기록하고 다음 열기에서 비교한다. "마이그레이션은
+append-only"가 주석이었는데 이제 코드가 못 하게 한다.
+
+```
+migration 20260717100308_invariant_triggers has changed since it was applied.
+  applied: a9ecf50d…   now: 47a67e46…
+```
+</Rule>

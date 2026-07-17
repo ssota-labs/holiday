@@ -7,6 +7,7 @@ import type { CommodityCode } from '@holiday/core';
 import { runLedgerStoreConformance, seed, simpleTxn } from '@holiday/store-testkit';
 
 import { Db } from './db.js';
+import { MigrationDriftError } from './migrate.js';
 import { SqliteLedgerStore } from './store.js';
 
 const dirs: string[] = [];
@@ -144,5 +145,63 @@ describe('SqliteLedgerStore — book identity', () => {
     await b.init();
     await expect(b.migrate()).rejects.toThrow(/cannot be changed in place/);
     await b.close();
+  });
+});
+
+describe('SqliteLedgerStore — migrations', () => {
+  it('records every migration with its hash', async () => {
+    const path = tempDb();
+    const store = new SqliteLedgerStore({ path, book: { functionalCurrency: 'KRW' as CommodityCode } });
+    await store.init();
+    await store.migrate();
+    await store.close();
+
+    const raw = new Db(path);
+    const rows = raw.all<{ name: string; hash: string }>('SELECT name, hash FROM __holiday_migrations ORDER BY name');
+    raw.close();
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => /^[0-9a-f]{64}$/.test(r.hash))).toBe(true);
+  });
+
+  it('is a no-op on an already-migrated ledger', async () => {
+    const path = tempDb();
+    const open = () => new SqliteLedgerStore({ path, book: { functionalCurrency: 'KRW' as CommodityCode } });
+    const a = open();
+    await a.init();
+    const first = await a.migrate();
+    await a.close();
+
+    const b = open();
+    await b.init();
+    const second = await b.migrate();
+    await b.close();
+
+    expect(first.to).toBeGreaterThan(0);
+    // Every command opens through migrate(), so this runs constantly. It must
+    // do nothing rather than re-apply.
+    expect(second.to - second.from).toBe(0);
+  });
+
+  it('REFUSES to open a ledger whose applied migration has changed', async () => {
+    // "Migrations are append-only" used to be a comment. This is what makes it a
+    // rule: if this ledger ran an older version of a migration, re-running the new
+    // one leaves it in a state no other copy of the ledger shares — including the
+    // one committed last month.
+    const path = tempDb();
+    const store = new SqliteLedgerStore({ path, book: { functionalCurrency: 'KRW' as CommodityCode } });
+    await store.init();
+    await store.migrate();
+    await store.close();
+
+    // Stands in for someone editing migration.sql after it had already run.
+    const raw = new Db(path);
+    raw.exec(`UPDATE __holiday_migrations SET hash = '${'0'.repeat(64)}' WHERE name = (SELECT MIN(name) FROM __holiday_migrations)`);
+    raw.close();
+
+    const reopened = new SqliteLedgerStore({ path, book: { functionalCurrency: 'KRW' as CommodityCode } });
+    await reopened.init();
+    await expect(reopened.migrate()).rejects.toThrow(MigrationDriftError);
+    await expect(reopened.migrate()).rejects.toThrow(/append-only/);
+    await reopened.close();
   });
 });
