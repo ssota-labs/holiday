@@ -6,6 +6,7 @@ export * from './account.js';
 export * from './txn.js';
 export * from './billing.js';
 export * from './rate.js';
+export * from './fx.js';
 export * from './loan.js';
 export * from './installment.js';
 export * from './recurring.js';

@@ -45,7 +45,11 @@ import {
   rowForDate,
   projectLoans,
   type ExistingTxn,
+  type FxRate,
   type ParsedTxn,
+  convert,
+  formatRate,
+  resolveRate,
   dedupeKey,
   findNearDuplicates,
   sha256,
@@ -54,7 +58,7 @@ import {
 } from '@holiday/core';
 
 import { INGEST_SUBMISSION, type IngestItemInput } from './ingest.js';
-import { UsageError, parseLeg } from './legs.js';
+import { type DeriveWeight, UsageError, parseLeg } from './legs.js';
 import { createWorkspace, openLedger, readConfig, requireWorkspace } from './workspace.js';
 
 /**
@@ -188,10 +192,12 @@ program
       return a;
     };
 
-    const postings = o.leg.map((l) => parseLeg(l, amounts, config.functionalCurrency, resolve));
+    const date = assertIsoDate(o.date);
+    const derive = await makeDeriveWeight(store, config.functionalCurrency, date);
+    const postings = o.leg.map((l) => parseLeg(l, amounts, config.functionalCurrency, resolve, derive));
     const result = Txn.create({
       id: nextUlid() as TxnId,
-      date: assertIsoDate(o.date),
+      date,
       bookingCommodity: config.functionalCurrency,
       payee: o.payee ?? null,
       narration: o.narration,
@@ -645,6 +651,80 @@ recurring
     if (result.length === 0) return note('no active recurring expenses.');
     note('');
     note(`monthly total: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
+  });
+
+const fx = program.command('fx').description('환율 — 절대 과거를 바꾸지 않는다');
+
+fx
+  .command('add <base> <quote> <rate>')
+  .description('record a rate. 1 <base> = <rate> <quote>.')
+  .requiredOption('--as-of <date>', 'the date this rate is for')
+  .option('--source <name>', 'where it came from', 'manual')
+  .action(async (base: string, quote: string, rateText: string, o: { asOf: string; source: string }) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const asOf = assertIsoDate(o.asOf);
+    const b = registry.get(base).code;
+    const qc = registry.get(quote).code;
+
+    const written = await store.unitOfWork((uow) =>
+      uow.putFxRates([
+        { id: nextUlid(), asOf, base: b, quote: qc, rate: rateText, source: o.source, fetchedAt: nowIso() },
+      ]),
+    );
+    await store.close();
+    out({ base: b, quote: qc, rate: rateText, asOf, source: o.source, written });
+    note(`1 ${b} = ${rateText} ${qc} (${asOf}, ${o.source})`);
+    // The property that makes rates safe to correct.
+    note(`이미 기표된 weight는 바뀌지 않습니다. 환율은 앞으로의 유도와 재평가에만 쓰입니다.`);
+  });
+
+fx
+  .command('list')
+  .description('rates on file')
+  .option('--base <code>')
+  .option('--quote <code>')
+  .action(async (o: { base?: string; quote?: string }) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const rates = await store.read((r) =>
+      r.listFxRates({
+        ...(o.base ? { base: registry.get(o.base).code } : {}),
+        ...(o.quote ? { quote: registry.get(o.quote).code } : {}),
+      }),
+    );
+    await store.close();
+    if (jsonMode()) return out(rates);
+    if (rates.length === 0) return note('환율이 없습니다. `holiday fx add USD KRW 1333.33 --as-of <date>`');
+    for (const r of rates) note(`${r.asOf}  1 ${r.base} = ${r.rate.padStart(12)} ${r.quote}   ${r.source}`);
+  });
+
+fx
+  .command('show <base> <quote>')
+  .description('which rate would be used, and why')
+  .option('--as-of <date>', 'ISO date', today())
+  .action(async (base: string, quote: string, o: { asOf: string }) => {
+    const ws = requireWorkspace();
+    const config = readConfig(ws);
+    const store = await openLedger(ws);
+    const asOf = assertIsoDate(o.asOf);
+    const result = await store.read(async (r) => {
+      const book = await r.getBook();
+      const rates = await r.listFxRates({ to: asOf });
+      return resolveRate(rates, {
+        base: registry.get(base).code,
+        quote: registry.get(quote).code,
+        asOf,
+        maxStalenessDays: book.fxMaxStalenessDays,
+        functional: config.functionalCurrency,
+      });
+    });
+    await store.close();
+    out({ kind: result.kind, rate: formatRate(result.rate), asOf: result.asOf, rateIds: result.rateIds });
+    // Resolution has a strict order, each step worse than the last. Saying which
+    // one fired is how a user knows whether to trust the number.
+    note(`1 ${base} = ${formatRate(result.rate)} ${quote}`);
+    note(`  ${result.kind} — ${result.explanation}`);
   });
 
 const ingest = program.command('ingest').description('캡쳐에서 읽은 거래를 원장에 넣기');
@@ -1364,6 +1444,48 @@ function pickMoneyLeg(
     );
   }
   return money;
+}
+
+/**
+ * Build a rate-deriving closure for ONE transaction date.
+ *
+ * Resolves each commodity's rate at most once and caches it, so every leg in the
+ * transaction sees the identical rate. That is what makes a same-currency foreign
+ * charge cancel to exactly zero — two legs of ±$12.50 through one rate sum to 0
+ * no matter what the rate is, while two independent lookups could differ by a won
+ * and break the balance rule.
+ */
+async function makeDeriveWeight(
+  store: Awaited<ReturnType<typeof openLedger>>,
+  functional: CommodityCode,
+  date: IsoDate,
+): Promise<DeriveWeight | undefined> {
+  const { rates, staleness } = await store.read(async (r) => ({
+    rates: await r.listFxRates({ to: date }),
+    staleness: (await r.getBook()).fxMaxStalenessDays,
+  }));
+  if (rates.length === 0) return undefined;
+
+  const cache = new Map<string, { rate: bigint; text: string; id: string | null }>();
+  return (units) => {
+    let hit = cache.get(units.commodity);
+    if (!hit) {
+      const resolved = resolveRate(rates, {
+        base: units.commodity,
+        quote: functional,
+        asOf: date,
+        maxStalenessDays: staleness,
+        functional,
+      });
+      hit = { rate: resolved.rate, text: formatRate(resolved.rate), id: resolved.rateIds[0] ?? null };
+      cache.set(units.commodity, hit);
+    }
+    return {
+      weightMinor: convert(units.minor, hit.rate, registry.exponentOf(units.commodity), registry.exponentOf(functional)),
+      fxRateText: hit.text,
+      fxRateId: hit.id,
+    };
+  };
 }
 
 function nowIso(): string {

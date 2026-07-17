@@ -7956,6 +7956,107 @@ function formatAnnualPercent(annualScaled, places = 3) {
   return places === 0 ? s : `${s.slice(0, cut)}.${s.slice(cut)}`;
 }
 
+// ../core/dist/domain/fx.js
+var FxError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "FxError";
+  }
+};
+var RATE_RE = /^(\d+)(?:\.(\d+))?$/;
+function parseRate(text) {
+  const m = RATE_RE.exec(text.trim());
+  if (!m) {
+    throw new FxError(`${JSON.stringify(text)} is not a plain decimal rate. No exponents, no separators, no currency symbols.`);
+  }
+  const [, whole, frac = ""] = m;
+  if (frac.length > 18)
+    throw new FxError(`${text}: more than 18 decimal places in a rate is noise`);
+  const scaled = BigInt(`${whole}${frac.padEnd(18, "0")}`);
+  if (scaled === 0n)
+    throw new FxError("a zero exchange rate is not a rate");
+  return scaled;
+}
+function formatRate(scaled, places = 6) {
+  const divisor = RATE_SCALE / 10n ** BigInt(places);
+  const v = roundDiv(scaled, divisor);
+  const s = v.toString().padStart(places + 1, "0");
+  const cut = s.length - places;
+  return places === 0 ? s : `${s.slice(0, cut)}.${s.slice(cut)}`.replace(/\.?0+$/, "");
+}
+function resolveRate(rates, q) {
+  if (q.base === q.quote) {
+    return { kind: "exact", rate: RATE_SCALE, rateIds: [], asOf: q.asOf, explanation: "same commodity" };
+  }
+  const usable = rates.filter((r) => r.asOf <= q.asOf && (!q.preferredSource || r.source === q.preferredSource));
+  const newestFirst = [...usable].sort((a, b) => a.asOf < b.asOf ? 1 : a.asOf > b.asOf ? -1 : 0);
+  const direct = newestFirst.find((r) => r.base === q.base && r.quote === q.quote);
+  if (direct?.asOf === q.asOf) {
+    return {
+      kind: "exact",
+      rate: parseRate(direct.rate),
+      rateIds: [direct.id],
+      asOf: direct.asOf,
+      explanation: `${direct.source} ${direct.asOf}`
+    };
+  }
+  if (direct && daysBetween(direct.asOf, q.asOf) <= q.maxStalenessDays) {
+    return {
+      kind: "stale",
+      rate: parseRate(direct.rate),
+      rateIds: [direct.id],
+      asOf: direct.asOf,
+      explanation: `${direct.source} ${direct.asOf}, ${daysBetween(direct.asOf, q.asOf)}\uC77C \uC804`
+    };
+  }
+  const inverse = newestFirst.find((r) => r.base === q.quote && r.quote === q.base && daysBetween(r.asOf, q.asOf) <= q.maxStalenessDays);
+  if (inverse) {
+    return {
+      kind: "inverse",
+      rate: invert(parseRate(inverse.rate)),
+      rateIds: [inverse.id],
+      asOf: inverse.asOf,
+      explanation: `1 / (${inverse.base}\u2192${inverse.quote} ${inverse.asOf})`
+    };
+  }
+  if (q.base !== q.functional && q.quote !== q.functional) {
+    const leg1 = findAnyDirection(newestFirst, q.base, q.functional, q.asOf, q.maxStalenessDays);
+    const leg2 = findAnyDirection(newestFirst, q.functional, q.quote, q.asOf, q.maxStalenessDays);
+    if (leg1 && leg2) {
+      return {
+        kind: "triangulated",
+        rate: leg1.rate * leg2.rate / RATE_SCALE,
+        rateIds: [...leg1.ids, ...leg2.ids],
+        asOf: leg1.asOf < leg2.asOf ? leg1.asOf : leg2.asOf,
+        explanation: `${q.base}\u2192${q.functional}\u2192${q.quote}`
+      };
+    }
+  }
+  throw new FxError(`no ${q.base}\u2192${q.quote} rate for ${q.asOf} within ${q.maxStalenessDays} days, and none to triangulate through ${q.functional}. Add one with \`holiday fx add\`, or supply the total directly with '@@'. A missing rate is a question \u2014 this will not guess 1.0.`);
+}
+function findAnyDirection(rates, base, quote, asOf, maxStalenessDays) {
+  const fwd = rates.find((r) => r.base === base && r.quote === quote && daysBetween(r.asOf, asOf) <= maxStalenessDays);
+  if (fwd)
+    return { rate: parseRate(fwd.rate), ids: [fwd.id], asOf: fwd.asOf };
+  const rev = rates.find((r) => r.base === quote && r.quote === base && daysBetween(r.asOf, asOf) <= maxStalenessDays);
+  if (rev)
+    return { rate: invert(parseRate(rev.rate)), ids: [rev.id], asOf: rev.asOf };
+  return null;
+}
+function invert(scaled) {
+  return roundDiv(RATE_SCALE * RATE_SCALE, scaled);
+}
+function daysBetween(a, b) {
+  const ms = (/* @__PURE__ */ new Date(`${b}T00:00:00Z`)).getTime() - (/* @__PURE__ */ new Date(`${a}T00:00:00Z`)).getTime();
+  return Math.round(ms / 864e5);
+}
+function convert(amountMinor, rate, fromExponent, toExponent) {
+  const scaleShift = 10n ** BigInt(Math.abs(toExponent - fromExponent));
+  const raw = amountMinor * rate;
+  const adjusted = toExponent >= fromExponent ? raw * scaleShift : raw / scaleShift;
+  return roundDiv(adjusted, RATE_SCALE);
+}
+
 // ../core/dist/domain/loan.js
 var LoanError = class extends Error {
   constructor(message) {
@@ -8265,7 +8366,7 @@ function findNearDuplicates(candidate, existing) {
       return false;
     if (e.unitsMinor !== candidate.unitsMinor)
       return false;
-    return Math.abs(daysBetween(e.date, candidate.date)) <= NEAR_DAYS;
+    return Math.abs(daysBetween2(e.date, candidate.date)) <= NEAR_DAYS;
   }).map((e) => {
     const em = normalizeMerchant(e.merchant);
     const sameDay = e.date === candidate.date;
@@ -8275,11 +8376,11 @@ function findNearDuplicates(candidate, existing) {
       date: e.date,
       merchant: e.merchant,
       unitsMinor: e.unitsMinor,
-      reason: sameDay ? sameMerchant ? "same account, amount, merchant and date \u2014 but this may genuinely be a second purchase" : "same account, amount and date" : `same account and amount, ${Math.abs(daysBetween(e.date, candidate.date))} day(s) apart \u2014 the app and the statement often disagree on the date`
+      reason: sameDay ? sameMerchant ? "same account, amount, merchant and date \u2014 but this may genuinely be a second purchase" : "same account, amount and date" : `same account and amount, ${Math.abs(daysBetween2(e.date, candidate.date))} day(s) apart \u2014 the app and the statement often disagree on the date`
     };
   });
 }
-function daysBetween(a, b) {
+function daysBetween2(a, b) {
   const ms = (/* @__PURE__ */ new Date(`${b}T00:00:00Z`)).getTime() - (/* @__PURE__ */ new Date(`${a}T00:00:00Z`)).getTime();
   return Math.round(ms / 864e5);
 }
@@ -8474,7 +8575,7 @@ var INGEST_SUBMISSION = external_exports.object({
 });
 
 // src/legs.ts
-function parseLeg(leg, amounts2, functionalCurrency, resolveAccount) {
+function parseLeg(leg, amounts2, functionalCurrency, resolveAccount, deriveWeight) {
   const parts = leg.trim().split(/\s+/);
   const [code, amountText, commodity, at, weightText] = parts;
   if (!code || !amountText || !commodity) {
@@ -8509,8 +8610,12 @@ function parseLeg(leg, amounts2, functionalCurrency, resolveAccount) {
     };
   }
   if (!isFunctional) {
+    if (deriveWeight) {
+      const { weightMinor, fxRateText, fxRateId } = deriveWeight(units);
+      return { accountId: account2.id, units, weightMinor, weightSource: "rate", fxRateText, fxRateId };
+    }
     throw new UsageError(
-      `leg ${JSON.stringify(leg)} is in ${units.commodity}, not ${functionalCurrency}, so its ${functionalCurrency} value cannot be inferred. Add "@@ <total in ${functionalCurrency}>".`
+      `leg ${JSON.stringify(leg)} is in ${units.commodity}, not ${functionalCurrency}, so its ${functionalCurrency} value cannot be inferred. Add "@@ <total in ${functionalCurrency}>", or record a rate with \`holiday fx add\`.`
     );
   }
   return { accountId: account2.id, units };
@@ -9273,6 +9378,47 @@ var SqliteUow = class {
       termMonths: loan2.termMonths
     });
   }
+  async listFxRates(filter) {
+    const where = [];
+    const params = [];
+    if (filter?.base) {
+      where.push("base = ?");
+      params.push(filter.base);
+    }
+    if (filter?.quote) {
+      where.push("quote = ?");
+      params.push(filter.quote);
+    }
+    if (filter?.to) {
+      where.push("as_of <= ?");
+      params.push(filter.to);
+    }
+    return this.db.all(`SELECT * FROM fx_rate ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY as_of DESC, base, quote`, ...params).map((r) => ({
+      id: r.id,
+      asOf: r.as_of,
+      base: r.base,
+      quote: r.quote,
+      rate: r.rate,
+      source: r.source,
+      fetchedAt: r.fetched_at
+    }));
+  }
+  async putFxRates(rates) {
+    let written = 0;
+    for (const r of rates) {
+      parseRate(r.rate);
+      if (r.base === r.quote)
+        throw new Error(`holiday: ${r.base}\u2192${r.quote} is not an exchange rate`);
+      this.db.run(`INSERT INTO fx_rate (id, as_of, base, quote, rate, source, fetched_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(as_of, base, quote, source) DO UPDATE SET
+           rate = excluded.rate, fetched_at = excluded.fetched_at`, r.id, r.asOf, r.base, r.quote, r.rate, r.source, r.fetchedAt);
+      written += 1;
+    }
+    if (written > 0)
+      this.#appendAudit("fx_put", `${written} rate(s)`, { count: written });
+    return written;
+  }
   async findIngestBatchBySha(sha) {
     const r = this.db.get("SELECT * FROM ingest_batch WHERE source_sha256 = ?", sha);
     return r ? mapBatch(r) : null;
@@ -9714,10 +9860,12 @@ program2.command("txn").command("add").description("record a transaction").optio
     if (!a) throw new UsageError(`no such account: ${code}. Create it with \`holiday account add ${code}\`.`);
     return a;
   };
-  const postings = o.leg.map((l) => parseLeg(l, amounts, config.functionalCurrency, resolve2));
+  const date = assertIsoDate(o.date);
+  const derive = await makeDeriveWeight(store, config.functionalCurrency, date);
+  const postings = o.leg.map((l) => parseLeg(l, amounts, config.functionalCurrency, resolve2, derive));
   const result = Txn.create({
     id: nextUlid(),
-    date: assertIsoDate(o.date),
+    date,
     bookingCommodity: config.functionalCurrency,
     payee: o.payee ?? null,
     narration: o.narration,
@@ -10044,6 +10192,58 @@ recurring.command("list").description("active recurring expenses").action(async 
   if (result.length === 0) return note("no active recurring expenses.");
   note("");
   note(`monthly total: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
+});
+var fx = program2.command("fx").description("\uD658\uC728 \u2014 \uC808\uB300 \uACFC\uAC70\uB97C \uBC14\uAFB8\uC9C0 \uC54A\uB294\uB2E4");
+fx.command("add <base> <quote> <rate>").description("record a rate. 1 <base> = <rate> <quote>.").requiredOption("--as-of <date>", "the date this rate is for").option("--source <name>", "where it came from", "manual").action(async (base, quote, rateText, o) => {
+  const ws = requireWorkspace();
+  const store = await openLedger(ws);
+  const asOf = assertIsoDate(o.asOf);
+  const b = registry.get(base).code;
+  const qc = registry.get(quote).code;
+  const written = await store.unitOfWork(
+    (uow) => uow.putFxRates([
+      { id: nextUlid(), asOf, base: b, quote: qc, rate: rateText, source: o.source, fetchedAt: nowIso() }
+    ])
+  );
+  await store.close();
+  out({ base: b, quote: qc, rate: rateText, asOf, source: o.source, written });
+  note(`1 ${b} = ${rateText} ${qc} (${asOf}, ${o.source})`);
+  note(`\uC774\uBBF8 \uAE30\uD45C\uB41C weight\uB294 \uBC14\uB00C\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD658\uC728\uC740 \uC55E\uC73C\uB85C\uC758 \uC720\uB3C4\uC640 \uC7AC\uD3C9\uAC00\uC5D0\uB9CC \uC4F0\uC785\uB2C8\uB2E4.`);
+});
+fx.command("list").description("rates on file").option("--base <code>").option("--quote <code>").action(async (o) => {
+  const ws = requireWorkspace();
+  const store = await openLedger(ws);
+  const rates = await store.read(
+    (r) => r.listFxRates({
+      ...o.base ? { base: registry.get(o.base).code } : {},
+      ...o.quote ? { quote: registry.get(o.quote).code } : {}
+    })
+  );
+  await store.close();
+  if (jsonMode()) return out(rates);
+  if (rates.length === 0) return note("\uD658\uC728\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. `holiday fx add USD KRW 1333.33 --as-of <date>`");
+  for (const r of rates) note(`${r.asOf}  1 ${r.base} = ${r.rate.padStart(12)} ${r.quote}   ${r.source}`);
+});
+fx.command("show <base> <quote>").description("which rate would be used, and why").option("--as-of <date>", "ISO date", today()).action(async (base, quote, o) => {
+  const ws = requireWorkspace();
+  const config = readConfig(ws);
+  const store = await openLedger(ws);
+  const asOf = assertIsoDate(o.asOf);
+  const result = await store.read(async (r) => {
+    const book = await r.getBook();
+    const rates = await r.listFxRates({ to: asOf });
+    return resolveRate(rates, {
+      base: registry.get(base).code,
+      quote: registry.get(quote).code,
+      asOf,
+      maxStalenessDays: book.fxMaxStalenessDays,
+      functional: config.functionalCurrency
+    });
+  });
+  await store.close();
+  out({ kind: result.kind, rate: formatRate(result.rate), asOf: result.asOf, rateIds: result.rateIds });
+  note(`1 ${base} = ${formatRate(result.rate)} ${quote}`);
+  note(`  ${result.kind} \u2014 ${result.explanation}`);
 });
 var ingest = program2.command("ingest").description("\uCEA1\uCCD0\uC5D0\uC11C \uC77D\uC740 \uAC70\uB798\uB97C \uC6D0\uC7A5\uC5D0 \uB123\uAE30");
 ingest.command("submit").description("record parsed transactions as DRAFTS for review. Never does OCR \u2014 you are the parser.").requiredOption("--data <submission>", "see the schema in src/ingest.ts. Legs, not a flat amount.").option("--image <path>", "the screenshot, so the same file cannot be ingested twice").option("--idem-key <key>", "retry-safe. Same key + same request replays the stored result.").action(async (o) => {
@@ -10596,6 +10796,33 @@ function pickMoneyLeg(postings, byId, item) {
     );
   }
   return money;
+}
+async function makeDeriveWeight(store, functional, date) {
+  const { rates, staleness } = await store.read(async (r) => ({
+    rates: await r.listFxRates({ to: date }),
+    staleness: (await r.getBook()).fxMaxStalenessDays
+  }));
+  if (rates.length === 0) return void 0;
+  const cache = /* @__PURE__ */ new Map();
+  return (units) => {
+    let hit = cache.get(units.commodity);
+    if (!hit) {
+      const resolved = resolveRate(rates, {
+        base: units.commodity,
+        quote: functional,
+        asOf: date,
+        maxStalenessDays: staleness,
+        functional
+      });
+      hit = { rate: resolved.rate, text: formatRate(resolved.rate), id: resolved.rateIds[0] ?? null };
+      cache.set(units.commodity, hit);
+    }
+    return {
+      weightMinor: convert(units.minor, hit.rate, registry.exponentOf(units.commodity), registry.exponentOf(functional)),
+      fxRateText: hit.text,
+      fxRateId: hit.id
+    };
+  };
 }
 function nowIso() {
   return (/* @__PURE__ */ new Date()).toISOString();

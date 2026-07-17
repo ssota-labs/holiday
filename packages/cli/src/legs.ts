@@ -1,4 +1,4 @@
-import { type AmountFactory, type CommodityCode, type PostingInput, type Account } from '@holiday/core';
+import { type Amount, type AmountFactory, type CommodityCode, type PostingInput, type Account } from '@holiday/core';
 
 /**
  * Leg syntax, borrowed from Beancount because it is the notation people who keep
@@ -13,11 +13,27 @@ import { type AmountFactory, type CommodityCode, type PostingInput, type Account
  * through the front door. If you know the rate but not the counter-amount, that is
  * what `holiday fx` will be for.
  */
+/**
+ * Turns a foreign amount into a functional-currency weight using a rate.
+ *
+ * The caller resolves the rate ONCE per transaction and hands the same closure to
+ * every leg. That is not an optimisation — it is what makes a same-currency
+ * charge balance. A USD purchase on a USD card has two legs of ±$12.50; if each
+ * resolved its own rate they could disagree by a won and the transaction would
+ * not sum to zero. One rate cancels exactly.
+ */
+export type DeriveWeight = (units: Amount) => {
+  weightMinor: bigint;
+  fxRateText: string;
+  fxRateId: string | null;
+};
+
 export function parseLeg(
   leg: string,
   amounts: AmountFactory,
   functionalCurrency: CommodityCode,
   resolveAccount: (code: string) => Account,
+  deriveWeight?: DeriveWeight,
 ): PostingInput {
   const parts = leg.trim().split(/\s+/);
   const [code, amountText, commodity, at, weightText] = parts;
@@ -61,9 +77,17 @@ export function parseLeg(
   }
 
   if (!isFunctional) {
+    // Derivable from the rate table, if the caller gave us one. The caller does
+    // that ONCE per transaction and passes the same rate to every leg — see
+    // deriveWeight's contract.
+    if (deriveWeight) {
+      const { weightMinor, fxRateText, fxRateId } = deriveWeight(units);
+      return { accountId: account.id, units, weightMinor, weightSource: 'rate', fxRateText, fxRateId };
+    }
     throw new UsageError(
       `leg ${JSON.stringify(leg)} is in ${units.commodity}, not ${functionalCurrency}, so its ` +
-        `${functionalCurrency} value cannot be inferred. Add "@@ <total in ${functionalCurrency}>".`,
+        `${functionalCurrency} value cannot be inferred. Add "@@ <total in ${functionalCurrency}>", ` +
+        `or record a rate with \`holiday fx add\`.`,
     );
   }
   return { accountId: account.id, units };

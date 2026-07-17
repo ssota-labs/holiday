@@ -1,6 +1,7 @@
 import type { Account, AccountCode, AccountId, AccountType, IsoDate } from '../domain/account.js';
 import type { CardCycleRule } from '../domain/billing.js';
 import type { InstallmentPlan, InstallmentRow } from '../domain/installment.js';
+import type { FxRate } from '../domain/fx.js';
 import type { DedupeAuthority } from '../domain/ingest.js';
 import type { Loan, LoanScheduleRow } from '../domain/loan.js';
 import type { Commodity, CommodityCode } from '../domain/commodity.js';
@@ -213,6 +214,8 @@ export interface LedgerRead {
   listLoans(): Promise<readonly LoanWithSchedule[]>;
   getLoan(accountId: AccountId): Promise<LoanWithSchedule | null>;
 
+  listFxRates(filter?: { base?: CommodityCode; quote?: CommodityCode; to?: IsoDate }): Promise<readonly FxRate[]>;
+
   findIngestBatchBySha(sha: string): Promise<IngestBatch | null>;
   findIngestItemsByDedupeKey(key: string): Promise<readonly IngestItem[]>;
   listIngestItems(filter?: { status?: IngestItemStatus }): Promise<readonly IngestItem[]>;
@@ -277,6 +280,7 @@ export interface LedgerUow extends LedgerRead {
   /** Replaces the loan and its whole schedule — a forecast is allowed to change. */
   upsertLoan(loan: Loan, rows: readonly LoanScheduleRow[]): Promise<void>;
 
+  putFxRates(rates: readonly FxRate[]): Promise<number>;
   recordIngestBatch(b: IngestBatch): Promise<void>;
   recordIngestItem(i: IngestItem): Promise<void>;
   setIngestItemStatus(id: string, status: IngestItemStatus, meta: { reason?: string; txnId?: TxnId }): Promise<void>;

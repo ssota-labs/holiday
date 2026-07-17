@@ -14,6 +14,8 @@ import {
   type Grain,
   type InstallmentPlan,
   type InstallmentRow,
+  type FxRate,
+  parseRate,
   type IngestBatch,
   type IngestItem,
   type IngestItemStatus,
@@ -863,6 +865,57 @@ class SqliteUow implements LedgerUow {
       annualRateText: loan.annualRateText,
       termMonths: loan.termMonths,
     });
+  }
+
+  async listFxRates(filter?: { base?: CommodityCode; quote?: CommodityCode; to?: IsoDate }): Promise<readonly FxRate[]> {
+    const where: string[] = [];
+    const params: SqlValue[] = [];
+    if (filter?.base) { where.push('base = ?'); params.push(filter.base); }
+    if (filter?.quote) { where.push('quote = ?'); params.push(filter.quote); }
+    if (filter?.to) { where.push('as_of <= ?'); params.push(filter.to); }
+    return this.db
+      .all<{ id: string; as_of: string; base: string; quote: string; rate: string; source: string; fetched_at: string }>(
+        `SELECT * FROM fx_rate ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY as_of DESC, base, quote`,
+        ...params,
+      )
+      .map((r) => ({
+        id: r.id,
+        asOf: r.as_of as IsoDate,
+        base: r.base as CommodityCode,
+        quote: r.quote as CommodityCode,
+        rate: r.rate,
+        source: r.source,
+        fetchedAt: r.fetched_at,
+      }));
+  }
+
+  async putFxRates(rates: readonly FxRate[]): Promise<number> {
+    let written = 0;
+    for (const r of rates) {
+      // Validate before storing. A rate that cannot be parsed later is a landmine
+      // that only goes off at close, months from now.
+      parseRate(r.rate);
+      if (r.base === r.quote) throw new Error(`holiday: ${r.base}→${r.quote} is not an exchange rate`);
+      // A rate never changes a posted weight, so re-fetching the same day from the
+      // same source is safe to overwrite — the correction applies to future
+      // derivations and to revaluation, never to history.
+      this.db.run(
+        `INSERT INTO fx_rate (id, as_of, base, quote, rate, source, fetched_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(as_of, base, quote, source) DO UPDATE SET
+           rate = excluded.rate, fetched_at = excluded.fetched_at`,
+        r.id,
+        r.asOf,
+        r.base,
+        r.quote,
+        r.rate,
+        r.source,
+        r.fetchedAt,
+      );
+      written += 1;
+    }
+    if (written > 0) this.#appendAudit('fx_put', `${written} rate(s)`, { count: written });
+    return written;
   }
 
   async findIngestBatchBySha(sha: string): Promise<IngestBatch | null> {
