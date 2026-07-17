@@ -97,6 +97,34 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  packages/blocks:
+    dependencies:
+      '@holiday-cfo/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@json-render/core':
+        specifier: ^0.19.0
+        version: 0.19.0(zod@4.4.3)
+      '@json-render/react':
+        specifier: ^0.19.0
+        version: 0.19.0(react@19.2.4)(zod@4.4.3)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.4
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@holiday-cfo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/react':
+        specifier: ^19
+        version: 19.2.17
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
   packages/cli:
     dependencies:
       '@holiday-cfo/core':
@@ -187,12 +215,6 @@ importers:
       '@base-ui/react':
         specifier: ^1.6.0
         version: 1.6.0(@date-fns/tz@1.5.0)(@types/react@19.2.17)(date-fns@4.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@json-render/core':
-        specifier: ^0.19.0
-        version: 0.19.0(zod@4.4.3)
-      '@json-render/react':
-        specifier: ^0.19.0
-        version: 0.19.0(react@19.2.4)(zod@4.4.3)
       '@shadcn/react':
         specifier: ^0.2.1
         version: 0.2.1(@types/react@19.2.17)(react@19.2.4)

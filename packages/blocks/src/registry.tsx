@@ -2,10 +2,10 @@
 
 import { defineRegistry } from '@json-render/react';
 
-import { Alert, AlertDescription, AlertTitle } from '../components/alert.js';
-import { Badge } from '../components/badge.js';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/card.js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/table.js';
+import { Alert, AlertDescription, AlertTitle } from '@holiday-cfo/ui/components/alert';
+import { Badge } from '@holiday-cfo/ui/components/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@holiday-cfo/ui/components/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@holiday-cfo/ui/components/table';
 import { catalog } from './catalog.js';
 import { useDatasets } from './data.js';
 import { formatAmount, signOf } from './money.js';
@@ -59,7 +59,7 @@ export const { registry } = defineRegistry(catalog, {
       // The first day the projected balance goes negative. This is the whole
       // question the block exists to answer, so it is stated in words rather than
       // left for the reader to spot in a column of numbers.
-      const breach = cashflow.runway.find((r) => signOf(r.closingMinor) < 0);
+      const breach = cashflow.runway.find((r) => signOf(r.balanceAfterMinor) < 0);
       return (
         <Card>
           <CardHeader>
@@ -92,14 +92,25 @@ export const { registry } = defineRegistry(catalog, {
                   {rows.map((r, i) => (
                     <TableRow key={`${r.date}-${i}`}>
                       <TableCell className="tabular-nums">{r.date}</TableCell>
-                      <TableCell>{r.label}</TableCell>
-                      <TableCell className="text-right">{money(r.deltaMinor, cashflow.commodity)}</TableCell>
-                      <TableCell className="text-right">{money(r.closingMinor, cashflow.commodity)}</TableCell>
+                      <TableCell>{r.items.map((it) => it.label).join(', ')}</TableCell>
+                      <TableCell className="text-right">-{money(r.outflowMinor, cashflow.commodity)}</TableCell>
+                      <TableCell className="text-right">{money(r.balanceAfterMinor, cashflow.commodity)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             )}
+            {cashflow.gaps.length > 0 ? (
+              // Shown, never folded away. The CLI prints these; a dashboard that
+              // drops them turns "I don't know" into "you're fine".
+              <div className="mt-3 space-y-1">
+                {cashflow.gaps.map((g, i) => (
+                  <p key={i} className="text-destructive text-xs">
+                    ⚠ {g.subject} {g.detail}
+                  </p>
+                ))}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       );

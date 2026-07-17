@@ -1,0 +1,35 @@
+{
+  "name": "@holiday-cfo/blocks",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "The dashboard vocabulary an agent may use: 가계부 nouns, not shadcn primitives, and no prop that holds money.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ssota-labs/holiday.git",
+    "directory": "packages/blocks"
+  },
+  "publishConfig": { "access": "public" },
+  "files": ["src", "LICENSE.md"],
+  "exports": {
+    ".": "./src/index.ts",
+    "./catalog": "./src/catalog.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@holiday-cfo/ui": "workspace:*",
+    "@json-render/core": "^0.19.0",
+    "@json-render/react": "^0.19.0",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@holiday-cfo/typescript-config": "workspace:*",
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}
