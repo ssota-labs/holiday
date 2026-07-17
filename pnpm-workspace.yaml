@@ -8,3 +8,6 @@ allowBuilds:
   esbuild: true
   # next/image's optimizer in apps/docs.
   sharp: true
+minimumReleaseAgeExclude:
+  - '@tabler/icons-react@3.45.0'
+  - '@tabler/icons@3.45.0'

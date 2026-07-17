@@ -1,0 +1,23 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-lyra",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "iconLibrary": "tabler",
+  "aliases": {
+    "components": "@holiday/ui/components",
+    "utils": "@holiday/ui/lib/utils",
+    "hooks": "@holiday/ui/hooks",
+    "lib": "@holiday/ui/lib",
+    "ui": "@holiday/ui/components"
+  },
+  "rtl": false,
+  "menuColor": "inverted-translucent",
+  "menuAccent": "subtle"
+}
