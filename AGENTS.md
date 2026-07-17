@@ -4,7 +4,7 @@
 원장 도메인·정책은 `apps/docs`를 본다.
 
 > 이 파일은 **코드베이스를 고치는** 에이전트용이다. 채팅에서 원장을 운전하는
-> 에이전트는 `plugin/skills/holiday-cfo/`를 본다.
+> 에이전트는 `plugins/claude-code/skills/holiday-cfo/` (또는 `plugins/codex/`)를 본다.
 
 ## 프로젝트
 
@@ -23,9 +23,12 @@ packages/store-sql/      LedgerStore 구현 — 딱 하나 (방언 독립)
 packages/store-sqlite/   드라이버 + 스키마 + PRAGMA
 packages/store-postgres/ 드라이버 + 스키마 + plpgsql
 packages/store-testkit/  적합성 스위트 — 포트의 실행 가능한 계약
-packages/cli/            composition root (어떤 엔진인지 아는 유일한 곳)
+packages/cli/            composition root + dash 템플릿 (npm 배포, bin: holiday)
+packages/ui/             shadcn primitive 60개 (npm 배포)
+packages/blocks/         대시보드 어휘 — 도메인 블록 + json-render 카탈로그 (npm 배포)
 apps/docs/               Fumadocs — 정책·ADR·CLI 스펙
-plugin/                  Claude Code 플러그인 (bin/holiday.mjs = 커밋된 번들)
+plugins/claude-code/     Claude Code 플러그인 (스킬만; CLI는 npx)
+plugins/codex/           Codex 플러그인 (스킬만; SKILL.md만 별도, references는 심링크)
 ```
 
 ## 명령
@@ -36,30 +39,26 @@ pnpm build          # turbo, ^build deps
 pnpm test
 pnpm typecheck
 pnpm lint           # root eslint flat config only
-pnpm bundle:plugin  # → plugin/bin/holiday.mjs
 ```
 
 패키지 단위:
 
 ```bash
-pnpm --filter @holiday/core test
-pnpm --filter @holiday/store-sqlite test
-pnpm --filter @holiday/cli run bundle:check   # 번들이 커밋본과 일치하는지
-pnpm --filter holiday-plugin test             # 스킬이 주장하는 명령이 CLI에 있는지
+pnpm --filter @holiday-cfo/core test
+pnpm --filter @holiday-cfo/store-sqlite test
+pnpm --filter holiday-plugin test             # 스킬이 주장하는 명령이 CLI에 있는지 (양 호스트)
 ```
 
 문서 정책↔테스트 링크:
 
 ```bash
-pnpm --filter @holiday/docs run check:rules
+pnpm --filter docs run check:rules
 ```
 
 CLI 실행 (빌드 후):
 
 ```bash
-node packages/cli/dist/main.js <command>
-# 또는 커밋된 번들
-node plugin/bin/holiday.mjs <command>
+node packages/cli/dist/main.js <command>   # 배포되면 `npx @holiday-cfo/cli@latest <command>`
 ```
 
 데모는 scratch 디렉터리에서. `holiday init`이 `.holiday/ledger.db`를 만든다.
@@ -88,19 +87,21 @@ node plugin/bin/holiday.mjs <command>
 - 변경 명령은 exit code 계약(0/1/2)을 지킨다. 스펙: `apps/docs/content/docs/dev/cli.mdx`.
 - 커밋 메시지: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`…). 본문은 한국어·영어 모두 가능하되 scope는 패키지명.
 
-## 플러그인 / 번들
+## 플러그인 / 배포
 
-- `plugin/bin/holiday.mjs`는 **커밋된 빌드 산출물**이다. CLI를 바꾸면 `pnpm bundle:plugin` 후 같이 커밋한다.
-- 네이티브 애드온(`better-sqlite3` 등) 금지 — 플러그인은 설치 시 빌드가 없다. `node:sqlite`만.
-- `holiday-cfo` 스킬이 명령/플래그를 주장하면 CLI에 실재해야 한다 (`plugin`의 `check:skill`).
+- **CLI는 npm 배포다. 커밋된 번들은 없다** (ADR-007). 두 플러그인 모두 스킬만 담고, 에이전트는 `npx @holiday-cfo/cli@latest`로 CLI를 얻는다.
+- 네이티브 애드온(`better-sqlite3` 등) 금지 — `node:sqlite`만. 의존성 0이라 `npx` 첫 실행이 가볍다.
+- `holiday-cfo` 스킬이 명령/플래그를 주장하면 CLI에 실재해야 한다. `check:skill`이 **양쪽 SKILL.md**(claude-code + codex)를 로컬 빌드(`packages/cli/dist/main.js`)에 대고 검증한다.
+- 스킬은 두 호스트에 복제된다. `references/`는 codex→claude-code 심링크라 한 소스다. SKILL.md만 호스트별로 다르다 (CLI 획득 방식).
 - 스킬은 progressive disclosure: `SKILL.md`에는 어기면 돌이킬 수 없는 것만. 나머지는 `references/`.
+- **대시보드:** `holiday dash init`이 `packages/cli/templates/dash/`(vinext)를 복사하고 blocks를 CLI 자기 버전으로 정확히 핀한다. 숫자는 `holiday dash data`가 굽고, 레이아웃(`spec.json`)만 에이전트가 쓴다 — 카탈로그에 금액 prop이 없다.
 
 ## 하지 말 것
 
 - README의 "아직 없는 것"을 즉흥으로 메우지 마라. 없으면 없다고 말하거나 이슈/스펙으로 올려라.
 - 할부수수료·카드사 공식을 "그럴듯하게" 계산하지 마라. 관측값만 (`--fees`).
 - float으로 이율/금액을 다루지 마라 (ADR-003: scaled bigint).
-- 생성된 파일 손편집 금지: `apps/docs/.source/**`, `plugin/bin/**`(번들 재생성으로만), `**/migrations.generated.ts`.
+- 생성된 파일 손편집 금지: `apps/docs/.source/**`, `**/migrations.generated.ts`.
 - 사용자 원장(`.holiday/ledger.db`)을 테스트 fixture로 커밋하거나 덮어쓰지 마라 — 데모는 scratch dir.
 
 ## Cursor Cloud specific instructions
@@ -122,5 +123,5 @@ node plugin/bin/holiday.mjs <command>
 - Core flow: `init` → `account add` → `card add` → `txn add` → `cashflow` → `verify`.
 
 ### Docs site (optional)
-- `pnpm --filter @holiday/docs dev` serves on port 3000.
+- `pnpm --filter docs dev` serves on port 3000.
 - `fumadocs-mdx` postinstall runs during `pnpm install`.
