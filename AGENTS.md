@@ -1,44 +1,126 @@
 # AGENTS.md
 
+코딩 에이전트를 위한 저장소 지침이다. 사람용 온보딩은 [README.md](README.md),
+원장 도메인·정책은 `apps/docs`를 본다.
+
+> 이 파일은 **코드베이스를 고치는** 에이전트용이다. 채팅에서 원장을 운전하는
+> 에이전트는 `plugin/skills/holiday-cfo/`를 본다.
+
+## 프로젝트
+
+`holiday` — 1인용 복식부기 CLI. 에이전트가 CLI를 shell out하고, CLI가 불변식·통화·
+스케줄을 책임진다.
+
+- **Node >= 24** (`node:sqlite`, `--experimental-strip-types`)
+- **pnpm 11.5.2** (`packageManager` 핀) + Turborepo
+- 외부 서비스 불필요: SQLite는 builtin, Postgres 테스트는 in-process `pglite`
+
+## 레이아웃
+
+```
+packages/core/           도메인 + 포트 + 유스케이스. 어댑터를 import하지 않는다
+packages/store-sql/      LedgerStore 구현 — 딱 하나 (방언 독립)
+packages/store-sqlite/   드라이버 + 스키마 + PRAGMA
+packages/store-postgres/ 드라이버 + 스키마 + plpgsql
+packages/store-testkit/  적합성 스위트 — 포트의 실행 가능한 계약
+packages/cli/            composition root (어떤 엔진인지 아는 유일한 곳)
+apps/docs/               Fumadocs — 정책·ADR·CLI 스펙
+plugin/                  Claude Code 플러그인 (bin/holiday.mjs = 커밋된 번들)
+```
+
+## 명령
+
+```bash
+pnpm install
+pnpm build          # turbo, ^build deps
+pnpm test
+pnpm typecheck
+pnpm lint           # root eslint flat config only
+pnpm bundle:plugin  # → plugin/bin/holiday.mjs
+```
+
+패키지 단위:
+
+```bash
+pnpm --filter @holiday/core test
+pnpm --filter @holiday/store-sqlite test
+pnpm --filter @holiday/cli run bundle:check   # 번들이 커밋본과 일치하는지
+pnpm --filter holiday-plugin test             # 스킬이 주장하는 명령이 CLI에 있는지
+```
+
+문서 정책↔테스트 링크:
+
+```bash
+pnpm --filter @holiday/docs run check:rules
+```
+
+CLI 실행 (빌드 후):
+
+```bash
+node packages/cli/dist/main.js <command>
+# 또는 커밋된 번들
+node plugin/bin/holiday.mjs <command>
+```
+
+데모는 scratch 디렉터리에서. `holiday init`이 `.holiday/ledger.db`를 만든다.
+
+## 아키텍처 — 깨면 안 되는 것
+
+1. **의존 방향:** `core` → (아무것도 바깥에서 import 안 함). `cli`만 어댑터 factory를 안다.
+2. **포트는 불균형을 표현할 수 없다.** `ValidatedTxn`은 `Txn.create()`로만. `insertPosting` 같은 API를 만들지 마라.
+3. **허용오차는 없다.** `SUM(weight_minor) === 0`이 정확히 0. fuzz/epsilon 파라미터 추가 금지.
+4. **금액은 i64 minor unit (`bigint`).** `number`로 왕복하지 마라. 적합성 스위트가 `2^53+1`을 못박는다.
+5. **환율이 아니라 상대금액으로 균형.** `@@`는 총액(weight). `@`(단위당 환율)는 의도적으로 거부.
+6. **스케줄은 원장 밖.** 카드·할부·정기지출·대출은 예측이다. 전기하면 금리 변경이 과거를 오염시킨다.
+7. **engine 티어는 참칭 불가.** `init()`이 `atomicMultiRowWrite`·`uniqueConstraints`·`readAfterWriteConsistency`를 요구한다. Notion/Airtable 어댑터를 engine으로 올리지 마라.
+8. **적용된 마이그레이션은 수정 금지.** 새 마이그레이션을 append한다. sha256이 바뀌면 기존 원장이 안 열린다.
+9. **`LedgerStore` 구현은 `store-sql`에 하나.** 엔진 패키지는 드라이버·스키마·마이그레이션만.
+
+정책 카탈로그와 강제 테스트: `apps/docs/content/docs/domain/policy.mdx`.
+결정은 `apps/docs/content/docs/dev/adr.mdx` — 거부한 대안이 본문이다.
+
+## 코딩 규칙
+
+- TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`).
+- ESM (`"type": "module"`, NodeNext).
+- 도메인 규칙은 테스트에 링크한다. 정책 문서를 고치면 `check-rule-links`가 통과해야 한다.
+- CLI 에러는 stderr에 JSON 봉투 하나: `{"error":{"code":"...","message":"..."}}`.
+- 변경 명령은 exit code 계약(0/1/2)을 지킨다. 스펙: `apps/docs/content/docs/dev/cli.mdx`.
+- 커밋 메시지: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`…). 본문은 한국어·영어 모두 가능하되 scope는 패키지명.
+
+## 플러그인 / 번들
+
+- `plugin/bin/holiday.mjs`는 **커밋된 빌드 산출물**이다. CLI를 바꾸면 `pnpm bundle:plugin` 후 같이 커밋한다.
+- 네이티브 애드온(`better-sqlite3` 등) 금지 — 플러그인은 설치 시 빌드가 없다. `node:sqlite`만.
+- `holiday-cfo` 스킬이 명령/플래그를 주장하면 CLI에 실재해야 한다 (`plugin`의 `check:skill`).
+- 스킬은 progressive disclosure: `SKILL.md`에는 어기면 돌이킬 수 없는 것만. 나머지는 `references/`.
+
+## 하지 말 것
+
+- README의 "아직 없는 것"을 즉흥으로 메우지 마라. 없으면 없다고 말하거나 이슈/스펙으로 올려라.
+- 할부수수료·카드사 공식을 "그럴듯하게" 계산하지 마라. 관측값만 (`--fees`).
+- float으로 이율/금액을 다루지 마라 (ADR-003: scaled bigint).
+- 생성된 파일 손편집 금지: `apps/docs/.source/**`, `plugin/bin/**`(번들 재생성으로만), `**/migrations.generated.ts`.
+- 사용자 원장(`.holiday/ledger.db`)을 테스트 fixture로 커밋하거나 덮어쓰지 마라 — 데모는 scratch dir.
+
 ## Cursor Cloud specific instructions
 
-This is a pnpm + Turborepo TypeScript monorepo for `holiday`, a single-person
-double-entry bookkeeping CLI. The product is the CLI; `apps/docs` is an optional
-Fumadocs/Next.js documentation site.
-
 ### Toolchain / gotchas
-- The repo requires **Node >= 24** (uses the builtin `node:sqlite` and
-  `--experimental-strip-types`). The sandbox ships a Node 22 binary at
-  `/exec-daemon/node` that appears early on `PATH` and would otherwise shadow
-  nvm. Node 24 + pnpm 11.5.2 are symlinked into `/usr/local/cargo/bin` (the
-  first `PATH` entry, ahead of `/exec-daemon`) so `node`/`pnpm` resolve to v24
-  in every shell. This is baked into the environment; the startup update script
-  only refreshes dependencies (`pnpm install`). If `node --version` ever reports
+- The sandbox ships a Node 22 binary at `/exec-daemon/node` that appears early on
+  `PATH` and would otherwise shadow nvm. Node 24 + pnpm 11.5.2 are symlinked into
+  `/usr/local/cargo/bin` (the first `PATH` entry, ahead of `/exec-daemon`) so
+  `node`/`pnpm` resolve to v24 in every shell. If `node --version` ever reports
   v22, re-point those symlinks at the nvm Node 24 `bin` dir.
-- pnpm is provided via corepack (`pnpm@11.5.2`, the `packageManager` pin).
+- pnpm is provided via corepack (`pnpm@11.5.2`).
 
 ### Build / test / run
-- Standard scripts (see root `package.json` / `turbo.json`): `pnpm install`,
-  `pnpm build`, `pnpm test`, `pnpm typecheck`, `pnpm lint`. All run via Turbo
-  with `^build` deps (lint is root-only).
-- ESLint 9 flat config lives in `eslint.config.js` (typescript-eslint
-  recommended). Generated paths are ignored (e.g. `apps/docs/.source/**`,
-  `plugin/bin/**`, `**/migrations.generated.ts`).
-- **No external services are needed** to build/test/run: SQLite is the builtin
-  `node:sqlite` (a local file, no server), and the Postgres adapter's tests run
-  against in-process `pglite` (Postgres-in-WASM). No Docker, DB server, env
-  vars, or network access are required.
+- Standard scripts above. ESLint 9 flat config in `eslint.config.js`.
+- No Docker, DB server, env vars, or network access required for build/test/run.
 
-### Running the CLI (the product)
-- After `pnpm build`, the CLI entry point is `packages/cli/dist/main.js`; run it
-  with `node packages/cli/dist/main.js <command>`. A committed single-file
-  bundle also exists at `plugin/bin/holiday.mjs`.
-- The CLI writes to a local `.holiday/ledger.db` in the current working
-  directory (created by `holiday init`), so run demos in a scratch dir.
-- Core flow: `init` → `account add` → `card add` → `txn add` → `cashflow`
-  (the payoff command; flags the day cash runs `⚠ SHORT`) → `verify` (audit
-  hash-chain).
+### Running the CLI
+- After `pnpm build`: `node packages/cli/dist/main.js <command>`.
+- Core flow: `init` → `account add` → `card add` → `txn add` → `cashflow` → `verify`.
 
 ### Docs site (optional)
-- `pnpm --filter @holiday/docs dev` serves the docs on port 3000. A
-  `fumadocs-mdx` postinstall runs automatically during `pnpm install`.
+- `pnpm --filter @holiday/docs dev` serves on port 3000.
+- `fumadocs-mdx` postinstall runs during `pnpm install`.
