@@ -4,3 +4,5 @@ packages:
 allowBuilds:
   # Needed by vitest and by the tsup bundle that becomes plugin/bin/holiday.mjs.
   esbuild: true
+  # next/image's optimizer in apps/docs.
+  sharp: true

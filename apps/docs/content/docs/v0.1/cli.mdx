@@ -1,0 +1,93 @@
+---
+title: CLI 스펙
+description: 에이전트가 코드로 상대하는 계약
+type: reference
+version: v0.1
+summary: 모든 변경 명령은 exit code와 stderr 봉투가 계약이다.
+---
+
+CLI가 코어다. Claude Code 스킬도 Codex도 이걸 shell out 한다 — 분기가 0이다.
+
+에러는 항상 stderr에 JSON 봉투 하나로 나온다:
+
+```json
+{"error":{"code":"unbalanced","message":"postings do not balance: they sum to 50 KRW minor units…"}}
+```
+
+주 호출자가 사람이 아니라 에이전트라서다. 스택 트레이스는 파싱이 안 되고 맨 메시지는
+모호하다.
+
+<CommandSpec
+  command="txn add"
+  mutates={true}
+  summary="거래를 기록한다. 다리들의 weight 합이 정확히 0이 아니면 거부한다."
+  signature={`holiday txn add
+  --leg "ACCOUNT AMOUNT COMMODITY [@@ TOTAL]"
+  [--leg ...]
+  [--date YYYY-MM-DD] [--payee NAME] [--narration TEXT] [--draft]`}
+  flags={[
+    { name: '--leg', type: 'string', required: true, repeatable: true, description: 'ACCOUNT AMOUNT COMMODITY. 기능통화가 아니면 "@@ TOTAL" 필수' },
+    { name: '--date', type: 'YYYY-MM-DD', default: 'today' },
+    { name: '--payee', type: 'string' },
+    { name: '--narration', type: 'string', default: '""' },
+    { name: '--draft', type: 'boolean', default: 'false', description: '검토 대기 상태로 기록. 잔액·리포트에서 제외' },
+  ]}
+  exits={[
+    { code: 0, meaning: '기록됨. stdout에 {id, status, fxEstimated}' },
+    { code: 1, meaning: '원장이 거부 — unbalanced 등. 잔차를 정확히 알려준다' },
+    { code: 2, meaning: '사용법 오류 — 없는 계정, 파싱 실패' },
+  ]}
+  example={`$ holiday txn add --date 2026-07-17 --payee "이마트" \\
+    --leg "Expenses:Food:Groceries 42000 KRW" \\
+    --leg "Liabilities:Card:Shinhan -42000 KRW"
+{"id":"01KXQ…","status":"posted","fxEstimated":false}`}
+/>
+
+`@@`는 **총액**이지 환율이 아니다. `@`(단위당 환율)는 의도적으로 거부한다 — 환율을
+되곱하면 정확한 정수에 안 떨어지고, 그게 허용오차 문제를 정문으로 들여보내는 길이다.
+
+<CommandSpec
+  command="cashflow"
+  mutates={false}
+  summary="오늘 현금에서 출발해, 이미 오고 있는 카드값·할부·정기지출을 빼며 걸어간다."
+  signature={`holiday cashflow [--until YYYY-MM-DD] [--json]`}
+  flags={[
+    { name: '--until', type: 'YYYY-MM-DD', default: '3개월 후', description: '투영 지평' },
+  ]}
+  exits={[
+    { code: 0, meaning: '정상. 잔고가 음수로 가도 0 — 그건 답이지 에러가 아니다' },
+    { code: 2, meaning: '원장 없음' },
+  ]}
+  example={`$ holiday cashflow --until 2026-10-31
+cash on hand (2026-07-17):  3000000 KRW
+
+2026-07-25   -      800000   →       2200000
+             월세                                   800000
+2026-10-01   -      117000   →        -17000   ⚠ SHORT
+             냉장고 (2/12)                           100000
+             넷플릭스 (2026-08-17 결제분)                 17000
+
+⚠ Short by 17000 KRW on 2026-10-01.`}
+/>
+
+⚠ 줄이 답이다. 카드로 결제되는 정기지출은 발생일이 아니라 **청구주기를 타고** 나가서,
+`넷플릭스 (2026-08-17 결제분)`처럼 결제일을 같이 찍는다 — 안 그러면 "이게 왜 10월에
+있지"에 답할 방법이 없다.
+
+<CommandSpec
+  command="verify"
+  mutates={false}
+  summary="원장 전체와 감사 체인을 스캔한다."
+  signature={`holiday verify [--head] [--json]`}
+  flags={[
+    { name: '--head', type: 'boolean', default: 'false', description: '체인 head 해시 출력. 파일 밖에 앵커하는 용도' },
+  ]}
+  exits={[
+    { code: 0, meaning: '건전함' },
+    { code: 1, meaning: '문제 발견 — 불균형, 통화 불일치, content_tampered, chain_broken' },
+  ]}
+  example={`$ holiday verify
+content_tampered  01KXQHYP5M5RKACZ4PYW1PR4DC
+  transaction content hashes to 97d901… but the audit chain recorded 3933bc…
+  — it balances, but it is not what was originally written`}
+/>

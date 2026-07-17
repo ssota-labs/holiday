@@ -1,0 +1,104 @@
+---
+title: 데이터 모델
+description: 계정, 거래, 전기 — 그리고 units/weight 분리
+type: reference
+version: v0.1
+summary: posting마다 두 정수를 저장한다. units는 사실, weight는 측정.
+related: ['/docs/v0.1/policy']
+---
+
+## 무엇이 사실이고 무엇이 예측인가
+
+이 구분이 아키텍처 전부다. 원장은 일어난 일만 담고, 스케줄은 일어날 일을 담으며,
+현금흐름은 둘에서 유도된다 — 저장되지 않는다.
+
+<Canvas
+  height={340}
+  nodes={[
+    { id: 'txn', type: 'doc', position: { x: 0, y: 60 }, data: { label: 'txn + posting', description: '원장. append-only', kind: 'fact', handles: { target: false } } },
+    { id: 'card', type: 'doc', position: { x: 0, y: 170 }, data: { label: 'card', description: '청구주기', kind: 'forecast', handles: { target: false } } },
+    { id: 'inst', type: 'doc', position: { x: 0, y: 250 }, data: { label: 'installment', description: '할부 스케줄', kind: 'forecast', handles: { target: false } } },
+    { id: 'rec', type: 'doc', position: { x: 0, y: 330 }, data: { label: 'recurring', description: '정기지출', kind: 'forecast', handles: { target: false } } },
+    { id: 'balance', type: 'doc', position: { x: 300, y: 20 }, data: { label: 'balance', description: 'SUM(weight) — 과거', kind: 'derived' } },
+    { id: 'cashflow', type: 'doc', position: { x: 300, y: 200 }, data: { label: 'cashflow', description: '과거 + 미래', kind: 'derived' } },
+    { id: 'audit', type: 'doc', position: { x: 300, y: 110 }, data: { label: 'audit_log', description: '해시 체인', kind: 'fact' } },
+  ]}
+  edges={[
+    { id: 'e1', source: 'txn', target: 'balance', animated: true },
+    { id: 'e2', source: 'txn', target: 'audit' },
+    { id: 'e3', source: 'txn', target: 'cashflow', animated: true },
+    { id: 'e4', source: 'card', target: 'cashflow' },
+    { id: 'e5', source: 'inst', target: 'cashflow' },
+    { id: 'e6', source: 'rec', target: 'cashflow' },
+  ]}
+/>
+
+<CanvasLegend />
+
+스케줄에서 원장으로 가는 화살표가 **없다**는 데 주목. 예측은 절대 전기되지 않는다 —
+그러면 금리가 바뀌거나 구독을 해지할 때마다 과거가 오염된다.
+
+## posting
+
+<SchemaTable
+  name="posting"
+  kind="table"
+  source="packages/store-sqlite/src/schema.ts"
+  description="한 거래의 한 다리. 두 정수가 핵심이다."
+  fields={[
+    { name: 'txn_id', type: 'TEXT', required: true, description: 'ULID' },
+    { name: 'seq', type: 'INTEGER', required: true, unit: '0-based', description: '정렬은 이걸로만 — 사용자 문자열로 정렬하면 기계마다 해시가 달라진다' },
+    { name: 'account_id', type: 'TEXT', required: true },
+    { name: 'units_minor', type: 'INTEGER', required: true, unit: 'minor units of `commodity`', invariant: 'i64', description: '사실 — 무엇이 움직였나' },
+    { name: 'commodity', type: 'TEXT', required: true, invariant: 'account.commodity와 일치', description: '트리거가 강제. $를 ₩로 오독하는 걸 잡는 링' },
+    { name: 'weight_minor', type: 'INTEGER', required: true, unit: 'minor units of KRW', invariant: 'SUM = 0 per txn', description: '측정 — 같은 사건의 KRW 값' },
+    { name: 'weight_source', type: 'TEXT', required: true, invariant: "identity|actual|rate|plug", description: '출처. rate면 잠정치' },
+    { name: 'fx_rate_text', type: 'TEXT', unit: 'decimal string', description: '감사용. 절대 균형의 근거가 아님' },
+    { name: 'lot_id', type: 'TEXT', description: '원가 basis용 seam. 균형은 절대 참조 안 함' },
+  ]}
+/>
+
+## 균형이 정확한 이유
+
+₩1,000,000을 보내 $750.00을 받으면 내재환율이 1333.3333…으로 안 끝난다. 환율을
+저장해 되곱하면 ₩999,998이 나오고, 그럼 허용오차를 발명하게 된다. 그 허용오차가
+정확히 잡고 싶은 크기(누락된 ₩50 수수료)를 가린다.
+
+그래서 상대금액을 **사실로** 저장한다:
+
+<LedgerExample
+  date="2026-07-17"
+  narration="Wise 송금 — 양쪽 다 관측"
+  legs={[
+    { account: 'Assets:Bank:KB:Checking', units: '-1,000,000 KRW', weight: -1000000, source: 'identity' },
+    { account: 'Assets:Bank:Wise:USD', units: '750.00 USD', weight: 1000000, source: 'actual', note: '내재환율 1333.3333… — 기록은 하되 균형의 근거가 아님' },
+  ]}
+/>
+
+USD→JPY처럼 어느 쪽도 KRW가 아니면 두 환율이 상쇄되지 않는다. 남는 잔차는
+**에러가 아니라 FX 스프레드**이고, 손익계산서에 올린다:
+
+<LedgerExample
+  date="2026-07-17"
+  narration="Wise USD→JPY"
+  legs={[
+    { account: 'Assets:Bank:Wise:USD', units: '-1,000.00 USD', weight: -1300000, source: 'rate' },
+    { account: 'Assets:Bank:Wise:JPY', units: '150,000 JPY', weight: 1300500, source: 'rate' },
+    { account: 'Expenses:FX:Conversion', units: '-500 KRW', weight: -500, source: 'plug', note: '스프레드. 환율 안에 숨기지 않고 드러낸다' },
+  ]}
+/>
+
+## 재평가
+
+`units_minor = 0`이고 weight가 0이 아닌 posting이 가능하다. 외화 잔고는 안 건드리고
+KRW 장부가액만 바꾼다 — **weight를 환율에서 유도하지 않고 따로 저장했기 때문에**
+성립하는 수다.
+
+<LedgerExample
+  date="2026-07-31"
+  narration="월말 재평가 — USD 강세"
+  legs={[
+    { account: 'Assets:Bank:Wise:USD', units: '0 USD', weight: 100000, source: 'actual', note: '잔고는 그대로, 장부가액만 +₩100,000' },
+    { account: 'Income:FX:Unrealized', units: '-100,000 KRW', weight: -100000, source: 'identity' },
+  ]}
+/>

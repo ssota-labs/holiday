@@ -1,0 +1,173 @@
+---
+title: 정책과 용어
+description: 항상 참이어야 하는 것들 — 그리고 그걸 강제하는 테스트
+type: policy
+version: v0.1
+summary: 모든 규칙이 테스트에 링크된다. 규칙이 조용히 거짓이 될 수 없다.
+related: ['/docs/v0.1/data-model']
+---
+
+이 프로젝트는 **정책이 곧 제품**이다. 아래는 구현 세부가 아니라 숫자를 믿을 수 있는
+이유 전부고, 각각이 테스트로 박혀 있다.
+
+이 문서를 "스펙"이라고 부르지 않는 이유: 스펙(PRD)은 *뭘 만들지*를 말한다. 이건
+DDD 용어로 **Business Rules Catalog**와 **Ubiquitous Language**다.
+
+## 규칙
+
+<Rule
+  id="POLICY-001"
+  title="허용오차는 존재하지 않는다"
+  test="packages/core/src/domain/txn.test.ts"
+  testName="rejects an unbalanced transaction with the exact residual, and no tolerance"
+  consequence="₩50 누락 수수료, off-by-one, 반올림 누수가 조용히 흡수된다 — 정확히 잡고 싶은 크기가."
+>
+전기들의 `weight_minor` 합은 **정확히 0**이다. 정수 산술이고, 시스템 어디에도 fuzz
+파라미터가 없다.
+
+환율을 저장해 상대금액을 유도하면 정수 스케일에서 lossy하고, 그 관례적 해법이
+허용오차 발명이다. 그래서 상대금액을 사실로 저장하고 환율은 표시용으로 격하했다.
+</Rule>
+
+<Rule
+  id="POLICY-002"
+  title="KRW 전기의 weight는 units와 같아야 한다"
+  test="packages/core/src/domain/txn.test.ts"
+  testName="refuses a booking-commodity posting whose weight disagrees with its units"
+  consequence="기능통화 다리가 자기 자신과 다른 값으로 측정될 수 있게 되고, 잔액이 조용히 표류한다."
+>
+`commodity === bookingCommodity`이면 `weight_minor === units_minor`. 도메인과 SQLite
+트리거 양쪽에서 강제된다.
+</Rule>
+
+<Rule
+  id="POLICY-003"
+  title="할부 잔액은 카드 일반 계정에 둘 수 없다"
+  test="packages/core/src/domain/cashflow.test.ts"
+  testName="puts a purchase on the bill that actually takes the cash"
+  consequence="120만원 12개월 할부가 첫 청구서를 10만원이 아니라 120만원으로 만든다. 12배 과대계상. 늑대를 외치는 예측은 무시당하고, 그럼 예측이 있을 이유가 없다."
+>
+일반 청구는 "사용기간 내 posting 합계"로 계산되는데, 할부는 구매일에 전액이 전기된다.
+그래서 `Liabilities:Card:<issuer>:Installment`라는 **별도 계정**에 산다. 그러면 일반
+청구 계산에서 자동으로 빠지고, 회차는 스케줄에서 따로 투영돼 같은 결제일에 합류한다.
+</Rule>
+
+<Rule
+  id="POLICY-004"
+  title="결제와 환불은 상대 leg으로 구분한다"
+  test="packages/core/src/domain/cashflow.test.ts"
+  testName="does NOT let a payment of a previous bill cancel out this cycle"
+  consequence="지난달 결제가 이번달 청구서를 상쇄해서 청구액이 과소계상된다 — 정확히 사람을 마이너스 통장으로 보내는 방향으로."
+>
+카드 계정에서 구매는 음수지만 **환불과 결제가 둘 다 양수**다. 순진하게 합산하면 안
+된다. 결제의 상대 leg은 funding 계정이고 환불의 상대 leg은 비용 계정이다.
+</Rule>
+
+<Rule
+  id="POLICY-005"
+  title="발생하지 않은 것만 투영한다"
+  test="packages/core/src/domain/recurring.test.ts"
+  testName="does NOT project an occurrence on or before today"
+  consequence="지난달 넷플릭스가 posting으로도 세어지고 카덴스로도 세어져서 두 번 청구된다. 이중계상하는 예측은 한 번 틀리면 아무도 다시 안 믿는다."
+>
+`occurrence > today`인 것만. 이미 발생한 건 원장의 일이지 예측의 일이 아니다.
+
+**대가:** 오늘 발생분이 아직 기록 안 됐으면 놓친다. 놓치는 쪽과 두 번 세는 쪽 중
+놓치는 쪽이 안전하다.
+</Rule>
+
+<Rule
+  id="POLICY-006"
+  title="유이자 할부는 추정하지 않고 거부한다"
+  test="packages/core/src/domain/installment.test.ts"
+  testName="REFUSES an interest-bearing plan rather than guessing 할부수수료"
+  consequence="그럴듯하게 틀린 수수료가 현금흐름 예측을 조용히 오염시킨다. 돈에 대해 자신 있게 틀리는 것보다 모른다고 하는 게 낫다."
+>
+할부수수료는 카드사·프로모션·기간마다 잔액 기준 공식이 다르다. `fee_minor`는 예약만
+해두고, 실제 명세서와 대사하는 `installment check`가 그 자리를 채울 것이다.
+</Rule>
+
+<Rule
+  id="POLICY-007"
+  title="스케줄 행의 합은 정확히 원금이다"
+  test="packages/core/src/domain/installment.test.ts"
+  testName="sums to the total for ANY total and term"
+  consequence="합계가 ₩999,999인 스케줄은 실제 명세서와 영원히 대사가 안 된다."
+>
+100만원 3개월은 333,334 + 333,333 + 333,333. 나머지는 첫 회차에 — 한국 카드사 관행이다.
+</Rule>
+
+## 용어
+
+<Glossary>
+  <Term term="units" ko="단위 / 사실" code="posting.units_minor">
+    무엇이 움직였나. 자기 통화의 minor unit 정수. USD 계정의 `-75000`은 −$750.00.
+  </Term>
+
+  <Term term="weight" ko="가중치 / 측정" code="posting.weight_minor" notTo="units와 절대 혼동 말 것. 같은 사건의 서로 다른 두 표현이다.">
+    같은 사건을 기능통화(KRW)로 표현한 값. 균형은 이것만 본다. 계정의 KRW 장부가액은
+    그냥 `SUM(weight_minor)`이고 공짜로 나온다.
+  </Term>
+
+  <Term term="booking commodity" ko="기표통화" code="txn.booking_commodity" notTo="posting의 commodity와 다르다 — 그건 다리마다 다를 수 있다.">
+    book의 기능통화. 항상 KRW. book당 하나로 고정이고 바꾸려면 새 book이다.
+  </Term>
+
+  <Term term="plug" code="weight_source = 'plug'" notTo="반올림 오차가 아니다. 실제 비용이다.">
+    어느 다리도 KRW가 아닐 때 남는 잔차. 에러가 아니라 **FX 스프레드**이고 손익계산서에
+    올린다.
+  </Term>
+
+  <Term term="청구주기" ko="billing cycle" code="card.cycle_close_day">
+    사용분이 어느 청구서에 실리고 언제 현금이 나가는지를 정하는 규칙. 이게 없으면
+    원장은 얼마를 빚졌는지는 알아도 **언제** 나가는지를 모른다.
+  </Term>
+
+  <Term term="checkpoint" ko="체크포인트" code="snapshot.kind = 'checkpoint'" notTo="close(마감)와 다르다. 저널을 잠그지도, 재평가를 전기하지도 않는다.">
+    스냅샷만 뜨는 소프트 마감. 일별·주별이 여기 해당한다. hard close는 book당 하나의
+    그레인만 — 하루는 달 안에 있어서 양쪽에서 재평가하면 FX가 이중 계상된다.
+  </Term>
+</Glossary>
+
+## 결정
+
+<Decision
+  id="ADR-001"
+  title="환율이 아니라 상대금액으로 균형을 잡는다"
+  status="locked"
+  date="2026-07-17"
+  commit="836f6c5"
+  rejected={[
+    { option: '거래마다 기표통화 + 전기마다 환율', because: '환율을 되곱하면 정수 스케일에서 lossy하다. ₩1,000,000 → $750.00은 1333.3333…이고 역산하면 ₩999,998. 그럼 허용오차를 발명하게 되고, 그게 잡고 싶은 크기를 가린다.' },
+    { option: 'Beancount의 통화별 weight 그룹', because: '기준통화 없이 균형을 잡을 수 있는 대신 허용오차 추론과 booking 알고리즘이 필요하고, 무엇보다 KRW 장부가액이 명시되지 않아 매번 lossy한 변환 패스가 필요하다.' },
+  ]}
+>
+전기마다 `units_minor`(사실)와 `weight_minor`(측정)를 저장한다. weight는 Beancount의
+`@@`(총액 가격)를 환율에서 곱해내지 않고 직접 저장한 것이다.
+
+**locked인 이유:** 5년치 전기가 "이 사건의 KRW 측정"을 인코딩한다. 기준통화를 옮기려면
+과거 전부를 `units × rate`로 다시 유도해야 하는데, 그게 바로 이 설계가 피하려는 연산이다.
+새 인생 국면은 마이그레이션이 아니라 새 book이다.
+</Decision>
+
+<Decision
+  id="ADR-002"
+  title="JSONL 저널을 버리고 SQLite를 원장으로, 감사는 해시 체인으로"
+  status="accepted"
+  date="2026-07-17"
+  commit="74677cb"
+  rejected={[
+    { option: 'JSONL 저널을 SoR로 + git log -p를 감사 수단으로', because: '사용자가 git 커밋으로 감사하길 원치 않았다. 그러면 저널은 쿼리도 안 되고(rebuild는 순차 replay뿐) byte-identical 라운드트립을 스키마 버전 넘어 영원히 보장하는 대가만 남는다.' },
+    { option: 'SQLite .db를 gitignore', because: '오프머신 백업과 "어제 파일로 되돌리기"를 잃는다. 바이너리라 diff는 안 나오지만, diff를 보는 건 애초에 git 감사였고 그건 뺐다.' },
+  ]}
+>
+`.db`가 system of record이고 커밋된다. 감사는 `audit_log` 해시 체인 — 각 행이 직전 행에
+커밋하고, 거래 행은 **내용 해시**에 커밋한다. 손으로 전기를 고치면 잔액은 맞아도
+`verify`가 잡는다.
+
+**정직한 한계:** 우발적 변조는 잡지만 체인 전체를 재계산하는 사람은 못 막는다. head를
+파일 밖에 앵커해야 닫힌다 — `holiday verify --head`가 그 용도다.
+
+저널과 달리 해시는 버전 dispatch가 된다. `CHAIN_HASH_VERSION`을 올리면 과거 행은 자기
+버전으로 계속 검증된다. byte-stable 저널엔 없던 탈출구다.
+</Decision>

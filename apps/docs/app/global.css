@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* React Flow ships its own stylesheet; the canvas blocks are unusable without it. */
+@import '@xyflow/react/dist/style.css';
+
+@source '../content/**/*.mdx';
+@source '../components/**/*.tsx';

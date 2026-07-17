@@ -1,0 +1,90 @@
+---
+title: 스킬
+description: holiday-cfo의 progressive disclosure 구조
+type: conceptual
+version: v0.1
+summary: SKILL.md는 항상 로드된다. references/는 작업이 요구할 때만.
+---
+
+플러그인은 스킬 하나를 싣는다: `holiday-cfo`.
+
+## Progressive disclosure
+
+에이전트의 컨텍스트는 예산이다. 전부 항상 로드하면 정작 필요한 순간에 자리가 없다.
+그래서 두 층으로 나뉜다 — **SKILL.md는 트리거되면 항상 로드**되고, `references/`는
+작업이 실제로 요구할 때만 읽힌다.
+
+<Files>
+  <Folder name="plugin" defaultOpen>
+    <Folder name=".claude-plugin">
+      <File name="plugin.json" />
+    </Folder>
+    <Folder name="bin">
+      <File name="holiday.mjs" />
+    </Folder>
+    <Folder name="skills" defaultOpen>
+      <Folder name="holiday-cfo" defaultOpen>
+        <File name="SKILL.md" />
+        <Folder name="references" defaultOpen>
+          <File name="ledger-model.md" />
+          <File name="accounts.md" />
+          <File name="schedules.md" />
+          <File name="recipes.md" />
+        </Folder>
+      </Folder>
+    </Folder>
+  </Folder>
+</Files>
+
+경계를 가르는 기준: **SKILL.md에는 어기면 돌이킬 수 없는 것만.** 나머지는 필요할 때
+읽으면 된다.
+
+| 층 | 언제 로드 | 담는 것 |
+|---|---|---|
+| `SKILL.md` | 스킬이 트리거되면 항상 | 어기면 안 되는 규칙, 방향 잡기, 현금흐름 답하기, references 색인 |
+| `references/ledger-model.md` | 사용자가 *왜* 이 숫자냐고 물을 때, 외화가 낄 때 | units/weight, 허용오차 없는 이유, `@@` 문법, 부호 규약 |
+| `references/accounts.md` | 계정을 만들거나 이름이 헷갈릴 때 | 명명, `--commodity`가 왜 필수인지, 현금 계정 접두어 함정 |
+| `references/schedules.md` | 카드·할부·정기지출 셋업 | 각각의 함정. funding이 통장이냐 카드냐 |
+| `references/recipes.md` | 캡쳐에서 기록, FX, 환불, 정정 | 실제 명령 레시피 |
+
+## SKILL.md가 지면을 어디에 쓰나
+
+절반이 **금지사항**이다. 이유가 있다: 인제스트 명령도 리뷰 큐도 없어서 **모델이 읽고
+쓰면 그게 확정**이다. 에이전트가 이 시스템에서 가장 약한 고리다.
+
+<Canvas
+  height={280}
+  nodes={[
+    { id: 'shot', type: 'doc', position: { x: 0, y: 40 }, data: { label: '캡쳐', description: '사용자가 대화에 첨부', kind: 'external', handles: { target: false } } },
+    { id: 'model', type: 'doc', position: { x: 200, y: 40 }, data: { label: 'vision 모델', description: '⚠ 가장 약한 고리', kind: 'external' } },
+    { id: 'confirm', type: 'doc', position: { x: 400, y: 40 }, data: { label: '사람 확인', description: '전표를 말로 보여주고 승인', kind: 'external' } },
+    { id: 'cli', type: 'doc', position: { x: 620, y: 40 }, data: { label: 'holiday txn add', description: '균형·통화·트리거', kind: 'derived' } },
+    { id: 'db', type: 'doc', position: { x: 620, y: 150 }, data: { label: 'ledger.db', description: '확정. append-only', kind: 'fact', handles: { source: false } } },
+  ]}
+  edges={[
+    { id: 's1', source: 'shot', target: 'model', animated: true },
+    { id: 's2', source: 'model', target: 'confirm', animated: true },
+    { id: 's3', source: 'confirm', target: 'cli', animated: true },
+    { id: 's4', source: 'cli', target: 'db' },
+  ]}
+/>
+
+<CanvasLegend />
+
+CLI의 방어선은 균형·통화 적합성·트리거뿐이다. **"모델이 ₩1,240,000을 ₩1,240,00으로
+안 읽었다"는 보장이 없다** — 둘 다 완벽하게 균형 잡힌 거래니까. 그래서 SKILL.md가
+"금액을 지어내지 마라, 계정을 추측하지 마라, 쓰기 전에 전표를 말로 보여줘라,
+`$`인지 `₩`인지 헷갈리면 멈춰라"에 지면을 쓴다.
+
+## 없는 걸 없다고 말한다
+
+SKILL.md 마지막 섹션이 **못 하는 것 목록**이다: 캡쳐 인제스트 명령 없음, 리뷰 큐 없음,
+유이자 할부 없음, 마감·환율·대출 없음.
+
+빈칸을 즉흥으로 메우는 스킬이 "지원 안 함"이라고 말하는 스킬보다 나쁘다. 전자는
+그럴듯하게 틀린 장부를 만들고, 후자는 사용자가 다음 수를 고르게 한다.
+
+## 검증
+
+스킬이 주장하는 모든 명령이 실제로 존재해야 한다. 작업 중 `holiday card list`를
+참조하는데 그 명령이 없다는 걸 발견했고, 문서를 고치는 대신 명령을 추가했다.

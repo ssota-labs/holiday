@@ -7,3 +7,8 @@ dist/
 # Never let a developer's own ledger leak into this PUBLIC repo.
 # User data belongs in the user's own private repo, never here.
 .holiday/
+
+# apps/docs
+.next/
+.source/
+next-env.d.ts
