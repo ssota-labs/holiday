@@ -1,0 +1,24 @@
+{
+  "title": "0.1.0",
+  "pages": [
+    "index",
+    "init",
+    "account",
+    "txn",
+    "balance",
+    "card",
+    "installment",
+    "recurring",
+    "loan",
+    "fx",
+    "assert",
+    "close",
+    "ingest",
+    "review",
+    "cashflow",
+    "verify",
+    "checkpoint"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

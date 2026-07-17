@@ -1,102 +1,20 @@
 ---
 title: 환율
-description: 환율 기록과 해석. 이미 기표된 weight는 바꾸지 않는다
-type: conceptual
-summary: resolve 순서 exact→stale→inverse→triangulate→throw. @@는 관측 총액이다.
-related: ['/docs/domain/policy', '/docs/features/close', '/docs/dev/cli']
+description: 수동 환율 테이블
+type: guide
+summary: 기표 weight 소급 변경 없음. 관측 @@ 선호.
 ---
 
-## 개요
+## 수락 기준
 
-환율은 기표 시점의 weight를 **유도**하거나, 마감 시 외화 화폐성 계정 장부가액을 **재평가**할 때만 쓴다. 이미 저장된 `weight_minor`를 과거로 되돌려 다시 쓰지 않는다.
+1. `fx add` 후 과거 posting weight 불변
+2. `fx show`가 해석 kind·근거 반환
+3. 마감 시 화폐성 외화 계정 재평가
 
-저장은 소수 문자열, 연산은 scaled bigint다. float를 쓰지 않는다.
+## 스펙
 
-의미: `1 <base> = <rate> <quote>`.
+[add](/docs/spec/cli/fx/add) · [list](/docs/spec/cli/fx/list) · [show](/docs/spec/cli/fx/show)
 
-## 동작
+## 스토리
 
-### resolve 순서
-
-`resolveRate`는 아래 순서로만 찾는다. 한 단계가 실패하면 다음으로 내려간다. 없으면 throw한다. **1.0으로 대체하지 않는다.**
-
-1. **exact** — 요청일(`asOf`)에 해당 페어가 있음
-2. **stale** — 같은 페어의 최근 환율이 `maxStalenessDays` 이내
-3. **inverse** — 반대 페어의 역수(staleness 적용)
-4. **triangulated** — 기능통화를 경유 (`base → functional → quote`)
-5. **throw** — 없음. `holiday fx add` 또는 leg에 `@@`로 총액을 직접 기입
-
-`fx show`는 실제로 어떤 kind가 선택됐는지와 explanation을 출력한다.
-
-### weight와 @@
-
-외화 leg의 weight 출처:
-
-| 방식 | 의미 |
-|---|---|
-| `@@ TOTAL` | 관측 총액(기능통화). `weight_source: 'actual'`. 명세서·영수증에 찍힌 KRW |
-| 환율 유도 | `resolveRate` + `convert`. `weight_source: 'rate'`. 추정 |
-
-`@@`는 **총액**이다. 단위당 `@` 환율 문법은 쓰지 않는다. 환율을 되곱하면 정수에 안 떨어지고, 허용오차를 부르는 경로가 된다.
-
-환율을 나중에 수정·추가해도 **이미 posted된 weight는 변하지 않는다.** 이후 기표의 유도와 마감 재평가에만 반영된다.
-
-## 명령
-
-<CommandSpec
-  command="fx add"
-  mutates={true}
-  summary="환율을 기록한다. 1 base = rate quote."
-  signature={`holiday fx add <base> <quote> <rate> --as-of <date> [--source <name>]`}
-  flags={[
-    { name: '--as-of', type: 'date', required: true, description: '이 환율이 적용되는 날짜' },
-    { name: '--source', type: 'string', default: 'manual', description: '출처 라벨' },
-  ]}
-  exits={[
-    { code: 0, meaning: '기록됨. 과거 weight 불변 안내 출력' },
-    { code: 2, meaning: '없는 통화 코드, 날짜 오류' },
-  ]}
-  example={`$ holiday fx add USD KRW 1333.33 --as-of 2026-07-17
-1 USD = 1333.33 KRW (2026-07-17, manual)
-이미 기표된 weight는 바뀌지 않습니다. 환율은 앞으로의 유도와 재평가에만 쓰입니다.`}
-/>
-
-<CommandSpec
-  command="fx list"
-  mutates={false}
-  summary="저장된 환율을 나열한다."
-  signature={`holiday fx list [--base <code>] [--quote <code>] [--json]`}
-  flags={[
-    { name: '--base', type: 'code', description: '기준 통화 필터' },
-    { name: '--quote', type: 'code', description: '상대 통화 필터' },
-  ]}
-  exits={[
-    { code: 0, meaning: '목록 또는 없음 안내' },
-    { code: 2, meaning: '원장 없음, 없는 통화' },
-  ]}
-  example={`$ holiday fx list --base USD
-2026-07-17  1 USD =     1333.33 KRW   manual`}
-/>
-
-<CommandSpec
-  command="fx show"
-  mutates={false}
-  summary="지정 시점에 어떤 환율이 쓰일지와 해석 kind를 보여 준다."
-  signature={`holiday fx show <base> <quote> [--as-of <date>]`}
-  flags={[{ name: '--as-of', type: 'date', default: 'today' }]}
-  exits={[
-    { code: 0, meaning: '해석 성공. kind·rate·explanation 출력' },
-    { code: 1, meaning: '해석 실패 — 환율 없음' },
-    { code: 2, meaning: '원장 없음, 없는 통화' },
-  ]}
-  example={`$ holiday fx show USD KRW --as-of 2026-07-20
-1 USD = 1333.33 KRW
-  stale — manual 2026-07-17, 3일 전`}
-/>
-
-## 제약
-
-- 환율 없음은 질문이므로 기본값 1.0을 넣지 않는다.
-- posted weight는 환율 테이블 변경으로 재계산되지 않는다.
-- 재평가는 `close`가 화폐성 자산·부채에만 수행한다. 비용·수익 계정은 거래일 측정으로 둔다.
-- 동일 통화 페어는 rate = 1(스케일) exact로 처리한다.
+[US-fx](/docs/planning/stories/us-fx)

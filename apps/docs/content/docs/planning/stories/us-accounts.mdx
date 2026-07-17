@@ -1,0 +1,23 @@
+---
+title: US-accounts
+description: 자산·부채 계정을 코드로 추가하고 현금 계정을 표시하고 싶다
+type: conceptual
+summary: cashflow 시작점이 맞는다
+---
+
+**As a** 1인 사용자  
+**I want** 자산·부채 계정을 코드로 추가하고 현금 계정을 표시하고 싶다  
+**So that** cashflow 시작점이 맞는다
+
+### 수락 기준
+
+1. account add 가 prefix로 type을 정한다
+2. --cash 계정이 cashflow opening에 포함된다
+3. account list --json 이 계정을 반환한다
+
+### 추적
+
+- 기능: [accounts](/docs/features/accounts)
+- 스펙: [`add`](/docs/spec/cli/account/add)
+- 검증: POLICY 맥락: ADR-004
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

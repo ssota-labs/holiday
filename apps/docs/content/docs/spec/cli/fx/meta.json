@@ -1,0 +1,10 @@
+{
+  "title": "fx",
+  "pages": [
+    "add",
+    "list",
+    "show"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

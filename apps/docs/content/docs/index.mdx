@@ -1,31 +1,37 @@
 ---
 title: Introduction
-description: 1인용 복식부기 CLI. 로컬 SQLite 원장으로 가계·부채·스케줄·현금흐름을 기록한다.
+description: holiday 문서 SSOT — 기획부터 스펙·검증까지.
 type: overview
-summary: Node ≥ 24 CLI. 기능통화는 init으로 설정하고, 원장은 작업 디렉터리의 .holiday/ledger.db에 둔다.
+summary: 1인용 복식부기 CLI. 문서는 SWDL 기획·도메인·기능·스펙의 단일 진실이다.
 ---
 
-`holiday`는 1인용 복식부기 원장 CLI다. 거래·계정·카드 청구주기·할부·정기지출·대출을
-기록하고, 현금흐름 예측과 감사 체인 검증을 제공한다.
+`holiday`는 1인용 복식부기 원장 CLI다. 로컬 SQLite(`.holiday/ledger.db`)에 거래·스케줄·환율·마감을 기록하고, 현금흐름과 감사 체인을 검증한다.
 
-런타임은 **Node ≥ 24**다(`node:sqlite`, `--experimental-strip-types`). CLI가 쓰는
-저장소는 작업 디렉터리의 로컬 파일 `.holiday/ledger.db`(SQLite)뿐이다.
+런타임은 **Node ≥ 24**다. CLI 저장소는 SQLite뿐이다.
 
-## 저장 데이터
+## 이 문서를 읽는 순서
 
-`.holiday/ledger.db`에 다음을 저장합니다. 잔액·현금흐름은 저장하지 않고 조회 시
-집계합니다.
+1. [Vision](/docs/planning/vision) · [PRDs](/docs/planning/prds) — 왜, 이번 주기에 무엇을
+2. [User Stories](/docs/planning/stories) — Done의 정의
+3. [도메인](/docs/domain/glossary) · [정책](/docs/domain/policy) — 불변식
+4. [기능](/docs/features/accounts) — 상시 제품 카탈로그
+5. [CLI 스펙](/docs/spec/cli) (latest) — 기계 계약
+6. [설계](/docs/design/system) · [에이전트](/docs/agent/skill)
 
-| 구분 | 내용 |
-|---|---|
-| 원장 | 계정, 거래(`txn`), 전기(`posting`: units·weight) |
-| 스케줄 | 카드 청구주기, 할부, 정기지출, 대출 상환 계획 |
-| 환율 | 수동 등록한 환율 (`fx_rate`) |
-| 마감 | 잔액 대사, 기간(`period`), 마감 스냅샷 |
-| 데이터 수집 | draft 배치·항목 (`ingest_*`), 검토 상태 |
-| 감사 | `audit_log` 해시 체인, 명령 멱등 로그 |
+<Cards>
+  <Card title="기획" href="/docs/planning/vision" description="Vision, PRD(기간별), Personas, Stories, Journeys" />
+  <Card title="도메인" href="/docs/domain/policy" description="용어집과 POLICY-* (테스트 링크)" />
+  <Card title="기능" href="/docs/features/accounts" description="기간과 무관한 제품 능력 카탈로그" />
+  <Card title="스펙" href="/docs/spec/cli" description="CLI latest · 데이터 모델" />
+</Cards>
 
-스키마 상세는 [데이터 모델](/docs/dev/data-model)을 참고합니다.
+## PRD vs Features
+
+| | PRD | Features |
+|---|---|---|
+| 시간축 | 기간/이니셔티브에 묶여 **추가** | 상시 카탈로그 |
+| 질문 | 이번에 무엇을 만들까? | 제품이 지금 무엇을 할 수 있나? |
+| 위치 | [`planning/prds`](/docs/planning/prds) | [`features`](/docs/features/accounts) |
 
 ## 빠른 시작
 
@@ -41,48 +47,9 @@ holiday cashflow --until 2026-09-30
 holiday verify
 ```
 
-일반적인 순서는 `init` → `account` → `card` → `txn` → `cashflow` → `verify`다.
-기능통화는 `init --currency`로 정한다. 바꾸려면 새 원장을 연다.
+## 제약 (코드 기준)
 
-## 문서 구성
-
-<Cards>
-  <Card title="도메인" href="/docs/domain/policy" description="용어집과 정책 카탈로그(POLICY-*)" />
-  <Card title="기능" href="/docs/features/accounts" description="계정, 데이터 수집, 환율, 마감, 스케줄, 현금흐름" />
-  <Card title="개발" href="/docs/dev/system" description="시스템 설계, 데이터 모델, CLI, 스킬, ADR" />
-</Cards>
-
-정책 문서는 [`/docs/domain/policy`](/docs/domain/policy)다. 각 정책 Rule 블록은
-강제 테스트에 링크되며, `scripts/check-rule-links.ts`가 링크를 검사한다.
-
-## 현재 기능
-
-| 영역 | 명령·동작 |
-| --- | --- |
-| 데이터 수집·검토 | `ingest submit`으로 draft 적재 → `review`로 posted/rejected |
-| 환율 | `fx add` / `list` / `show`. 수동 입력만 |
-| 잔액 대사·마감 | `assert`, `close` (게이트 검사 → FX 재평가 → 스냅샷 → `period.status=closed`) |
-| 스케줄 | 카드 청구주기, 할부, 정기지출, 대출 |
-| 현금흐름 | `cashflow` — 현금 계정에서 스케줄 지출을 투영 |
-| 감사 | `verify` — 불변식·해시 체인 |
-
-에이전트/사람은 캡쳐를 파싱해 CLI에 넘긴다. CLI는 OCR을 수행하지 않는다.
-
-## 제약
-
-- OCR·이미지 파싱 없음 (`ingest`는 이미 파싱된 JSON을 받는다)
-- 환율 자동 수집 API 없음 (`fx add`로 직접 기록)
+- OCR·이미지 파싱 없음 (`ingest`는 이미 파싱된 JSON)
+- 환율 자동 수집 API 없음
 - 대시보드·웹 UI 없음 (제품은 CLI)
-- CLI 저장소는 SQLite만 (`init`이 `store: 'sqlite'` 고정). `@holiday/store-postgres`는
-  라이브러리/테스트용이며 CLI에서 선택하지 않는다
-
-## 버전
-
-사이트 전역 단일 버전 번호는 없다. 데이터 모델은 마이그레이션으로, CLI는
-`package.json` 버전으로, 정책은 테스트 링크로 각각 추적한다. 스펙 페이지의
-`<SpecVersion>`이 해당 영역의 근거 산출물을 가리킨다.
-
-## 에이전트용 원문
-
-각 문서 경로에 `.md` 쌍이 있다. 예: [`/docs/domain/policy.md`](/docs/domain/policy.md).
-`plugin/skills/holiday-cfo/` 스킬과 이 문서를 같은 독자가 읽는다.
+- CLI는 SQLite만 (`@holiday/store-postgres`는 라이브러리/테스트용)

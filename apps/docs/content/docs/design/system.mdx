@@ -1,0 +1,57 @@
+---
+title: 시스템
+description: 패키지 그래프와 불변식 링
+type: conceptual
+summary: core → store-sql → sqlite|postgres. CLI는 sqlite만.
+---
+
+<SpecVersion
+  spec="system"
+  version="0.2.0"
+  source="packages"
+  history={[
+    {
+      version: '0.2.0',
+      date: '2026-07-17',
+      summary: 'store-sql 추출, postgres 엔진, CLI sqlite 고정',
+    },
+  ]}
+/>
+
+<PackageInfo name="@holiday/core" currentVersion="0.1.0">
+  <PackageInfoHeader>
+    <PackageInfoName />
+    <PackageInfoVersion />
+  </PackageInfoHeader>
+  <PackageInfoDescription>도메인 + ports. Zod.</PackageInfoDescription>
+  <PackageInfoDependencies>
+    <PackageInfoDependency name="zod" />
+  </PackageInfoDependencies>
+</PackageInfo>
+
+## 토폴로지
+
+```
+@holiday/core
+  ↑
+@holiday/store-sql          (단일 LedgerStore 구현)
+  ↑
+@holiday/store-sqlite | @holiday/store-postgres
+  ↑
+@holiday/cli                (composition root → sqlite only)
+```
+
+`assertEngineTier`는 atomicMultiRowWrite · uniqueConstraints · readAfterWriteConsistency를 요구한다.  
+store-testkit 컨포먼스 **18** 케이스.
+
+## 네 링
+
+1. Domain (`Txn.create`)
+2. Port (`appendTxn(ValidatedTxn)`)
+3. Storage triggers (11)
+4. Audit hash chain (`CHAIN_HASH_VERSION = 1`)
+
+## 배포
+
+- 플러그인 커밋 번들: `plugin/bin/holiday.mjs`
+- 런타임: Node ≥ 24, `node:sqlite`

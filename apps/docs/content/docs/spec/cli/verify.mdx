@@ -1,0 +1,41 @@
+---
+title: verify
+description: holiday verify 명령 계약
+type: reference
+summary: 원장 불변식과 감사 해시 체인을 검사한다.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+
+관련 기능: [close](/docs/features/close)
+
+<CommandSpec
+  command="verify"
+  mutates={false}
+  summary="원장 불변식과 감사 해시 체인을 검사한다."
+  signature={`holiday verify [--head]`}
+  flags={[
+    { name: '--head', type: 'boolean', default: 'false', description: '체인 head 출력' },
+  ]}
+  exits={[
+    { code: 0, meaning: 'ok' },
+    { code: 1, meaning: 'verify_failed' },
+    { code: 2, meaning: '워크스페이스 없음' },
+  ]}
+  example={`holiday verify --json`}
+/>

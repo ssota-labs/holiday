@@ -1,0 +1,45 @@
+---
+title: txn add
+description: holiday txn add 명령 계약
+type: reference
+summary: 거래를 기록한다. 다리 weight 합이 정확히 0이 아니면 거부한다.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+
+관련 기능: [accounts](/docs/features/accounts)
+
+<CommandSpec
+  command="txn add"
+  mutates={true}
+  summary="거래를 기록한다. 다리 weight 합이 정확히 0이 아니면 거부한다."
+  signature={`holiday txn add --leg "ACCOUNT AMOUNT COMMODITY [@@ TOTAL]" [--leg ...] [--date] [--payee] [--narration] [--draft]`}
+  flags={[
+    { name: '--leg', type: 'string', required: true, repeatable: true, description: 'ACCOUNT AMOUNT COMMODITY. 비기능통화는 @@TOTAL 또는 환율 유도' },
+    { name: '--date', type: 'YYYY-MM-DD', default: 'today' },
+    { name: '--payee', type: 'string' },
+    { name: '--narration', type: 'string', default: '""' },
+    { name: '--draft', type: 'boolean', default: 'false', description: '검토 대기. 잔액·리포트에서 제외' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: 'unbalanced 등 LedgerError' },
+    { code: 2, meaning: '없는 계정·다리 파싱 실패' },
+  ]}
+  example={`holiday txn add --payee "점심" --leg "Expenses:Food 12000 KRW" --leg "Assets:Bank:KB:Checking -12000 KRW" --json`}
+/>

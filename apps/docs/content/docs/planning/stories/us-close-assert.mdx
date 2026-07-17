@@ -1,0 +1,24 @@
+---
+title: US-close-assert
+description: 명세서로 잔액을 단언하고 월 마감하고 싶다
+type: conceptual
+summary: 게이트를 통과한 달만 closed가 된다
+---
+
+**As a** 1인 사용자  
+**I want** 명세서로 잔액을 단언하고 월 마감하고 싶다  
+**So that** 게이트를 통과한 달만 closed가 된다
+
+### 수락 기준
+
+1. assert 불일치 시 assertion_failed
+2. close 게이트: draft 없음 + assertion 통과
+3. FX 재평가 후 snapshot, period=closed
+4. --dry-run 은 쓰기 없음
+
+### 추적
+
+- 기능: [close](/docs/features/close)
+- 스펙: [`close`](/docs/spec/cli/close)
+- 검증: closeGate
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

@@ -1,0 +1,10 @@
+{
+  "title": "installment",
+  "pages": [
+    "add",
+    "revise",
+    "list"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

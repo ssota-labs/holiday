@@ -1,0 +1,87 @@
+---
+title: CLI
+description: 에이전트가 shell-out하는 명령 계약
+type: reference
+summary: 전역 --json, stderr 에러 봉투, exit code가 계약이다.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'immutable snapshot of foundation CLI',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> **불변 스냅샷 0.1.0.** 현재 계약은 [latest](/docs/spec/cli)를 본다.
+
+
+제품 진입점은 CLI다. 구현 기준은 `packages/cli/src/cli.ts`다.
+
+<PackageInfo name="@holiday/cli" currentVersion="0.1.0">
+  <PackageInfoHeader>
+    <PackageInfoName />
+    <PackageInfoVersion />
+  </PackageInfoHeader>
+  <PackageInfoDescription>Node ≥ 24. 저장소는 로컬 SQLite(.holiday/ledger.db)만.</PackageInfoDescription>
+  <PackageInfoDependencies>
+    <PackageInfoDependency name="@holiday/core" version="0.1.0" />
+    <PackageInfoDependency name="@holiday/store-sql" version="0.1.0" />
+    <PackageInfoDependency name="@holiday/store-sqlite" version="0.1.0" />
+    <PackageInfoDependency name="commander" />
+    <PackageInfoDependency name="zod" />
+  </PackageInfoDependencies>
+</PackageInfo>
+
+## 전역 계약
+
+| 항목 | 규약 |
+|---|---|
+| `--json` | stdout에 기계 가독 JSON. 사람용 안내는 stderr로만 (`--json`이면 생략) |
+| 에러 봉투 | 실패 시 stderr: `{"error":{"code":"...","message":"..."}}` |
+| exit 0 | 성공 |
+| exit 1 | LedgerError 또는 internal |
+| exit 2 | UsageError |
+
+금액은 JSON 경계에서 **소수 문자열**로만 교차한다. 명령 전용 `--data`는 전역 `--json`과 이름이 겹치지 않는다.
+
+버전 이력은 [versions](/docs/spec/cli/versions)를 본다.
+
+## 명령 목록
+
+| 명령 | mutates | 요약 |
+|---|---|---|
+| [`init`](/docs/spec/cli/0.1.0/init) | yes | .holiday/ 워크스페이스와 SQLite 원장을 생성하고 기능통화·마감 grain·타임존을 기록한다. |
+| [`account add`](/docs/spec/cli/0.1.0/account/add) | yes | 계정 코드를 추가한다. 타입은 코드 prefix에서 유도한다. |
+| [`account list`](/docs/spec/cli/0.1.0/account/list) | no | 계정 목록을 반환한다. |
+| [`txn add`](/docs/spec/cli/0.1.0/txn/add) | yes | 거래를 기록한다. 다리 weight 합이 정확히 0이 아니면 거부한다. |
+| [`balance`](/docs/spec/cli/0.1.0/balance) | no | 계정 잔액을 조회한다. 집계는 weight 기준이다. |
+| [`card add`](/docs/spec/cli/0.1.0/card/add) | yes | 카드 부채 계정에 청구주기를 부착한다. |
+| [`card list`](/docs/spec/cli/0.1.0/card/list) | no | 카드와 청구 규칙을 나열한다. |
+| [`installment add`](/docs/spec/cli/0.1.0/installment/add) | yes | 할부 구매를 기록하고 스케줄을 생성한다. 수수료는 관측값만(--fees). |
+| [`installment revise`](/docs/spec/cli/0.1.0/installment/revise) | yes | 명세서 값으로 할부 스케줄을 덮어쓴다. --data JSON (전역 --json과 별개). |
+| [`installment list`](/docs/spec/cli/0.1.0/installment/list) | no | 잔여 할부를 나열한다. |
+| [`recurring add`](/docs/spec/cli/0.1.0/recurring/add) | yes | 정기지출을 등록한다. funding이 카드면 현금 유출일은 청구주기를 탄다. |
+| [`recurring list`](/docs/spec/cli/0.1.0/recurring/list) | no | 활성 정기지출을 나열한다. |
+| [`loan add`](/docs/spec/cli/0.1.0/loan/add) | yes | 대출 부채 계정에 상환 스케줄을 부착한다. 원금 인출 기표는 별도. |
+| [`loan list`](/docs/spec/cli/0.1.0/loan/list) | no | 대출과 잔여 원금을 나열한다. |
+| [`loan check`](/docs/spec/cli/0.1.0/loan/check) | no | 스케줄 기대 잔액과 원장을 대사한다. 불일치 시 loan_drift(사람 모드). |
+| [`loan pay`](/docs/spec/cli/0.1.0/loan/pay) | yes | 스케줄 기준 원리금 분할로 상환을 기표한다. 이자는 스케줄, 차액은 원금. |
+| [`fx add`](/docs/spec/cli/0.1.0/fx/add) | yes | 환율을 기록한다. 이미 기표된 weight는 바꾸지 않는다. |
+| [`fx list`](/docs/spec/cli/0.1.0/fx/list) | no | 등록된 환율 목록. |
+| [`fx show`](/docs/spec/cli/0.1.0/fx/show) | no | 해당 일자에 해석될 환율과 근거를 보여준다. |
+| [`assert`](/docs/spec/cli/0.1.0/assert) | yes | 잔액 대사를 기록·대조한다. 불일치 시 assertion_failed. |
+| [`close`](/docs/spec/cli/0.1.0/close) | yes | 월 마감: 게이트 → FX 재평가 → 스냅샷 → period=closed. --dry-run은 쓰기 없음. |
+| [`ingest submit`](/docs/spec/cli/0.1.0/ingest/submit) | yes | 파싱된 거래를 draft로 적재한다. OCR 없음 — 호출자가 파서. |
+| [`review list`](/docs/spec/cli/0.1.0/review/list) | no | pending draft 목록. |
+| [`review accept`](/docs/spec/cli/0.1.0/review/accept) | yes | draft를 posted로 승격한다. 이미 균형이므로 균형 실패는 없다. |
+| [`review reject`](/docs/spec/cli/0.1.0/review/reject) | yes | draft를 거부한다. ingest 행은 중복 기억용으로 유지한다. |
+| [`cashflow`](/docs/spec/cli/0.1.0/cashflow) | no | 현금 계정에서 스케줄 지출을 투영한다. 잔액이 음수면 ⚠ SHORT. |
+| [`verify`](/docs/spec/cli/0.1.0/verify) | no | 원장 불변식과 감사 해시 체인을 검사한다. |
+| [`checkpoint`](/docs/spec/cli/0.1.0/checkpoint) | yes | SQLite WAL을 ledger.db로 fold한다. (스냅샷 checkpoint와 무관) |

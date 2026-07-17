@@ -1,88 +1,22 @@
 ---
-title: 카드 청구주기
-description: 사용기간 마감일과 결제일로 현금 유출 시점을 정한다
-type: conceptual
-summary: close-day·payment-day·payment-month-offset이 구매일의 현금 이탈일을 계산한다.
-related: ['/docs/domain/policy', '/docs/features/cashflow', '/docs/dev/cli']
+title: 카드
+description: 청구주기와 현금 유출일
+type: guide
+summary: close-day / payment-day. 결제는 상대 leg.
 ---
 
-> **지켜야 하는 규칙:** [POLICY-008](/docs/domain/policy#policy-008)
-> 동작은 이 페이지에서 설명하고, 불변식은 [정책](/docs/domain/policy)에 모아 둔다.
+카드 부채 계정에 청구주기를 붙이면 cashflow가 결제일에 출금을 투영한다.
 
-## 개요
+## 수락 기준
 
-청구주기는 카드 부채 계정에 붙는 날짜 규칙이다. 없으면 원장은 빚진 금액은 알아도 현금이 언제 빠지는지는 모른다. `cashflow`의 카드 청구 투영은 이 규칙에 의존한다.
+1. 청구·결제일이 규칙대로 계산된다
+2. 이전 주기 결제가 당기 청구를 상쇄하지 않는다 ([POLICY-004](/docs/domain/policy#POLICY-004))
+3. 마감·미결제 청구가 런웨이에 남는다 ([POLICY-008](/docs/domain/policy#POLICY-008))
 
-규칙은 세 값으로 구성된다.
+## 스펙
 
-| 필드 | CLI 플래그 | 의미 |
-|---|---|---|
-| `cycleCloseDay` | `--close-day` | 사용기간이 닫히는 날(포함). 이 날 구매는 해당 청구서 |
-| `paymentMonthOffset` | `--payment-month-offset` | 마감월에서 결제월까지 개월 수. 보통 0 또는 1 |
-| `paymentDay` | `--payment-day` | 결제 일. `-1`이면 해당 월 말일 |
+[card add](/docs/spec/cli/card/add) · [list](/docs/spec/cli/card/list)
 
-## 동작
+## 스토리
 
-`billingDatesFor(purchaseDate, rule)`가 구매일에 대해 `closeDate`와 `paymentDate`를 계산한다.
-
-1. 구매일이 당월 `cycleCloseDay`(말일 clamp) 이하면 당월 마감, 초과면 익월 마감.
-2. 결제월 = 마감월 + `paymentMonthOffset`.
-3. 결제일은 `paymentDay`를 해당 월 일수에 clamp. `-1`은 말일.
-4. `paymentDate < closeDate`이면 규칙을 거부한다. offset을 늘려야 한다.
-
-`--close-day 31`은 "말일 마감"이다. 2월에는 28(또는 29)일로 clamp된다. `--payment-day -1`도 동일하게 말일이다.
-
-`upcomingBills`는 커서를 오늘 이전이 아니라 **더 과거**에서 시작한다. 이미 마감됐지만 아직 결제되지 않은 청구서가 가장 임박한 유출이다. [POLICY-008](/docs/domain/policy#policy-008)
-
-등록·목록 출력은 추상 규칙뿐 아니라 "오늘 구매하면 현금이 빠지는 날" 예시를 함께 보여 준다.
-
-## 명령
-
-<CommandSpec
-  command="card add"
-  mutates={true}
-  summary="부채 계정에 청구주기를 붙인다. 규칙과 함께 오늘 구매의 마감·결제일을 출력한다."
-  signature={`holiday card add <ACCOUNT>
-  --funding <ASSET_ACCOUNT>
-  --close-day <1-31>
-  --payment-day <1-31 | -1>
-  [--payment-month-offset <0-3>]
-  [--label <text>]`}
-  flags={[
-    { name: '--funding', type: 'account', required: true, description: '결제일에 현금이 빠지는 자산 계정' },
-    { name: '--close-day', type: 'integer', required: true, description: '사용기간 마감일(포함). 31 = 말일 clamp' },
-    { name: '--payment-day', type: 'integer', required: true, description: '결제일. -1 = 말일' },
-    { name: '--payment-month-offset', type: 'integer', default: '1', description: '마감월에서 결제월까지 개월 수. 0–3' },
-    { name: '--label', type: 'string', description: '표시명. 없으면 계정 코드' },
-  ]}
-  exits={[
-    { code: 0, meaning: '등록됨. 오늘 구매의 closeDate·paymentDate 예시 출력' },
-    { code: 1, meaning: '규칙 거부 — close-day/payment-day 범위, 결제일 < 마감일 등' },
-    { code: 2, meaning: '계정 없음' },
-  ]}
-  example={`$ holiday card add Liabilities:Card:Shinhan --funding Assets:Bank:KB:Checking \\
-    --close-day 14 --payment-day 1 --label "신한"
-A purchase today (2026-07-17) closes 2026-08-14 and takes cash on 2026-09-01.`}
-/>
-
-<CommandSpec
-  command="card list"
-  mutates={false}
-  summary="등록된 카드와 청구 규칙을 나열하고, 오늘 구매 기준 결제일 예시를 붙인다."
-  signature={`holiday card list [--json]`}
-  flags={[]}
-  exits={[
-    { code: 0, meaning: '목록 출력. 카드가 없으면 안내 문구' },
-    { code: 2, meaning: '원장 없음' },
-  ]}
-  example={`$ holiday card list
-신한                   14일 마감 → 익월 1일 결제   ← Assets:Bank:KB:Checking
-                     a purchase today (2026-07-17) takes cash on 2026-09-01`}
-/>
-
-## 제약
-
-- `cycleCloseDay` ∈ [1, 31]. `paymentDay` ∈ [1, 31] 또는 `-1`. `paymentMonthOffset` ∈ [0, 3].
-- 카드 계정과 funding 계정은 이미 `account add`로 존재해야 한다.
-- 일반 청구액 합산은 카드 계정 posting만 본다. 할부 잔액 계정(`*:Installment`)은 제외된다.
-- 결제 거래(상대 leg가 funding)는 청구액에서 제외한다. [POLICY-004](/docs/domain/policy#policy-004)
+[US-cards](/docs/planning/stories/us-cards)

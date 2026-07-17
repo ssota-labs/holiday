@@ -1,24 +1,12 @@
 {
+  "title": "holiday",
   "pages": [
     "index",
-    "---도메인---",
-    "domain/glossary",
-    "domain/policy",
-    "---기능---",
-    "features/accounts",
-    "features/cards",
-    "features/installments",
-    "features/recurring",
-    "features/loans",
-    "features/ingest",
-    "features/fx",
-    "features/close",
-    "features/cashflow",
-    "---개발---",
-    "dev/system",
-    "dev/data-model",
-    "dev/cli",
-    "dev/skill",
-    "dev/adr"
+    "planning",
+    "domain",
+    "features",
+    "spec",
+    "design",
+    "agent"
   ]
 }

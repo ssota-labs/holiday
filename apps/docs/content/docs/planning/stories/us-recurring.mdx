@@ -1,0 +1,22 @@
+---
+title: US-recurring
+description: 월세·구독을 등록하고 싶다
+type: conceptual
+summary: 미도래분만 투영되고 카드 funding은 결제일에 현금이 나간다
+---
+
+**As a** 1인 사용자  
+**I want** 월세·구독을 등록하고 싶다  
+**So that** 미도래분만 투영되고 카드 funding은 결제일에 현금이 나간다
+
+### 수락 기준
+
+1. 오늘 이전 발생은 투영하지 않는다 (POLICY-005)
+2. 카드 funding이면 현금일은 청구주기 (POLICY-010)
+
+### 추적
+
+- 기능: [recurring](/docs/features/recurring)
+- 스펙: [`add`](/docs/spec/cli/recurring/add)
+- 검증: POLICY-005, POLICY-010
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

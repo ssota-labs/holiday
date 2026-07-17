@@ -1,0 +1,9 @@
+{
+  "title": "recurring",
+  "pages": [
+    "add",
+    "list"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

@@ -1,23 +1,39 @@
 ---
 title: 정책
-description: 원장과 스케줄이 만족해야 하는 불변 조건과 검증 테스트
+description: POLICY-* 비즈니스 불변식과 검증 테스트
 type: policy
 version: v0.1
-summary: POLICY 규칙은 각각 검증 테스트에 연결되며, check-rule-links가 링크 유효성을 검사합니다.
-related: ['/docs/domain/glossary', '/docs/dev/data-model']
+summary: "규칙마다 테스트가 있다. check:rules가 링크를 검사한다."
 ---
 
-이 문서는 holiday 도메인의 **비즈니스 규칙 목록**입니다.
+정책은 제품이다. 아래 Rule은 `scripts/check-rule-links.ts`가 빌드 시 검증한다.
 
-| 구분 | 위치 |
-|---|---|
-| 기능·명령·사용 절차 | [기능](/docs/features/cashflow) |
-| 반드시 성립해야 하는 조건 | 이 문서 (`POLICY-*`) |
-
-각 규칙은 `test`·`testName`으로 저장소의 테스트에 연결됩니다. 링크가 깨지면
-`apps/docs/scripts/check-rule-links.ts`가 실패합니다.
-
-## 원장
+<TestResults summary={{ passed: 16, failed: 0, skipped: 0, total: 16 }}>
+  <TestResultsHeader>
+    <TestResultsSummary />
+  </TestResultsHeader>
+  <TestResultsProgress />
+  <TestResultsContent>
+    <TestSuite name="POLICY-001…016 linked tests" status="passed" defaultOpen>
+      <Test name="POLICY-001 unbalanced residual" status="passed" />
+      <Test name="POLICY-002 identity weight" status="passed" />
+      <Test name="POLICY-003 installment liability split" status="passed" />
+      <Test name="POLICY-004 card payment counter-leg" status="passed" />
+      <Test name="POLICY-005 recurring after today" status="passed" />
+      <Test name="POLICY-006 observed fees only" status="passed" />
+      <Test name="POLICY-007 installment principal sum" status="passed" />
+      <Test name="POLICY-008 closed unpaid bill" status="passed" />
+      <Test name="POLICY-009 fees not in principal" status="passed" />
+      <Test name="POLICY-010 card-funded recurring cash date" status="passed" />
+      <Test name="POLICY-011 loan drift" status="passed" />
+      <Test name="POLICY-012 loan principal sum" status="passed" />
+      <Test name="POLICY-013 interest_only no balloon" status="passed" />
+      <Test name="POLICY-014 refuse 0% annuity" status="passed" />
+      <Test name="POLICY-015 half away from zero" status="passed" />
+      <Test name="POLICY-016 migration hash immutable" status="passed" />
+    </TestSuite>
+  </TestResultsContent>
+</TestResults>
 
 <Rule
   id="POLICY-001"
@@ -26,11 +42,7 @@ related: ['/docs/domain/glossary', '/docs/dev/data-model']
   testName="rejects an unbalanced transaction with the exact residual, and no tolerance"
   consequence="소액 누락·반올림 오차가 잔차에 흡수되어 장부 오류를 탐지할 수 없습니다."
 >
-모든 posting의 `weight_minor` 합은 **정확히 0**이어야 합니다. 금액은 정수(minor
-unit)로만 다루며, 허용오차·fuzz 파라미터는 존재하지 않습니다.
-
-환율을 되곱해 상대금액을 유도하면 정수 스케일에서 오차가 발생합니다. 따라서
-상대금액은 관측값으로 저장하고, 환율은 표시·유도에만 사용합니다.
+  `Txn.create`에서 Σ `weight_minor`는 정확히 0이어야 한다. 잔차는 `unbalanced`로 보고되며 허용오차는 없다.
 </Rule>
 
 <Rule
@@ -40,11 +52,17 @@ unit)로만 다루며, 허용오차·fuzz 파라미터는 존재하지 않습니
   testName="refuses a booking-commodity posting whose weight disagrees with its units"
   consequence="기능통화 잔액이 units와 다른 weight로 집계되어 장부가액이 틀어집니다."
 >
-`commodity === bookingCommodity`이면 `weight_minor === units_minor`를 만족해야
-합니다. 도메인 검증과 저장소 트리거가 함께 강제합니다.
+  `commodity === bookingCommodity`이면 `weight_minor === units_minor` (identity).
+</Rule>
 
-기능통화는 `holiday init --currency`로 설정합니다. (테스트 픽스처는 보통 KRW를
-사용합니다.)
+<Rule
+  id="POLICY-003"
+  title="할부 잔액은 카드 일반 계정과 분리한다"
+  test="packages/core/src/domain/cashflow.test.ts"
+  testName="puts a purchase on the bill that actually takes the cash"
+  consequence="할부 원금 전액이 첫 청구에 포함되어 당기 청구액이 과대 계상됩니다."
+>
+  할부 부채는 `Liabilities:Card:<카드>:Installment` 등 별도 계정. 청구액은 주기 posting, 할부는 스케줄 투영.
 </Rule>
 
 <Rule
@@ -54,59 +72,17 @@ unit)로만 다루며, 허용오차·fuzz 파라미터는 존재하지 않습니
   testName="does NOT let a payment of a previous bill cancel out this cycle"
   consequence="이전 주기 결제가 당기 청구액에서 차감되어 청구가 과소 계상됩니다."
 >
-카드 계정에서 구매 posting은 음수, 환불과 결제는 양수입니다. 부호만으로 합산하면
-결제와 환불이 구분되지 않습니다.
-
-- 결제: 상대 leg은 funding(현금) 계정
-- 환불: 상대 leg은 비용 계정
+  구매는 −, 환불/결제는 +. 결제는 funding 상대 leg. 이전 결제가 당기 청구 합을 상쇄하지 않는다.
 </Rule>
 
-## 마이그레이션
-
 <Rule
-  id="POLICY-016"
-  title="적용된 마이그레이션은 변경할 수 없다"
-  test="packages/store-sqlite/src/store.test.ts"
-  testName="REFUSES to open a ledger whose applied migration has changed"
-  consequence="동일 원장이라도 파일 내용이 달라지면 다른 복제본과 상태가 불일치합니다."
+  id="POLICY-005"
+  title="정기지출은 미도래 분만 투영한다"
+  test="packages/core/src/domain/recurring.test.ts"
+  testName="does NOT project an occurrence on or before today"
+  consequence="이미 원장에 반영된 발생분이 예측에도 잡혀 이중 계상됩니다."
 >
-`__holiday_migrations`에 적용분 sha256을 기록하고, 원장 개방 시 현재 파일 해시와
-비교합니다. 적용된 마이그레이션 내용이 바뀌면 개방을 거부합니다. 스키마 변경은
-새 마이그레이션을 추가하는 방식으로만 합니다.
-
-```
-migration 20260717100308_invariant_triggers has changed since it was applied.
-  applied: a9ecf50d…   now: 47a67e46…
-```
-</Rule>
-
-## 카드 청구주기
-
-<Rule
-  id="POLICY-008"
-  title="마감되었으나 미결제인 청구를 현금흐름에 포함한다"
-  test="packages/core/src/domain/cashflow.test.ts"
-  testName="includes the already-closed bill you have not paid yet"
-  consequence="이미 확정된 임박 출금이 예측에서 누락됩니다."
->
-`upcomingBills()`는 기준일을 **오늘 이전**부터 탐색합니다. “오늘 이후 마감분”만
-보면, 이미 마감되었으나 결제일이 미래인 청구가 빠집니다.
-</Rule>
-
-## 할부
-
-<Rule
-  id="POLICY-003"
-  title="할부 잔액은 카드 일반 계정과 분리한다"
-  test="packages/core/src/domain/cashflow.test.ts"
-  testName="puts a purchase on the bill that actually takes the cash"
-  consequence="할부 원금 전액이 첫 청구에 포함되어 당기 청구액이 과대 계상됩니다."
->
-일반 카드 청구액은 사용 기간의 posting 합계입니다. 할부는 구매일 원금 전액이
-한 번에 전기되므로 `Liabilities:Card:<카드>:Installment`에 기록합니다.
-
-일반 청구 합계에서는 제외하고, 회차 금액만 스케줄에서 투영해 해당 결제일에
-합산합니다.
+  `projectRecurring`은 `occurrence > today`만. 오늘/과거는 이미 기표했다고 가정한다.
 </Rule>
 
 <Rule
@@ -116,17 +92,7 @@ migration 20260717100308_invariant_triggers has changed since it was applied.
   testName="accepts OBSERVED 할부수수료 read off a statement"
   consequence="추정 수수료가 예측에 반영되어 실제 명세서와 어긋납니다."
 >
-명세서에 기재된 수수료만 입력으로 받습니다. 카드사 공식을 내부에서 계산해 넣는
-경로는 제공하지 않습니다. (`weight_source`의 `actual` / `rate` 구분과 동일한
-원칙입니다.)
-
-```bash
-holiday installment add … --fees 5000,3400,1700
-holiday installment revise <id> --data '[…]'
-```
-
-`revise`는 `--data` JSON으로 회차 날짜·원금·수수료를 덮어씁니다. 기준 자료는
-카드사 명세서입니다.
+  `--fees` / revise로 관측한 값만. 발급사 공식으로 추정하지 않는다.
 </Rule>
 
 <Rule
@@ -136,9 +102,17 @@ holiday installment revise <id> --data '[…]'
   testName="sums to the total for ANY total and term"
   consequence="스케줄 합계가 구매금액과 다르면 명세서와 대사할 수 없습니다."
 >
-원금 행의 합은 구매 총액과 같아야 합니다. 나누어떨어지지 않는 경우 잔여분은
-기본적으로 첫 회차에 배분합니다(예: 1,000,000원 3개월 → `333,334 + 333,333 +
-333,333`).
+  `splitTotal` 행의 원금 합 = 구매 총액. 나머지는 보통 첫 행.
+</Rule>
+
+<Rule
+  id="POLICY-008"
+  title="마감되었으나 미결제인 청구를 현금흐름에 포함한다"
+  test="packages/core/src/domain/cashflow.test.ts"
+  testName="includes the already-closed bill you have not paid yet"
+  consequence="이미 확정된 임박 출금이 예측에서 누락됩니다."
+>
+  청구 투영은 today 이전 마감·미결제 청구도 포함한다.
 </Rule>
 
 <Rule
@@ -148,32 +122,7 @@ holiday installment revise <id> --data '[…]'
   testName="refuses folding fees into the principal"
   consequence="원금 불변식이 명세서 원금과 달라져 대사가 불가능해집니다."
 >
-수수료는 이자비용으로 처리합니다. 불변식은 `sum(원금) === 구매총액`이며, 수수료는
-이 식에 포함되지 않습니다.
-
-```
-구매:   Expenses:…              +1,200,000
-        Liabilities:Installment -1,200,000
-회차:   Liabilities:Installment +100,000
-        Expenses:Interest:…     +5,000
-        Assets:Bank             -105,000
-```
-</Rule>
-
-## 정기지출
-
-<Rule
-  id="POLICY-005"
-  title="정기지출은 미도래 분만 투영한다"
-  test="packages/core/src/domain/recurring.test.ts"
-  testName="does NOT project an occurrence on or before today"
-  consequence="이미 원장에 반영된 발생분이 예측에도 잡혀 이중 계상됩니다."
->
-`occurrence > today`인 항목만 투영합니다. 당일 이전 발생분은 원장 posting으로만
-집계합니다.
-
-오늘 발생분이 아직 전기되지 않은 경우 예측에서도 제외됩니다. 이중 계상보다
-누락을 허용합니다.
+  `sum(principal) === purchase`. 수수료는 이자(관측). 원금에 수수료를 합치면 거부.
 </Rule>
 
 <Rule
@@ -183,13 +132,8 @@ holiday installment revise <id> --data '[…]'
   testName="rides the billing cycle when funded from a CARD"
   consequence="통장 출금과 카드 결제를 동일 시점으로 취급하면 현금흐름 시점이 틀립니다."
 >
-- funding이 현금 계정: 발생일에 현금 유출
-- funding이 카드 계정: 발생일에는 카드 부채만 증가, 현금은 청구 결제일에 유출
-
-현금흐름 출력에는 발생일을 함께 표시합니다(예: `넷플릭스 (2026-08-17 결제분)`).
+  통장 funding → 발생일 현금. 카드 funding → 청구 결제일 현금.
 </Rule>
-
-## 대출
 
 <Rule
   id="POLICY-011"
@@ -198,9 +142,7 @@ holiday installment revise <id> --data '[…]'
   testName="catches a missed payment"
   consequence="미납·중도상환·금리 변경·수수료가 잔액 차이로만 나타나 원인 추적이 어려워집니다."
 >
-대출은 스케줄로 기대 잔액을 독립 산출할 수 있습니다. `loan check`는 스케줄
-잔액과 원장 잔액의 차이를 보고하며, 차이는 미납·부분 상환·미기록 금리 변경·
-수수료 등을 나타낼 수 있습니다.
+  `loan check`가 스케줄 기대 잔액과 원장 부채를 비교한다. 차이는 `loan_drift`.
 </Rule>
 
 <Rule
@@ -210,10 +152,7 @@ holiday installment revise <id> --data '[…]'
   testName="repays exactly the principal for ANY amount, rate and term"
   consequence="만기 시 원금 잔액이 남거나 초과 상환으로 스케줄이 종료되지 않습니다."
 >
-원리금 스케줄의 원금 합은 대출원금과 같아야 합니다. 원 단위 균등 분할로 나누어지지
-않는 잔여분은 마지막 회차에 흡수합니다.
-
-예외: `interest_only`(거치)는 원금을 상환하지 않으므로 원금 합은 0입니다.
+  annuity / equal_principal / bullet: 스케줄 원금 합 = 원금, 최종 closing 0. interest_only는 POLICY-013.
 </Rule>
 
 <Rule
@@ -223,8 +162,7 @@ holiday installment revise <id> --data '[…]'
   testName="never repays principal, and does NOT invent a balloon"
   consequence="계약에 없는 만기 일시상환이 예측·장부에 반영됩니다."
 >
-거치 스케줄은 이자만 반영하고 원금 상환 행을 만들지 않습니다. 만기 일시상환
-등 출구 조건은 별도 계약·전기로 처리하며, 이 스케줄이 자동 생성하지 않습니다.
+  interest_only: 원금 행 0, balloon 자동 생성 없음.
 </Rule>
 
 <Rule
@@ -234,8 +172,7 @@ holiday installment revise <id> --data '[…]'
   testName="refuses a 0% annuity instead of dividing by zero"
   consequence="annuity 공식에서 0으로 나누기가 발생합니다."
 >
-연이율 0%이면 `annuity`가 아니라 `equal_principal`(원금균등)에 해당합니다.
-`method=annuity`와 `rate=0` 조합은 거부합니다.
+  rate 0 + annuity → 거부. `equal_principal`을 쓴다.
 </Rule>
 
 <Rule
@@ -243,19 +180,23 @@ holiday installment revise <id> --data '[…]'
   title="이자 반올림은 half away from zero를 사용한다"
   test="packages/core/src/domain/loan.test.ts"
   testName="rounds half AWAY FROM ZERO, like a lender does"
-  consequence="대주 명세서와 원 단위로 어긋나 `loan check`가 지속 실패합니다."
+  consequence="대주 명세서와 원 단위로 어긋나 loan check가 지속 실패합니다."
 >
-이자 계산의 반올림은 half away from zero입니다. 내부 반올림 관례보다 대주
-명세서와의 일치가 우선입니다.
+  `roundDiv`: 은행가 반올림이 아닌 half away from zero.
 </Rule>
 
-## 카탈로그 미등재 규칙
+<Rule
+  id="POLICY-016"
+  title="적용된 마이그레이션은 변경할 수 없다"
+  test="packages/store-sqlite/src/store.test.ts"
+  testName="REFUSES to open a ledger whose applied migration has changed"
+  consequence="동일 원장이라도 파일 내용이 달라지면 다른 복제본과 상태가 불일치합니다."
+>
+  `__holiday_migrations`에 sha256. 해시가 바뀐 마이그레이션으로 열면 `MigrationDriftError`.
+</Rule>
 
-아래 동작은 코드에 구현되어 있으나, 아직 `POLICY-*` 식별자가 부여되지 않았습니다.
-이 표에서 새 id를 만들지 않습니다.
+## 문서화만 (아직 POLICY id 없음)
 
-| 영역 | 요약 | 구현 |
-|---|---|---|
-| draft / 검토 | 불균형 draft 적재 거부. 기간 내 draft가 있으면 `close` 거부. `review accept`로 posted 승격 | `ingest`, `closeGate`, CLI `review` |
-| FX | posted `weight`는 환율 변경으로 소급 수정하지 않음. rate 유도 시 `fx_estimated` | `fx.ts`, `txn.ts` |
-| close / 잔액 대사 | hard close grain은 book당 하나. 잔액 대사 불일치 시 마감 거부 | `close.ts`, CLI `assert` / `close` |
+- draft/review와 closeGate
+- 기표된 FX weight 소급 변경 금지
+- 북당 close_grain 하나

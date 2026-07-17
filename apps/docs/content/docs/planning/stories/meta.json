@@ -1,0 +1,20 @@
+{
+  "title": "User Stories",
+  "pages": [
+    "index",
+    "us-ledger-init",
+    "us-accounts",
+    "us-txn",
+    "us-cards",
+    "us-installments",
+    "us-recurring",
+    "us-loans",
+    "us-ingest-review",
+    "us-fx",
+    "us-close-assert",
+    "us-cashflow-short",
+    "us-verify"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

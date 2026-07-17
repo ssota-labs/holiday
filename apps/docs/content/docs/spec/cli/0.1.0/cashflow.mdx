@@ -1,0 +1,41 @@
+---
+title: cashflow
+description: holiday cashflow 명령 계약
+type: reference
+summary: 현금 계정에서 스케줄 지출을 투영한다. 잔액이 음수면 ⚠ SHORT.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'immutable snapshot of foundation CLI',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> **불변 스냅샷 0.1.0.** 현재 계약은 [latest](/docs/spec/cli)를 본다.
+
+
+관련 기능: [cashflow](/docs/features/cashflow)
+
+<CommandSpec
+  command="cashflow"
+  mutates={false}
+  summary="현금 계정에서 스케줄 지출을 투영한다. 잔액이 음수면 ⚠ SHORT."
+  signature={`holiday cashflow [--until YYYY-MM-DD]`}
+  flags={[
+    { name: '--until', type: 'YYYY-MM-DD', default: 'today+3months' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday cashflow --until 2026-12-31 --json`}
+/>

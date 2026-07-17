@@ -1,0 +1,12 @@
+{
+  "title": "기획",
+  "pages": [
+    "vision",
+    "personas",
+    "journeys",
+    "prds",
+    "stories"
+  ],
+  "collapsible": true,
+  "defaultOpen": true
+}

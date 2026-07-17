@@ -1,73 +1,23 @@
 ---
 title: 현금흐름
-description: 오늘 현금과 앞으로의 유출만 본다. 과거 현금흐름표가 아니다.
-type: conceptual
-summary: CLI는 개시 현금과 전방 runway만 출력한다. 네 투영기가 같은 날짜 버킷에 합류한다.
-related: ['/docs/features/cards', '/docs/features/installments', '/docs/features/recurring', '/docs/features/loans', '/docs/domain/policy']
+description: 런웨이와 SHORT
+type: guide
+summary: cash 계정 opening + 스케줄 투영. 음수면 SHORT.
 ---
 
-## 개요
+제품의 payoff 명령. 카드·할부·정기·대출 출금을 날짜별로 쌓아 잔액을 본다.
 
-`holiday cashflow`는 **역사적 현금흐름표가 아니다.** CLI가 출력하는 것은 다음 두 가지뿐이다.
+## 수락 기준
 
-1. 오늘 기준 `account.cash = true` 계정의 장부가액 합(개시 현금)
-2. 그 잔고에서 미래 유출을 날짜 순으로 빼며 걸어가는 runway
+1. opening = `--cash` 합
+2. POLICY-003/004/005/008/010을 지킨 투영
+3. balanceAfter가 음수면 SHORT
+4. reads-only (원장 불변)
 
-원장의 과거 절반(현금 계정을 건드린 posting)은 쿼리로 유도할 수 있으나, 이 명령은 그 표를 만들지 않는다. 유지하는 현금흐름 테이블도 없다.
+## 스펙
 
-## 동작
+[cashflow](/docs/spec/cli/cashflow)
 
-네 투영기가 동일 날짜 버킷에 합류한다. `cashRunway`가 개시 현금에서 출발해 날짜별로 잔고를 갱신한다.
+## 스토리
 
-| 투영기 | 입력 | 유출 일자 |
-|---|---|---|
-| `projectCardBills` | 카드 계정 posting + 청구주기 | 결제일 |
-| `projectInstallments` | 할부 스케줄 행 | 회차 `paymentDate` |
-| `projectRecurring` | 정기지출 카덴스 | 통장: 발생일 / 카드: 청구주기 결제일 |
-| `projectLoans` | 대출 상환 스케줄 | 회차 `dueDate` |
-
-스케줄 행은 원장에 전기되지 않는다. 예측이 사실이 되면 일반 `txn`으로 기록한다.
-
-`balanceAfterMinor < 0`인 날짜에 `⚠ SHORT`를 붙인다. SHORT는 에러가 아니라 답이다. exit code는 0이다.
-
-개시 현금은 `account.cash` 플래그가 정한다. 자산 접두어 규칙이 아니다. `--cash`가 없는 자산은 개시 잔고에 포함되지 않으며, CLI가 경고를 낸다.
-
-청구주기가 없는 카드에 붙은 할부는 투영에서 빠진다. CLI는 orphan installment 경고를 낸다.
-
-```
-⚠ installment "…" is on a card with no billing cycle and is NOT in this projection.
-⚠ Assets:… is not marked --cash and is NOT counted as cash on hand.
-```
-
-## 명령
-
-<CommandSpec
-  command="cashflow"
-  mutates={false}
-  summary="오늘 현금에서 출발해, 이미 오고 있는 카드·할부·정기지출·대출 유출을 빼며 걸어간다."
-  signature={`holiday cashflow [--until YYYY-MM-DD] [--json]`}
-  flags={[
-    { name: '--until', type: 'YYYY-MM-DD', default: '3개월 후', description: '투영 지평. 이 날짜 이하(포함)의 결제일만' },
-  ]}
-  exits={[
-    { code: 0, meaning: '정상. SHORT여도 0 — 답이지 에러가 아니다' },
-    { code: 2, meaning: '원장 없음 등 사용법 오류' },
-  ]}
-  example={`$ holiday cashflow --until 2026-10-31
-cash on hand (2026-07-17):  3000000 KRW
-
-2026-07-25   -      800000   →       2200000
-             월세                                   800000
-2026-10-01   -      117000   →        -17000   ⚠ SHORT
-             냉장고 (2/12)                           100000
-             넷플릭스 (2026-08-17 결제분)                 17000
-
-⚠ Short by 17000 KRW on 2026-10-01.`}
-/>
-
-## 제약
-
-- 투영은 `paymentDate > today`이고 `paymentDate <= until`인 유출만 포함한다. 오늘 이전·오늘 당일 유출은 원장 몫이다.
-- 카드 청구액에서 funding 계정을 상대 leg로 갖는 거래(결제)는 제외한다. 환불과 결제를 부호만으로 구분하지 않는다. [POLICY-004](/docs/domain/policy#policy-004)
-- 이미 마감됐지만 아직 결제되지 않은 청구서도 포함한다. [POLICY-008](/docs/domain/policy#policy-008)
-- 할부·정기지출·대출은 스케줄에서만 투영한다. 할부 구매 posting은 구매일 전액이므로 일반 청구 합계에 넣지 않는다.
+[US-cashflow-short](/docs/planning/stories/us-cashflow-short)

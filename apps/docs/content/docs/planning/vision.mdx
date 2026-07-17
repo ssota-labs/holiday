@@ -1,0 +1,31 @@
+---
+title: Vision
+description: holiday가 존재하는 이유와 경계
+type: conceptual
+summary: 1인 가계·부채를 복식부기로 기록하고, 현금이 언제 SHORT인지 미리 본다.
+---
+
+## 한 줄
+
+개인이 **로컬 복식부기 원장**으로 가계·카드·할부·대출을 기록하고, **현금 런웨이**와 **감사 가능한 이력**을 얻는다.
+
+## 경계
+
+| 한다 | 하지 않는다 |
+|---|---|
+| CLI로 원장 기록·조회 | OCR / 은행 API 자동 수집 |
+| 스케줄 기반 현금흐름 투영 | 투자 자문·포트폴리오 |
+| 정책(POLICY) + 테스트로 불변식 고정 | 멀티유저·클라우드 SoR |
+| 에이전트가 `--json`으로 shell-out | 웹 대시보드를 제품으로 |
+
+## 장기 성공 지표
+
+- `verify`가 원장·해시 체인을 통과한다
+- `cashflow`가 확정·스케줄 출금을 빠뜨리지 않고 SHORT 날짜를 표시한다
+- POLICY-* Rule이 테스트에 링크되고 `check:rules`가 통과한다
+- 에이전트는 [CLI latest](/docs/spec/cli)만으로 안전하게 명령을 고른다
+
+## 관련
+
+- 기간별 요구: [PRDs](/docs/planning/prds)
+- 행위자: [Personas](/docs/planning/personas)

@@ -1,153 +1,22 @@
 ---
 title: 대출
-description: 상환 스케줄·대사·회차 기표
-type: conceptual
-summary: 스케줄로 원금/이자를 쪼개고, loan check로 원장과 대사한다.
-related: ['/docs/domain/policy', '/docs/features/cashflow', '/docs/dev/cli']
+description: 상환 스케줄, pay, check
+type: guide
+summary: 스케줄과 원장 차이는 loan_drift.
 ---
 
-> **지켜야 하는 규칙:** [POLICY-011](/docs/domain/policy#policy-011) · [POLICY-012](/docs/domain/policy#policy-012) · [POLICY-013](/docs/domain/policy#policy-013) · [POLICY-014](/docs/domain/policy#policy-014) · [POLICY-015](/docs/domain/policy#policy-015)
-> 무엇을 하는지는 여기에 두고, 항상 참이어야 할 규칙은 [정책](/docs/domain/policy)에 있다.
+## 수락 기준
 
-## 개요
+1. 원금 합 불변식 ([POLICY-012](/docs/domain/policy#POLICY-012))
+2. interest_only balloon 없음 ([POLICY-013](/docs/domain/policy#POLICY-013))
+3. 0% annuity 거부 ([POLICY-014](/docs/domain/policy#POLICY-014))
+4. half away from zero ([POLICY-015](/docs/domain/policy#POLICY-015))
+5. 미납·드리프트 감지 ([POLICY-011](/docs/domain/policy#POLICY-011))
 
-대출 모듈은 부채 계정에 상환 스케줄을 붙인다. 스케줄은 예측이며 원장에 전기되지 않는다. 실제 상환은 `loan pay`가 스케줄 회차로 원금·이자를 나눠 3-leg 거래를 기표한다.
+## 스펙
 
-명세서에 "총액 N원 납부"만 있을 때, 원금/이자 분해는 스케줄이 담당한다.
+[add](/docs/spec/cli/loan/add) · [pay](/docs/spec/cli/loan/pay) · [check](/docs/spec/cli/loan/check) · [list](/docs/spec/cli/loan/list)
 
-방법:
+## 스토리
 
-| `--method` | 의미 |
-|---|---|
-| `annuity` (기본) | 원리금균등 |
-| `equal_principal` | 원금균등 |
-| `bullet` | 만기일시상환(이자 매월, 원금 만기) |
-| `interest_only` | 거치(이자만). 원금 상환 없음 |
-
-## 동작
-
-`buildLoanSchedule`이 회차별 개시잔액·원금·이자·종료잔액을 만든다. 이자 반올림은 0에서 멀어지는 쪽이다. [POLICY-015](/docs/domain/policy#policy-015)
-
-원금 행의 합은 대출 원금과 같다. 마지막 회차가 잔여를 흡수한다. [POLICY-012](/docs/domain/policy#policy-012) `interest_only`만 예외로 원금 합 0이다.
-
-`loan check`는 as-of 기준 스케줄 종료잔액과 원장 부채 잔액(부호 보정)을 비교한다. 차이는 미납·중도상환·미기록 금리변경·수수료 등의 신호다. [POLICY-011](/docs/domain/policy#policy-011)
-
-`loan pay`는 `--date`에 해당하는 회차가 있어야 한다. `--amount`가 스케줄과 다르면 이자는 스케줄값을 유지하고 차액을 원금에 반영한다. 실납이 스케줄 이자보다 작으면 거부한다.
-
-`cashflow`의 `projectLoans`는 `dueDate > today`인 회차만 투영한다.
-
-### 두 가지 거부
-
-1. **0% annuity** — 원리금균등 공식의 분모 `((1+r)^n − 1)`이 0이 된다. 0%면 `equal_principal`을 쓰라고 거부한다. [POLICY-014](/docs/domain/policy#policy-014)
-
-2. **interest_only balloon 없음** — 거치 스케줄은 원금을 0으로만 둔다. 만기 일시상환(balloon)을 지어내지 않는다. 출구는 별도 계약·별도 스케줄이다. [POLICY-013](/docs/domain/policy#policy-013)
-
-## 명령
-
-<CommandSpec
-  command="loan add"
-  mutates={true}
-  summary="대출 부채 계정에 상환 스케줄을 붙인다."
-  signature={`holiday loan add <LOAN_ACCOUNT>
-  --funding <ASSET_ACCOUNT>
-  --interest <EXPENSE_ACCOUNT>
-  --principal <amount>
-  --rate <percent>
-  --months <n>
-  --first-payment <date>
-  [--method annuity|equal_principal|bullet|interest_only]
-  [--payment-day <1-31 | -1>]
-  [--label <text>]`}
-  flags={[
-    { name: '--funding', type: 'account', required: true, description: '상환 출금 자산 계정' },
-    { name: '--interest', type: 'account', required: true, description: '이자 비용 계정' },
-    { name: '--principal', type: 'amount', required: true, description: '대출 원금' },
-    { name: '--rate', type: 'percent', required: true, description: '연이율. 계약서 그대로. "4.2" = 4.2%' },
-    { name: '--months', type: 'integer', required: true, description: '기간(개월)' },
-    { name: '--first-payment', type: 'date', required: true, description: '1회차 납입일' },
-    { name: '--method', type: 'enum', default: 'annuity', description: 'annuity | equal_principal | bullet | interest_only' },
-    { name: '--payment-day', type: 'integer', description: '없으면 --first-payment의 일자. -1 = 말일' },
-    { name: '--label', type: 'string' },
-  ]}
-  exits={[
-    { code: 0, meaning: '등록됨. 1회차 분해·총이자 출력' },
-    { code: 1, meaning: '0% annuity, 비정상 금리/기간 등' },
-    { code: 2, meaning: '계정 없음' },
-  ]}
-  example={`$ holiday loan add Liabilities:Loans:KB:Mortgage \\
-    --funding Assets:Bank:KB:Checking --interest Expenses:Interest:Mortgage \\
-    --principal 300000000 --rate 4.2 --months 360 --first-payment 2026-08-25 --label "KB 주담대"
-원리금균등 300000000 @ 4.200% × 360개월. 2026-08-25 ~ 2056-07-25.
-1회차 1467052 (원금 417052 + 이자 1050000)
-총 이자 228138372
-이건 예측입니다. 실제 잔액과 어긋나는지는 \`holiday loan check\`.`}
-/>
-
-<CommandSpec
-  command="loan list"
-  mutates={false}
-  summary="대출과 오늘 기준 원장 잔액을 나열한다."
-  signature={`holiday loan list [--json]`}
-  flags={[]}
-  exits={[
-    { code: 0, meaning: '목록 출력. 없으면 안내 문구' },
-    { code: 2, meaning: '원장 없음' },
-  ]}
-  example={`$ holiday loan list
-KB 주담대                 원리금균등       4.2% × 360개월   잔액 300,000,000`}
-/>
-
-<CommandSpec
-  command="loan check"
-  mutates={false}
-  summary="원장 잔액이 스케줄 기대치와 맞는지 대사한다."
-  signature={`holiday loan check [LOAN_ACCOUNT] [--as-of <date>]`}
-  flags={[{ name: '--as-of', type: 'date', default: 'today' }]}
-  exits={[
-    { code: 0, meaning: '전부 스케줄대로' },
-    { code: 1, meaning: '하나 이상 어긋남 — loan_drift' },
-    { code: 2, meaning: '지정한 계정에 대출 없음' },
-  ]}
-  example={`$ holiday loan check --as-of 2026-09-25
-KB 주담대  (2026-09-25)
-  스케줄:         299164436
-  원장:           299582948
-  ⚠ 차이 418512
-    you owe 418512 more than the schedule expects. Usually a missed or partial
-    payment, an unrecorded rate change, or a fee added to the balance.`}
-/>
-
-<CommandSpec
-  command="loan pay"
-  mutates={true}
-  summary="회차 납입을 기록한다. 스케줄로 원금/이자를 쪼갠다."
-  signature={`holiday loan pay <LOAN_ACCOUNT> --date <due_date> [--amount <actual>]`}
-  flags={[
-    { name: '--date', type: 'date', required: true, description: '스케줄상의 회차 납입일' },
-    { name: '--amount', type: 'amount', description: '실납이 스케줄과 다를 때' },
-  ]}
-  exits={[
-    { code: 0, meaning: '3-leg 거래로 기표됨' },
-    { code: 2, meaning: '그 날짜에 회차 없음, 또는 실납이 스케줄 이자 미만' },
-  ]}
-  example={`$ holiday loan pay Liabilities:Loans:KB:Mortgage --date 2026-08-25
-1회차 1467052 = 원금 417052 + 이자 1050000`}
-/>
-
-<LedgerExample
-  date="2026-08-25"
-  payee="KB 주담대"
-  narration="1/360 상환"
-  legs={[
-    { account: 'Liabilities:Loans:KB:Mortgage', units: '417,052 KRW', weight: 417052, source: 'identity', note: '원금 감소' },
-    { account: 'Expenses:Interest:Mortgage', units: '1,050,000 KRW', weight: 1050000, source: 'identity', note: '스케줄 이자' },
-    { account: 'Assets:Bank:KB:Checking', units: '-1,467,052 KRW', weight: -1467052, source: 'identity', note: '실납 현금' },
-  ]}
-/>
-
-## 제약
-
-- 스케줄은 예측이다. 금리·중도상환 변경 시 원장을 자동 재작성하지 않는다. `loan check`로 괴리를 본다.
-- `interest_only`는 balloon을 만들지 않는다. [POLICY-013](/docs/domain/policy#policy-013)
-- 0% `annuity`는 거부한다. [POLICY-014](/docs/domain/policy#policy-014)
-- `loan pay`의 `--date`는 스케줄 `dueDate`와 정확히 일치해야 한다.
+[US-loans](/docs/planning/stories/us-loans)

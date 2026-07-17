@@ -1,81 +1,53 @@
 ---
 title: 용어집
-description: 문서·대화·코드·컬럼이 같은 단어를 쓰도록 정의한 용어집
-type: reference
-summary: 도메인 한국어와 코드 영어를 대응시킨다. 각 항목은 구현 위치를 함께 적는다.
-related: ['/docs/domain/policy']
+description: holiday 유비쿼터스 언어
+type: conceptual
+summary: units·weight·draft·cash·period — 코드와 같은 말로 말한다.
 ---
 
-도메인(한국 개인 재무)과 코드(영어)가 같은 개념을 가리키도록 용어를 고정한다.
-항목마다 코드/컬럼 위치를 적는다. 구현을 가리키지 못하는 용어는 사용하지 않는다.
-
 <Glossary>
-  <Term term="units" ko="단위 / 사실" code="posting.units_minor">
-    계정의 자체 통화 minor unit 정수. USD 계정 `-75000`은 −$750.00.
+  <Term term="units" ko="수량" code="posting.units_minor">
+    계정 상품(commodity)으로 기록된 사실량.
   </Term>
-
-  <Term term="weight" ko="가중치 / 측정" code="posting.weight_minor" notTo="units와 혼동하지 않는다. 같은 사건의 다른 표현이다.">
-    같은 사건을 기능통화로 측정한 값. 균형 검사는 `weight_minor` 합만 본다.
-    계정 기능통화 장부가액은 `SUM(weight_minor)`다.
+  <Term term="weight" ko="장부가액" code="posting.weight_minor" notTo="units를 잔액으로 쓰지 말 것">
+    같은 사건을 기능통화로 환산한 값. 잔액 집계는 Σ weight만 사용.
   </Term>
-
-  <Term term="functional currency" ko="기능통화 / booking commodity" code="book.functional_currency · txn.booking_commodity" notTo="posting의 commodity와 다르다. posting commodity는 leg마다 다를 수 있다.">
-    book의 기표·균형 통화. `holiday init --currency`로 설정한다(예: KRW).
-    book당 하나이며, 변경하려면 새 book을 연다. `txn.booking_commodity`는 항상
-    이 값과 같다.
+  <Term term="functional currency" ko="기능통화" code="book.functional_currency">
+    `init --currency`로 정한다. booking commodity.
   </Term>
-
-  <Term term="weight_source" ko="가중치 출처" code="posting.weight_source">
-    `weight_minor`가 어디서 왔는지. `identity`(기능통화 leg, weight ≡ units),
-    `actual`(양쪽 관측), `rate`(환율표 유도, txn은 `fx_estimated`),
-    `plug`(어느 leg도 기능통화가 아닐 때 남는 FX 잔차).
+  <Term term="weight_source" code="identity|actual|rate|plug">
+    기능통화 다리는 identity. 관측 총액은 actual, 환율 유도는 rate, 잔차 다리는 plug.
   </Term>
-
-  <Term term="plug" code="weight_source = 'plug'" notTo="반올림 오차가 아니다.">
-    비기능통화 leg만으로 거래를 구성할 때 남는 잔차 전기. FX 스프레드로 손익에
-    올린다.
+  <Term term="draft" ko="초안" code="txn.status=draft" notTo="posted">
+    검토 전 거래. 잔액·리포트·마감 게이트에서 제외.
   </Term>
-
-  <Term term="draft / posted / rejected" ko="거래 상태" code="txn.status">
-    `draft`: 검토 대기. 잔고·보고서 기본 조회에서 제외. `posted`: 확정 전기.
-    `rejected`: 거절. 데이터 수집 중복 방지용으로 행은 유지한다. `void`도 타입에
-    있으나 일반 경로와는 별도다.
+  <Term term="posted" ko="전기됨" code="txn.status=posted">
+    승인·직접 기표된 거래. 장부의 사실.
   </Term>
-
-  <Term term="assertion" ko="잔액 대사" code="balance_assertion · holiday assert">
-    특정 날짜·계정·통화의 장부 잔액을 명세서와 대조한 기록입니다.
-    `holiday close`는 불일치한 대사가 있으면 마감을 거부합니다.
+  <Term term="assertion" ko="잔액 대사" code="balance_assertion">
+    외부 명세서와 잔액 대사. `assert`. 마감 게이트 입력.
   </Term>
-
-  <Term term="period / close" ko="기간 / 마감" code="period · holiday close">
-    book의 `close_grain`(기본 `month`)에 대한 hard close. `closeGate`를 통과하면
-    FX 재평가를 전기하고, 스냅샷(`snapshot.kind = 'close'`)을 쓴 뒤
-    `period.status`를 `closed`로 바꾼다. draft가 남아 있거나 assertion이 실패하면
-    거부한다. (닫힌 기간으로의 추가 기표를 store가 거부하는 가드는 아직 없다.)
+  <Term term="period" ko="마감 기간" code="period.status">
+    close_grain(기본 month). open / closed / locked.
   </Term>
-
-  <Term term="checkpoint (snapshot)" ko="소프트 마감 스냅샷" code="snapshot.kind = 'checkpoint'" notTo="CLI 명령 holiday checkpoint와 다른 개념이다.">
-    일·주 등 soft close용 스냅샷. 재평가를 하지 않고 `period`를 `closed`로
-    올리지 않는다. hard close grain은 book당 하나뿐이다. 같은 구간에 두 grain으로
-    재평가하면 FX가 이중 계상된다.
+  <Term term="cash" ko="현금성" code="account.cash" notTo="Assets:Bank:* prefix">
+    현금흐름 opening 집합 플래그. 코드 prefix가 아님 (ADR-004).
   </Term>
-
-  <Term term="checkpoint (CLI)" ko="WAL 접기" code="holiday checkpoint · store.checkpoint()">
-    SQLite WAL을 `ledger.db`로 접는다. git commit 전에 호출한다. 회계 스냅샷
-    (`snapshot.kind = 'checkpoint'`)과 무관하다.
+  <Term term="billing cycle" ko="청구주기" code="card.cycle_close_day">
+    카드 청구·결제 규칙. close-day, payment-day, offset.
   </Term>
-
-  <Term term="청구주기" ko="billing cycle" code="card.cycle_close_day">
-    사용분이 어느 청구서에 실리고, 현금이 언제 빠지는지 정하는 규칙.
+  <Term term="schedule" ko="스케줄">
+    카드/할부/정기/대출 예측 행. 저널 밖. cashflow가 투영.
   </Term>
-
-  <Term term="cash" ko="현금 계정" code="account.cash" notTo="asset과 동일하지 않다. 부동산 등 비현금 자산이 있다.">
-    `holiday cashflow`가 잔고를 걸어가는 출발점. 계정 코드 접두어가 아니라
-    `--cash` 플래그다. 근거는 ADR-004.
+  <Term term="checkpoint" ko="WAL checkpoint" code="holiday checkpoint" notTo="snapshot.kind=checkpoint">
+    SQLite WAL을 ledger.db로 fold. 스냅샷 checkpoint와 무관.
   </Term>
-
-  <Term term="schedule" ko="스케줄" code="card / installment / recurring / loan" notTo="원장 전기가 아니다. 예측만 한다.">
-    향후 현금 유출 예측. 카드 청구주기·할부·정기지출·대출. 모두 `cashRunway`에
-    합류한다. 근사를 허용하는 유일한 구역이다.
+  <Term term="audit chain" ko="감사 체인" code="audit_log">
+    해시 체인. `verify`가 검사.
   </Term>
 </Glossary>
+
+## 계정 코드
+
+Beancount 스타일 `Root:Segment:…`. Root ∈ Assets/Liabilities/Equity/Income/Expenses.  
+예: `Assets:Bank:KB:Checking`, `Liabilities:Card:Shinhan:Installment`, `Income:FX:Unrealized`.

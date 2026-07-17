@@ -1,0 +1,24 @@
+---
+title: US-ingest-review
+description: 캡쳐에서 읽은 거래를 draft로 넣고 사람이 승인하고 싶다
+type: conceptual
+summary: OCR 없이 중복을 막고 posted만 장부가 된다
+---
+
+**As a** 1인 사용자 / Agent  
+**I want** 캡쳐에서 읽은 거래를 draft로 넣고 사람이 승인하고 싶다  
+**So that** OCR 없이 중복을 막고 posted만 장부가 된다
+
+### 수락 기준
+
+1. ingest submit 은 draft만 만든다
+2. image SHA / external_ref 중복은 hard-block
+3. reject 행은 dedup 기억으로 유지
+4. accept 는 promoteDraft
+
+### 추적
+
+- 기능: [ingest](/docs/features/ingest)
+- 스펙: [`submit`](/docs/spec/cli/ingest/submit)
+- 검증: cli ingest/review
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

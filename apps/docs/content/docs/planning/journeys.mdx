@@ -1,0 +1,30 @@
+---
+title: Journeys
+description: 스토리를 묶은 E2E 시나리오
+type: guide
+summary: 원장 세팅 → 스케줄·수집 → 현금흐름·마감.
+---
+
+## J1. 원장 세팅
+
+1. [US-ledger-init](/docs/planning/stories/us-ledger-init) — `init`
+2. [US-accounts](/docs/planning/stories/us-accounts) — 현금·카드 계정
+3. [US-txn](/docs/planning/stories/us-txn) — 첫 거래
+4. [US-verify](/docs/planning/stories/us-verify) — 체인 확인
+
+명령 열: `init` → `account add` → `txn add` → `verify`
+
+## J2. 스케줄과 수집
+
+1. [US-cards](/docs/planning/stories/us-cards)
+2. [US-installments](/docs/planning/stories/us-installments) / [US-recurring](/docs/planning/stories/us-recurring) / [US-loans](/docs/planning/stories/us-loans)
+3. [US-ingest-review](/docs/planning/stories/us-ingest-review)
+4. [US-fx](/docs/planning/stories/us-fx) (외화 시)
+
+## J3. 현금흐름과 마감
+
+1. [US-cashflow-short](/docs/planning/stories/us-cashflow-short)
+2. [US-close-assert](/docs/planning/stories/us-close-assert)
+3. [US-verify](/docs/planning/stories/us-verify)
+
+명령 열: `assert` → `close [--dry-run]` → `cashflow` → `verify`

@@ -1,0 +1,9 @@
+{
+  "title": "스펙",
+  "pages": [
+    "cli",
+    "data-model"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

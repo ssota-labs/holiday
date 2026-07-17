@@ -1,0 +1,50 @@
+---
+title: loan add
+description: holiday loan add 명령 계약
+type: reference
+summary: 대출 부채 계정에 상환 스케줄을 부착한다. 원금 인출 기표는 별도.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'immutable snapshot of foundation CLI',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> **불변 스냅샷 0.1.0.** 현재 계약은 [latest](/docs/spec/cli)를 본다.
+
+
+관련 기능: [loans](/docs/features/loans)
+
+<CommandSpec
+  command="loan add"
+  mutates={true}
+  summary="대출 부채 계정에 상환 스케줄을 부착한다. 원금 인출 기표는 별도."
+  signature={`holiday loan add <code> --funding --interest --principal --rate --months --first-payment [--method annuity]`}
+  flags={[
+    { name: '<code>', type: 'string', kind: 'arg', required: true },
+    { name: '--funding', type: 'string', required: true },
+    { name: '--interest', type: 'string', required: true },
+    { name: '--principal', type: 'amount', required: true },
+    { name: '--rate', type: 'percent', required: true, description: '예: 4.2' },
+    { name: '--months', type: 'number', required: true },
+    { name: '--first-payment', type: 'YYYY-MM-DD', required: true },
+    { name: '--method', type: 'annuity|equal_principal|bullet|interest_only', default: 'annuity' },
+    { name: '--payment-day', type: 'number' },
+    { name: '--label', type: 'string' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday loan add Liabilities:Loans:KB --funding Assets:Bank:KB:Checking --interest Expenses:Interest:KB --principal 10000000 --rate 4.2 --months 36 --first-payment 2026-08-01 --json`}
+/>

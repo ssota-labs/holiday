@@ -1,114 +1,30 @@
 ---
 title: 계정
-description: 계정 코드, 유형, 통화, 현금·화폐성 플래그
-type: conceptual
-summary: 계정은 colon 경로이며 루트 유형으로 분류됩니다. --commodity와 --cash가 집계·현금흐름에 영향을 줍니다.
-related: ['/docs/domain/glossary', '/docs/features/cashflow', '/docs/features/close', '/docs/dev/cli']
+description: 계정 코드, 현금 플래그, 잔액
+type: guide
+summary: Beancount형 코드. cash는 플래그(ADR-004). 잔액은 weight.
+related: ["/docs/planning/stories/us-accounts", "/docs/spec/cli/account/add"]
 ---
 
-## 개요
+차트의 기본 단위. 타입은 코드 prefix(Assets/Liabilities/…)에서 온다.
 
-계정은 원장의 전기 대상입니다. 코드는 colon으로 구분된 경로이며, 첫 세그먼트로
-계정 유형이 결정됩니다.
+## 할 수 있는 일
 
-| 루트 | 유형 | 용도 예 |
-|---|---|---|
-| `Assets` | 자산 | 통장, 현금, 증권 |
-| `Liabilities` | 부채 | 카드, 대출 |
-| `Equity` | 자본 | 기초 잔액 |
-| `Income` | 수익 | 급여, 이자 |
-| `Expenses` | 비용 | 식비, 이자비용 |
+- `account add` / `list`
+- `txn add`로 균형 거래
+- `balance`로 weight 잔액 조회
 
-`holiday balance --account Liabilities`처럼 접두어로 하위 트리를 조회할 수 있습니다.
+## 수락 기준
 
-## 동작
+1. `--cash` 계정이 cashflow opening에 포함된다
+2. placeholder에는 posting 불가(트리거)
+3. 불균형 txn은 거부 ([POLICY-001](/docs/domain/policy#POLICY-001))
 
-### 생성
+## 스펙
 
-```bash
-holiday account add Assets:Bank:KB:Checking --commodity KRW --cash
-holiday account add Liabilities:Card:Shinhan --commodity KRW
-holiday account add Assets:Property:Apartment --commodity KRW --non-monetary
-holiday account add Assets:Broker:IBKR
-```
+- [account add](/docs/spec/cli/account/add) · [list](/docs/spec/cli/account/list)
+- [txn add](/docs/spec/cli/txn/add) · [balance](/docs/spec/cli/balance) · [init](/docs/spec/cli/init)
 
-| 플래그 | 의미 |
-|---|---|
-| `--commodity` | 단일 통화로 제한. posting마다 강제됩니다. 다통화 계정이 아니면 지정하는 것이 안전합니다 |
-| `--cash` | 지출 가능 현금. `holiday cashflow`의 출발 잔고에 포함됩니다 |
-| `--non-monetary` | FX 재평가 제외(부동산·비품 등). 기본은 화폐성(`monetary`) |
-| `--placeholder` | 집계용 노드. 이 계정으로는 전기할 수 없습니다 |
-| `--opened` | 개설일 (기본: 오늘) |
+## 스토리
 
-자산 계정에 `--cash`를 주지 않으면 CLI가 현금흐름에서 제외됨을 안내합니다. 현금은
-이름 접두어가 아니라 **플래그**로 구분합니다. ([ADR-004](/docs/dev/adr#adr-004))
-
-### 조회
-
-```bash
-holiday account list
-holiday balance
-holiday balance --account Assets --as-of 2026-07-31
-```
-
-### 명명 관례
-
-- 기존 계정을 먼저 확인합니다: `holiday account list`
-- 가맹점마다 계정을 두지 않습니다. 가맹점은 `--payee`에 기록합니다
-- 카드 할부 잔액은 `Liabilities:Card:<카드>:Installment`처럼 분리합니다 ([POLICY-003](/docs/domain/policy#policy-003))
-- FX 재평가 손익은 보통 `Income:FX:Unrealized`를 사용합니다
-
-## 명령
-
-<CommandSpec
-  command="account add"
-  mutates={true}
-  summary="계정을 추가한다. 유형은 코드 루트에서 유도된다."
-  signature={`holiday account add <code>
-  [--commodity <code>]
-  [--cash]
-  [--non-monetary]
-  [--placeholder]
-  [--opened <date>]`}
-  flags={[
-    { name: '--commodity', type: 'code', description: '단일 통화 제한. 생략 시 다통화' },
-    { name: '--cash', type: 'boolean', default: 'false', description: 'cashflow 출발 잔고에 포함' },
-    { name: '--non-monetary', type: 'boolean', default: 'false', description: 'FX 재평가 제외' },
-    { name: '--placeholder', type: 'boolean', default: 'false', description: '전기 불가 그룹 노드' },
-    { name: '--opened', type: 'date', default: 'today' },
-  ]}
-  exits={[
-    { code: 0, meaning: '생성됨' },
-    { code: 2, meaning: '코드·통화 형식 오류' },
-  ]}
-  example={`$ holiday account add Assets:Bank:KB:Checking --commodity KRW --cash
-{"id":"…","code":"Assets:Bank:KB:Checking","type":"asset","commodity":"KRW","cash":true}`}
-/>
-
-<CommandSpec
-  command="account list"
-  mutates={false}
-  summary="계정 목록과 cash / placeholder / non-monetary 태그를 출력한다."
-  signature={`holiday account list [--json]`}
-  flags={[]}
-  exits={[{ code: 0, meaning: '목록 출력' }]}
-/>
-
-<CommandSpec
-  command="balance"
-  mutates={false}
-  summary="계정 잔액을 조회한다."
-  signature={`holiday balance [--as-of <date>] [--account <prefix>] [--json]`}
-  flags={[
-    { name: '--as-of', type: 'date', description: '기준일. 생략 시 현재' },
-    { name: '--account', type: 'prefix', description: '하위 트리 제한 (예: Assets)' },
-  ]}
-  exits={[{ code: 0, meaning: '잔액 출력' }]}
-/>
-
-## 제약
-
-- 계정 루트는 `Assets` · `Liabilities` · `Equity` · `Income` · `Expenses`만 허용합니다
-- `--commodity`를 생략하면 해당 계정에 대한 통화 적합성 검사가 약해집니다
-- `--cash`가 없는 자산은 `cashflow` 출발 잔고에서 제외됩니다
-- 계정은 삭제하지 않고 폐쇄합니다. posting은 account id를 참조하므로 코드 변경이 과거 전기를 다시 쓰지 않습니다
+[US-accounts](/docs/planning/stories/us-accounts) · [US-txn](/docs/planning/stories/us-txn) · [US-ledger-init](/docs/planning/stories/us-ledger-init)

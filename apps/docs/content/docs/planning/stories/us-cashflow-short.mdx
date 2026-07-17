@@ -1,0 +1,24 @@
+---
+title: US-cashflow-short
+description: 카드·할부·정기·대출이 반영된 현금 런웨이를 보고 싶다
+type: conceptual
+summary: SHORT 날짜를 미리 본다
+---
+
+**As a** 1인 사용자  
+**I want** 카드·할부·정기·대출이 반영된 현금 런웨이를 보고 싶다  
+**So that** SHORT 날짜를 미리 본다
+
+### 수락 기준
+
+1. opening = --cash 계정 합
+2. 스케줄 출금 투영
+3. 잔액 < 0 이면 SHORT 표시
+4. POLICY-003/004/005/008/010 준수
+
+### 추적
+
+- 기능: [cashflow](/docs/features/cashflow)
+- 스펙: [`cashflow`](/docs/spec/cli/cashflow)
+- 검증: POLICY-003,004,005,008,010
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

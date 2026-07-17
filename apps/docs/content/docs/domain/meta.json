@@ -1,0 +1,9 @@
+{
+  "title": "도메인",
+  "pages": [
+    "glossary",
+    "policy"
+  ],
+  "collapsible": true,
+  "defaultOpen": true
+}

@@ -1,0 +1,25 @@
+---
+title: US-loans
+description: 대출 스케줄을 붙이고 상환·대사하고 싶다
+type: conceptual
+summary: 명세서와 어긋나면 loan check가 잡는다
+---
+
+**As a** 1인 사용자  
+**I want** 대출 스케줄을 붙이고 상환·대사하고 싶다  
+**So that** 명세서와 어긋나면 loan check가 잡는다
+
+### 수락 기준
+
+1. 원금 합 불변식 (POLICY-012)
+2. interest_only는 balloon을 만들지 않는다 (POLICY-013)
+3. 0% annuity 거부 (POLICY-014)
+4. 반올림 half away from zero (POLICY-015)
+5. 미납 시 loan_drift (POLICY-011)
+
+### 추적
+
+- 기능: [loans](/docs/features/loans)
+- 스펙: [`add`](/docs/spec/cli/loan/add)
+- 검증: POLICY-011…015
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

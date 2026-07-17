@@ -1,0 +1,23 @@
+---
+title: US-txn
+description: 복식 다리로 거래를 남기고 싶다
+type: conceptual
+summary: 잔액이 weight 합 0을 지킨다
+---
+
+**As a** 1인 사용자  
+**I want** 복식 다리로 거래를 남기고 싶다  
+**So that** 잔액이 weight 합 0을 지킨다
+
+### 수락 기준
+
+1. weight 합 ≠ 0 이면 unbalanced (exit 1)
+2. 기능통화 posting은 units=weight (POLICY-002)
+3. --draft 는 잔액에서 제외
+
+### 추적
+
+- 기능: [accounts](/docs/features/accounts)
+- 스펙: [`add`](/docs/spec/cli/txn/add)
+- 검증: POLICY-001, POLICY-002
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

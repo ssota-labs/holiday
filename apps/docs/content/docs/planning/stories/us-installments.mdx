@@ -1,0 +1,24 @@
+---
+title: US-installments
+description: 할부를 별도 부채와 스케줄로 관리하고 싶다
+type: conceptual
+summary: 첫 청구에 원금 전액이 몰리지 않는다
+---
+
+**As a** 1인 사용자  
+**I want** 할부를 별도 부채와 스케줄로 관리하고 싶다  
+**So that** 첫 청구에 원금 전액이 몰리지 않는다
+
+### 수락 기준
+
+1. 할부 부채는 카드 일반 계정과 분리 (POLICY-003)
+2. 스케줄 원금 합 = 구매액 (POLICY-007)
+3. 수수료는 관측값만 (POLICY-006, 009)
+4. revise --data 로 명세서 덮어쓰기
+
+### 추적
+
+- 기능: [installments](/docs/features/installments)
+- 스펙: [`add`](/docs/spec/cli/installment/add)
+- 검증: POLICY-003,006,007,009
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

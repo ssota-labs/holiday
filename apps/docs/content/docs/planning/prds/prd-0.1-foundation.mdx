@@ -1,0 +1,62 @@
+---
+title: prd-0.1-foundation
+description: 로컬 복식부기 CLI 기반 구축
+type: conceptual
+period: 0.1 foundation
+status: done
+stories:
+  - US-ledger-init
+  - US-accounts
+  - US-txn
+  - US-cards
+  - US-installments
+  - US-recurring
+  - US-loans
+  - US-ingest-review
+  - US-fx
+  - US-close-assert
+  - US-cashflow-short
+  - US-verify
+summary: 코드에 구현된 foundation 범위를 역기록한 완료 PRD.
+---
+
+## 문제
+
+1인이 카드 청구·할부·정기지출·대출을 흩어진 명세서에만 두고 있으면, **언제 현금이 부족한지**를 복식부기 없이 신뢰하기 어렵다. 에이전트가 도와주려면 **기계가 읽을 수 있는 계약**(exit·JSON·정책)이 필요하다.
+
+## 목표
+
+- 로컬 SQLite 원장 + CLI (`@holiday/cli` 0.1.0)
+- 계정·거래·카드·할부·정기·대출·환율·ingest/review·assert/close·cashflow·verify
+- POLICY-001…016을 테스트에 고정
+- 에이전트 skill이 `--json`으로 shell-out
+
+## Non-goals
+
+- OCR / 은행·카드 API
+- 환율 자동 수집
+- Postgres를 CLI SoR로 사용
+- 웹 UI·멀티유저
+- 할부수수료·이자 공식 추정 (관측값만)
+
+## 포함 스토리
+
+[stories 인덱스](/docs/planning/stories)의 foundation US 전부.
+
+## 비기능
+
+- Node ≥ 24, `node:sqlite`
+- 금액 JSON = 소수 문자열
+- 마이그레이션 해시 불변 (POLICY-016)
+
+## 성공 지표
+
+- `verify` OK
+- `cashflow` SHORT 표시
+- `pnpm --filter @holiday/docs check:rules` 통과
+- CLI 스펙 스냅샷 `0.1.0` 존재
+
+## 결과
+
+- 스펙: [CLI 0.1.0](/docs/spec/cli/0.1.0) / [latest](/docs/spec/cli)
+- 기능 카탈로그: [features](/docs/features/accounts)

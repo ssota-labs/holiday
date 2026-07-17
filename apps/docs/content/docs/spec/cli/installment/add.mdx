@@ -1,0 +1,50 @@
+---
+title: installment add
+description: holiday installment add 명령 계약
+type: reference
+summary: 할부 구매를 기록하고 스케줄을 생성한다. 수수료는 관측값만(--fees).
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+
+관련 기능: [installments](/docs/features/installments)
+
+<CommandSpec
+  command="installment add"
+  mutates={true}
+  summary="할부 구매를 기록하고 스케줄을 생성한다. 수수료는 관측값만(--fees)."
+  signature={`holiday installment add --card <code> --expense <code> --total <amount> --months <n> [--liability] [--fees] [--remainder-on first|last]`}
+  flags={[
+    { name: '--card', type: 'string', required: true },
+    { name: '--expense', type: 'string', required: true },
+    { name: '--total', type: 'amount', required: true },
+    { name: '--months', type: 'number', required: true },
+    { name: '--liability', type: 'string', default: '<card>:Installment' },
+    { name: '--date', type: 'YYYY-MM-DD', default: 'today' },
+    { name: '--payee', type: 'string' },
+    { name: '--label', type: 'string' },
+    { name: '--remainder-on', type: 'first|last', default: 'first' },
+    { name: '--fees', type: 'comma-minors', description: '관측 수수료. 생략=무이자' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday installment add --card Liabilities:Card:Shinhan --expense Expenses:Gear --total 300000 --months 3 --json`}
+/>

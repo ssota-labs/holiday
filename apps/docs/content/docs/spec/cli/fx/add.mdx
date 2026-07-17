@@ -1,0 +1,45 @@
+---
+title: fx add
+description: holiday fx add 명령 계약
+type: reference
+summary: 환율을 기록한다. 이미 기표된 weight는 바꾸지 않는다.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+
+관련 기능: [fx](/docs/features/fx)
+
+<CommandSpec
+  command="fx add"
+  mutates={true}
+  summary="환율을 기록한다. 이미 기표된 weight는 바꾸지 않는다."
+  signature={`holiday fx add <base> <quote> <rate> --as-of <date> [--source manual]`}
+  flags={[
+    { name: '<base>', type: 'string', kind: 'arg', required: true },
+    { name: '<quote>', type: 'string', kind: 'arg', required: true },
+    { name: '<rate>', type: 'decimal', kind: 'arg', required: true },
+    { name: '--as-of', type: 'YYYY-MM-DD', required: true },
+    { name: '--source', type: 'string', default: 'manual' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday fx add USD KRW 1350.5 --as-of 2026-07-17 --json`}
+/>

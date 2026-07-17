@@ -1,136 +1,24 @@
 ---
-title: 데이터 수집과 리뷰
-description: 파싱된 JSON을 드래프트로 넣고, 사람이 승인한 뒤에만 장부가 된다
-type: conceptual
-summary: CLI는 OCR을 하지 않는다. ingest는 draft만 만든다. review가 posted로 올린다.
-related: ['/docs/domain/policy', '/docs/dev/skill', '/docs/features/close']
+title: 데이터 수집
+description: ingest submit → review
+type: guide
+summary: OCR 없음. draft만 적재. 사람이 승인.
 ---
 
-> **지켜야 하는 규칙:** [POLICY-001](/docs/domain/policy#policy-001)
-> 동작은 여기 두고, 항상 참이어야 할 규칙은 [정책](/docs/domain/policy)에 있다.
+에이전트/사람은 파싱된 JSON을 넘긴다. CLI는 OCR을 하지 않는다.
 
-## 개요
+## 수락 기준
 
-`holiday ingest`는 이미 파싱된 거래 JSON을 원장에 **드래프트**로 넣는다. CLI는 OCR을 수행하지 않는다. 이미지 해석은 에이전트 vision 모델(또는 사람)의 몫이다.
+1. submit 결과는 pending draft
+2. image SHA / external_ref 중복 hard-block
+3. reject 행 유지(dedup)
+4. accept 후 posted만 잔액에 포함
+5. close 게이트는 period 내 draft를 막는다
 
-흐름:
+## 스펙
 
-1. 파서가 `--data`로 submission JSON을 넘긴다.
-2. `ingest submit`이 균형 검사를 통과한 거래를 `status='draft'`로 기록한다.
-3. `review list` → `accept` / `reject`로 사람이 결정한다.
-4. 승인된 항목만 잔액·현금흐름·마감에 포함된다.
+[ingest submit](/docs/spec/cli/ingest/submit) · [review list](/docs/spec/cli/review/list) · [accept](/docs/spec/cli/review/accept) · [reject](/docs/spec/cli/review/reject)
 
-드래프트는 별도 staging 테이블이 아니라 **진짜 거래**다. 불균형 드래프트는 생성되지 않는다. 승인은 실패할 수 없는 status flip이다.
+## 스토리
 
-## 동작
-
-### 입력 계약
-
-`--data`에 JSON을 넣는다. 전역 `--json`(기계 출력)과 이름이 겹치지 않도록 `--data`를 쓴다. `--json`으로 submission을 넘기지 않는다.
-
-항목은 flat 금액이 아니라 **legs**다. 카테고리 판단도 같은 JSON에 포함된다. 스키마는 `packages/cli/src/ingest.ts`의 `INGEST_SUBMISSION`이다.
-
-### 중복
-
-| 근거 | 효과 |
-|---|---|
-| 이미지 sha256 (`--image` 또는 `sourceSha256`) | 동일 바이트면 차단 (`duplicate_image`) |
-| `externalRef` | 동일 발행사 거래 ID면 차단 (`duplicate_external_ref`) |
-| 자연키(계정·날짜·금액·상호) | 경고만. 동일 구매 두 번은 허용 |
-| ±3일 near-duplicate | 경고만 |
-
-### idem-key
-
-`--idem-key`는 코드상 선택이다. 같은 키 + 같은 request SHA면 저장된 응답을 replay한다. 같은 키 + 다른 요청은 거부한다. 에이전트가 타임아웃 후 재시도할 때 이중 기표를 막으려면 키를 넣는 것이 권장된다.
-
-### 리뷰
-
-- `accept`: draft → posted. ingest item → accepted.
-- `reject --reason`: draft 거부. 항목 행은 **삭제하지 않는다**(중복 기억).
-
-마감(`close`)은 기간 내 draft가 남아 있으면 막힌다.
-
-## 명령
-
-<CommandSpec
-  command="ingest submit"
-  mutates={true}
-  summary="파싱된 거래를 DRAFT로 기록한다. OCR은 하지 않는다."
-  signature={`holiday ingest submit
-  --data <submission-json>
-  [--image <path>]
-  [--idem-key <key>]`}
-  flags={[
-    { name: '--data', type: 'json', required: true, description: 'INGEST_SUBMISSION. legs 배열. --json이 아님' },
-    { name: '--image', type: 'path', description: '있으면 파일 바이트 sha256으로 중복 차단' },
-    { name: '--idem-key', type: 'string', description: '선택. 재시도 안전. 권장' },
-  ]}
-  exits={[
-    { code: 0, meaning: '드래프트 기록(또는 idem replay). 경고는 stderr' },
-    { code: 1, meaning: '불균형, duplicate_image, duplicate_external_ref' },
-    { code: 2, meaning: 'JSON 오류, 없는 계정, idem-key 충돌' },
-  ]}
-  example={`$ holiday ingest submit --idem-key K1 --data '{
-  "items": [{
-    "date": "2026-07-17", "payee": "이마트", "externalRef": "TX-99",
-    "legs": [
-      {"account": "Expenses:Food:Groceries", "amount": "42000", "commodity": "KRW"},
-      {"account": "Liabilities:Card:Shinhan", "amount": "-42000", "commodity": "KRW"}
-    ]
-  }]
-}'
-1건을 DRAFT로 기록했습니다. 잔액·리포트에서 제외됩니다.`}
-/>
-
-<CommandSpec
-  command="review list"
-  mutates={false}
-  summary="승인 대기 중인 pending ingest 항목과 드래프트 다리를 나열한다."
-  signature={`holiday review list [--json]`}
-  flags={[]}
-  exits={[
-    { code: 0, meaning: '목록 또는 대기 없음 안내' },
-    { code: 2, meaning: '원장 없음' },
-  ]}
-  example={`$ holiday review list
-01KXQ…  2026-07-17  이마트
-    Expenses:Food:Groceries                  42,000 KRW
-    Liabilities:Card:Shinhan                -42,000 KRW
-
-1건 대기. \`holiday review accept <id>\` / \`reject <id> --reason\``}
-/>
-
-<CommandSpec
-  command="review accept"
-  mutates={true}
-  summary="드래프트를 posted로 올린다. 균형은 이미 통과했으므로 실패하지 않는다."
-  signature={`holiday review accept <id> [--idem-key <key>]`}
-  flags={[{ name: '--idem-key', type: 'string', description: '선택. 플래그는 받으나 accept 경로에서는 미사용' }]}
-  exits={[
-    { code: 0, meaning: '승인됨' },
-    { code: 2, meaning: '없는 id, 이미 처리됨' },
-  ]}
-  example={`$ holiday review accept 01KXQ…
-승인됨. 이제 잔액과 현금흐름에 들어갑니다.`}
-/>
-
-<CommandSpec
-  command="review reject"
-  mutates={true}
-  summary="드래프트를 거부한다. 중복 기억을 위해 항목 행은 남긴다."
-  signature={`holiday review reject <id> --reason <text>`}
-  flags={[{ name: '--reason', type: 'string', required: true }]}
-  exits={[
-    { code: 0, meaning: '거부됨. 기록 유지' },
-    { code: 2, meaning: '없는 id, 이미 처리됨' },
-  ]}
-  example={`$ holiday review reject 01KXQ… --reason "금액 오독"
-거부됨. 기록은 남습니다 — 같은 캡쳐가 다시 제안되는 걸 막는 기억입니다.`}
-/>
-
-## 제약
-
-- CLI에 OCR 경로가 없다. 이미지는 `--image`로 해시만 한다.
-- 드래프트는 잔액·리포트에서 제외된다. 마감 게이트는 미해결 draft를 거부한다.
-- weight 합은 정확히 0이어야 한다. [POLICY-001](/docs/domain/policy#policy-001)
-- submission은 `--data`로만 전달한다. `--json`은 출력 모드다.
+[US-ingest-review](/docs/planning/stories/us-ingest-review)

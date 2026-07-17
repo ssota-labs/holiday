@@ -33,6 +33,12 @@ export const docs = defineDocs({
       version: z.string().optional(),
       summary: z.string().optional(),
       related: z.array(z.string()).optional(),
+      /** PRD period label, e.g. "0.1 foundation" or "2026-07". */
+      period: z.string().optional(),
+      /** PRD lifecycle. */
+      status: z.enum(['draft', 'active', 'done']).optional(),
+      /** Story IDs included in a PRD. */
+      stories: z.array(z.string()).optional(),
     }),
   },
   meta: { schema: metaSchema },

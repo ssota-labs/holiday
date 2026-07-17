@@ -1,0 +1,45 @@
+---
+title: assert
+description: holiday assert 명령 계약
+type: reference
+summary: 잔액 대사를 기록·대조한다. 불일치 시 assertion_failed.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+
+관련 기능: [close](/docs/features/close)
+
+<CommandSpec
+  command="assert"
+  mutates={true}
+  summary="잔액 대사를 기록·대조한다. 불일치 시 assertion_failed."
+  signature={`holiday assert <account> <amount> [--as-of] [--commodity] [--note]`}
+  flags={[
+    { name: '<account>', type: 'string', kind: 'arg', required: true },
+    { name: '<amount>', type: 'amount', kind: 'arg', required: true },
+    { name: '--as-of', type: 'YYYY-MM-DD', default: 'today' },
+    { name: '--commodity', type: 'string' },
+    { name: '--note', type: 'string' },
+  ]}
+  exits={[
+    { code: 0, meaning: '대사 OK' },
+    { code: 1, meaning: 'assertion_failed' },
+    { code: 2, meaning: '없는 계정' },
+  ]}
+  example={`holiday assert Assets:Bank:KB:Checking 1500000 --json`}
+/>

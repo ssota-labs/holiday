@@ -1,0 +1,42 @@
+---
+title: balance
+description: holiday balance 명령 계약
+type: reference
+summary: 계정 잔액을 조회한다. 집계는 weight 기준이다.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+
+관련 기능: [accounts](/docs/features/accounts)
+
+<CommandSpec
+  command="balance"
+  mutates={false}
+  summary="계정 잔액을 조회한다. 집계는 weight 기준이다."
+  signature={`holiday balance [--as-of YYYY-MM-DD] [--account PREFIX]`}
+  flags={[
+    { name: '--as-of', type: 'YYYY-MM-DD' },
+    { name: '--account', type: 'string', description: '예: Assets' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday balance --account Assets --json`}
+/>

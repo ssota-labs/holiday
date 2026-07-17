@@ -1,127 +1,23 @@
 ---
 title: 할부
-description: 구매일에 부채 전액, 현금은 N개월 스케줄
-type: conceptual
-summary: 잔액은 :Installment 계정에 둔다. 수수료는 관측값만 받는다.
-related: ['/docs/domain/policy', '/docs/features/cards', '/docs/features/cashflow']
+description: 별도 부채 계정과 관측 수수료
+type: guide
+summary: Installment 계정 분리. 수수료는 관측값만.
 ---
 
-> **지켜야 하는 규칙:** [POLICY-003](/docs/domain/policy#policy-003) · [POLICY-006](/docs/domain/policy#policy-006) · [POLICY-007](/docs/domain/policy#policy-007) · [POLICY-009](/docs/domain/policy#policy-009)
-> 동작은 이 페이지에서 설명하고, 불변식은 [정책](/docs/domain/policy)에 모아 둔다.
+구매 시 전액 부채를 세우고, 스케줄로 현금 유출을 나눈다.
 
-## 개요
+## 수락 기준
 
-할부는 구매일에 부채 전액을 세우고, 현금만 N개월에 걸쳐 나가는 스케줄이다. 잔액은 카드 일반 계정이 아니라 `Liabilities:Card:<카드>:Installment`(또는 `--liability`)에 둔다.
+1. 카드 일반 계정과 부채 분리 ([POLICY-003](/docs/domain/policy#POLICY-003))
+2. 원금 합 = 구매액 ([POLICY-007](/docs/domain/policy#POLICY-007))
+3. 수수료 관측만, 원금에 합치지 않음 ([POLICY-006](/docs/domain/policy#POLICY-006), [009](/docs/domain/policy#POLICY-009))
+4. `revise --data`로 명세서 덮어쓰기
 
-일반 청구는 "사용기간 내 posting 합"이다. 할부 구매 posting이 카드 일반 계정에 있으면 첫 청구서가 전액으로 부푼다. [POLICY-003](/docs/domain/policy#policy-003)
+## 스펙
 
-## 동작
+[add](/docs/spec/cli/installment/add) · [revise](/docs/spec/cli/installment/revise) · [list](/docs/spec/cli/installment/list)
 
-`installment add` 시:
+## 스토리
 
-1. 카드에 청구주기가 있어야 한다. 없으면 회차 날짜를 계산할 수 없다.
-2. 부채 계정이 없으면 `<card>:Installment`를 자동 생성한다. `cash: false`, 부모는 카드 계정.
-3. 구매일에 `Expenses … Dr` / `Installment … Cr`로 전액 기표한다.
-4. `buildInstallmentSchedule`이 카드 결제일 기준으로 회차를 만든다. 1회차는 구매가 속한 청구서의 결제일.
-5. `--fees`가 없으면 무이자(`feeMinor = 0`). 있으면 회차 수와 같은 개수의 관측 수수료를 붙인다.
-
-원금 행의 합은 구매금액과 정확히 같다. 나머지는 기본으로 1회차에 붙인다. [POLICY-007](/docs/domain/policy#policy-007)
-
-할부수수료는 계산하지 않는다. 명세서에서 읽은 값만 `--fees`로 받는다. [POLICY-006](/docs/domain/policy#policy-006) 수수료는 원금 합 불변식 밖이다. [POLICY-009](/docs/domain/policy#policy-009)
-
-`installment revise`는 명세서가 말하는 회차·날짜·원금·수수료로 스케줄을 덮어쓴다. 입력 플래그는 `--data`다. 전역 `--json`(기계 출력)과 이름이 겹치지 않도록 분리했다. 원금 합이 구매금액과 다르면 거부한다.
-
-`cashflow`는 스케줄 행만 투영한다. 구매 posting은 이미 구매일 잔액에 반영되어 있다.
-
-## 명령
-
-<CommandSpec
-  command="installment add"
-  mutates={true}
-  summary="할부 구매를 기록하고 스케줄을 만든다. 부채는 구매일에 전액 선다."
-  signature={`holiday installment add
-  --card <CARD_ACCOUNT>
-  --expense <EXPENSE_ACCOUNT>
-  --total <amount>
-  --months <n>
-  [--liability <ACCOUNT>]
-  [--date <date>]
-  [--payee <name>]
-  [--label <text>]
-  [--remainder-on first|last]
-  [--fees <a,b,c,…>]`}
-  flags={[
-    { name: '--card', type: 'account', required: true, description: '청구주기가 붙은 카드 부채 계정' },
-    { name: '--expense', type: 'account', required: true, description: '구매 비용 계정' },
-    { name: '--total', type: 'amount', required: true, description: '할부원금. 수수료 제외' },
-    { name: '--months', type: 'integer', required: true, description: '회차 수' },
-    { name: '--liability', type: 'account', default: '<card>:Installment', description: '없으면 자동 생성' },
-    { name: '--date', type: 'date', default: 'today', description: '구매일' },
-    { name: '--fees', type: 'csv amounts', description: '회차별 할부수수료. 명세서 관측값. 개월 수와 동일 개수' },
-    { name: '--remainder-on', type: 'enum', default: 'first', description: '원금 나머지 회차' },
-  ]}
-  exits={[
-    { code: 0, meaning: '기록됨. 회차 요약 출력' },
-    { code: 1, meaning: '수수료 개수 불일치, 원금 분할 오류 등' },
-    { code: 2, meaning: '계정 없음, 또는 카드에 청구주기 없음' },
-  ]}
-  example={`$ holiday installment add --card Liabilities:Card:Shinhan \\
-    --expense Expenses:Home:Appliance --total 1200000 --months 12 --label "냉장고"
-created Liabilities:Card:Shinhan:Installment (installment balances are kept apart…)
-12개월 무이자 할부, 1200000 KRW. First 2026-09-01, last 2027-08-01.`}
-/>
-
-유이자 예:
-
-```bash
-holiday installment add --card Liabilities:Card:Shinhan \
-  --expense Expenses:Home:Appliance --total 1200000 --months 3 \
-  --fees 5000,3400,1700
-```
-
-<CommandSpec
-  command="installment revise"
-  mutates={true}
-  summary="스케줄을 명세서 내용으로 덮어쓴다. --data만 사용한다(--json 아님)."
-  signature={`holiday installment revise <id> --data <json>`}
-  flags={[
-    {
-      name: '--data',
-      type: 'json',
-      required: true,
-      description: '[{"seq":1,"paymentDate":"YYYY-MM-DD","principalMinor":"…","feeMinor":"…"}, …]. feeMinor는 선택(기본 0)',
-    },
-  ]}
-  exits={[
-    { code: 0, meaning: '덮어씀. 회차·수수료 합계 출력' },
-    { code: 1, meaning: '원금 합 ≠ 구매금액, 회차 번호/날짜 오류' },
-    { code: 2, meaning: 'JSON 파싱 실패, 없는 id' },
-  ]}
-  example={`$ holiday installment revise 01KXQ… --data '[
-  {"seq":1,"paymentDate":"2026-09-01","principalMinor":"400000","feeMinor":"5000"},
-  {"seq":2,"paymentDate":"2026-10-01","principalMinor":"400000","feeMinor":"3400"},
-  {"seq":3,"paymentDate":"2026-11-01","principalMinor":"400000","feeMinor":"1700"}
-]'
-3회차로 덮어썼습니다. 할부수수료 합계 10100.`}
-/>
-
-<CommandSpec
-  command="installment list"
-  mutates={false}
-  summary="아직 돈이 남아 있는 활성 할부를 나열한다."
-  signature={`holiday installment list [--json]`}
-  flags={[]}
-  exits={[
-    { code: 0, meaning: '목록 출력. 없으면 안내 문구' },
-    { code: 2, meaning: '원장 없음' },
-  ]}
-  example={`$ holiday installment list
-냉장고                    1,200,000 / 12개월   남은 11회 1,100,000`}
-/>
-
-## 제약
-
-- 카드에 `card add`로 청구주기가 있어야 한다.
-- `--fees` 개수 = `--months`. 음수 수수료 거부.
-- `revise`의 원금 합은 구매 `totalMinor`와 일치해야 한다. 수수료를 원금에 넣지 않는다.
-- 청구주기가 사라진 카드의 할부는 `cashflow`에서 orphan 경고와 함께 제외된다.
+[US-installments](/docs/planning/stories/us-installments)

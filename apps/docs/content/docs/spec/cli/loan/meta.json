@@ -1,0 +1,11 @@
+{
+  "title": "loan",
+  "pages": [
+    "add",
+    "list",
+    "check",
+    "pay"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

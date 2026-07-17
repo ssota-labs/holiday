@@ -1,0 +1,23 @@
+---
+title: US-verify
+description: 원장과 감사 체인이 온전한지 확인하고 싶다
+type: conceptual
+summary: 커밋 전에 변조·불변식 깨짐을 막는다
+---
+
+**As a** 1인 사용자 / Agent  
+**I want** 원장과 감사 체인이 온전한지 확인하고 싶다  
+**So that** 커밋 전에 변조·불변식 깨짐을 막는다
+
+### 수락 기준
+
+1. verify 실패 시 verify_failed
+2. --head 로 체인 head
+3. checkpoint 로 WAL fold (별 개념)
+
+### 추적
+
+- 기능: [close](/docs/features/close)
+- 스펙: [`verify`](/docs/spec/cli/verify)
+- 검증: audit chain
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

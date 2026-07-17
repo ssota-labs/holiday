@@ -1,0 +1,9 @@
+{
+  "title": "account",
+  "pages": [
+    "add",
+    "list"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

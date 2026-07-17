@@ -1,0 +1,58 @@
+---
+title: Skill
+description: holiday-cfo 에이전트 계약
+type: reference
+summary: plugin/skills/holiday-cfo. --json shell-out. 추정 기표 금지.
+---
+
+<SpecVersion
+  spec="skill"
+  version="0.1.0"
+  source="plugin/skills/holiday-cfo"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'SKILL.md + references (ledger-model, accounts, schedules, recipes)',
+      ref: 'plugin/skills/holiday-cfo/SKILL.md',
+    },
+  ]}
+/>
+
+소스: [`plugin/skills/holiday-cfo/`](https://github.com/ssota-labs/holiday/tree/main/plugin/skills/holiday-cfo).
+
+## When to use
+
+가계·부채 기록, 현금흐름 vs 카드 청구, 스케줄 설정, close, 캡쳐 ingest.  
+투자 자문·일반 재무 상담에는 쓰지 않는다.
+
+## Hard rules
+
+1. 금액·날짜·계정을 지어내지 않는다 — 불명확하면 묻는다
+2. 거래는 정확히 균형 (허용오차 없음)
+3. 계정 추측 금지 — `account list` 먼저
+4. 비명백한 기표는 쓰기 전 분개 제시
+5. 명령에 `--json`. 에러는 stderr JSON 봉투
+6. `ingest submit`에 `--idem-key`
+7. FX는 관측 `@@` 선호
+8. `assert`만 외부 세계 대사
+
+## 명령 패턴
+
+| 작업 | 명령 |
+|---|---|
+| 오리엔트 | `account list`, `balance`, `verify` |
+| 기표 | `txn add --leg …` |
+| 수집 | `ingest submit` → `review …` |
+| 마감 | `assert` → `close [--dry-run]` |
+| 런웨이 | `cashflow --until` |
+
+스펙: [CLI latest](/docs/spec/cli).
+
+## Cannot yet
+
+OCR, auto-accept, 할부수수료 계산, FX API, 대시보드. SoR는 로컬 SQLite.
+
+## Note
+
+스킬 참고 문서에 prefix 기반 cash 언급이 남아 있을 수 있다. **코드·ADR-004 기준은 `--cash` 플래그**다.

@@ -1,0 +1,9 @@
+{
+  "title": "설계",
+  "pages": [
+    "system",
+    "adr"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

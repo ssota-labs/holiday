@@ -1,0 +1,26 @@
+{
+  "title": "CLI",
+  "pages": [
+    "index",
+    "versions",
+    "init",
+    "account",
+    "txn",
+    "balance",
+    "card",
+    "installment",
+    "recurring",
+    "loan",
+    "fx",
+    "assert",
+    "close",
+    "ingest",
+    "review",
+    "cashflow",
+    "verify",
+    "checkpoint",
+    "0.1.0"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

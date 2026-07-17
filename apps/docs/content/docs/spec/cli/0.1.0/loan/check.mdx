@@ -1,0 +1,42 @@
+---
+title: loan check
+description: holiday loan check 명령 계약
+type: reference
+summary: 스케줄 기대 잔액과 원장을 대사한다. 불일치 시 loan_drift(사람 모드).
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'immutable snapshot of foundation CLI',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> **불변 스냅샷 0.1.0.** 현재 계약은 [latest](/docs/spec/cli)를 본다.
+
+
+관련 기능: [loans](/docs/features/loans)
+
+<CommandSpec
+  command="loan check"
+  mutates={false}
+  summary="스케줄 기대 잔액과 원장을 대사한다. 불일치 시 loan_drift(사람 모드)."
+  signature={`holiday loan check [code] [--as-of YYYY-MM-DD]`}
+  flags={[
+    { name: '[code]', type: 'string', kind: 'arg' },
+    { name: '--as-of', type: 'YYYY-MM-DD', default: 'today' },
+  ]}
+  exits={[
+    { code: 0, meaning: '대사 OK (또는 --json에서 drift를 데이터로 반환)' },
+    { code: 1, meaning: 'loan_drift (비 JSON 모드)' },
+    { code: 2, meaning: '없는 대출' },
+  ]}
+  example={`holiday loan check --json`}
+/>

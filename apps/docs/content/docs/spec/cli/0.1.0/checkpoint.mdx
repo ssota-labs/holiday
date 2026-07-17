@@ -1,0 +1,37 @@
+---
+title: checkpoint
+description: holiday checkpoint 명령 계약
+type: reference
+summary: SQLite WAL을 ledger.db로 fold한다. (스냅샷 checkpoint와 무관)
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'immutable snapshot of foundation CLI',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> **불변 스냅샷 0.1.0.** 현재 계약은 [latest](/docs/spec/cli)를 본다.
+
+
+<CommandSpec
+  command="checkpoint"
+  mutates={true}
+  summary="SQLite WAL을 ledger.db로 fold한다. (스냅샷 checkpoint와 무관)"
+  signature={`holiday checkpoint`}
+  flags={[]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday checkpoint --json`}
+/>

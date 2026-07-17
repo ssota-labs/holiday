@@ -1,0 +1,88 @@
+---
+title: ADR
+description: 아키텍처 결정 기록
+type: decision
+summary: weight 잔액, 로컬 SQLite SoR, cash 플래그, drizzle DDL.
+---
+
+<Decision
+  id="ADR-001"
+  status="locked"
+  title="잔액은 저장된 weight"
+  date="2026-07-01"
+  rejected={[
+    { option: '조회 시 rate×units로 재균형', because: '과거 기표가 환율 변경에 흔들리고 허용오차가 생긴다' },
+    { option: 'Beancount currency groups', because: '개인 가계 원장에 과도하고 손실성' },
+  ]}
+>
+  Σ `weight_minor`가 균형이다. 조회 시 rate×units로 다시 맞추지 않는다. 허용오차 없음.
+</Decision>
+
+<Decision
+  id="ADR-002"
+  status="accepted"
+  title="SoR = 로컬 SQLite + 해시 체인"
+  date="2026-07-01"
+  rejected={[
+    { option: 'JSONL + git을 SoR로', because: '동시성·부분 쓰기·에이전트 idempotency에 약하다' },
+    { option: 'CLI에서 Postgres 직접 오픈', because: '1인 로컬 제품 경로를 흐린다' },
+  ]}
+>
+  `.holiday/ledger.db`가 진실. 감사는 audit_log 체인. CLI는 Postgres를 열지 않는다.
+</Decision>
+
+<Decision
+  id="ADR-003"
+  status="accepted"
+  title="환율 = scaled bigint 10^18"
+  date="2026-07-01"
+  rejected={[
+    { option: 'float', because: '비결정적 잔차' },
+    { option: 'decimal.js', because: '번들·결정성 비용 대비 이득 없음' },
+  ]}
+>
+  half-away-from-zero 반올림. `RATE_SCALE = 10^18`.
+</Decision>
+
+<Decision
+  id="ADR-004"
+  status="accepted"
+  title="현금 = account.cash 플래그"
+  date="2026-07-01"
+  rejected={[
+    { option: 'Assets:Bank:* / Assets:Cash:* prefix 추론', because: '실계좌 명명이 제각각이고 마이그레이션이 깨진다' },
+  ]}
+>
+  cashflow opening은 `--cash`로 표시된 계정만. `openLedger` 시 플래그 유지.
+</Decision>
+
+<Decision
+  id="ADR-005"
+  status="accepted"
+  title="DDL drizzle-kit, 쿼리 Db 래퍼"
+  date="2026-07-01"
+  rejected={[
+    { option: '전 경로 drizzle-orm 쿼리', because: '엔진 차이·트리거와 충돌' },
+    { option: '손수 SQL만', because: '스키마 드리프트' },
+  ]}
+>
+  엔진별 schema/triggers. 마이그레이션 인라인+해시.
+</Decision>
+
+<Decision
+  id="ADR-006"
+  status="accepted"
+  title="store-sql 단일 구현"
+  date="2026-07-01"
+  rejected={[
+    { option: '엔진별 LedgerStore 이중 구현', because: '불변식 분기' },
+    { option: '공유 drizzle 빌더만으로 dialect 추상화', because: '트리거·타입이 갈라짐' },
+  ]}
+>
+  dialect 차이는 sqlite/postgres 패키지에만.
+</Decision>
+
+## 관행 (ADR 아님)
+
+- draft는 review accept 전 장부가 아님
+- close는 FX 재평가+스냅샷+period closed. CLI는 `closing_entry` P&L을 쓰지 않음

@@ -1,0 +1,9 @@
+{
+  "title": "card",
+  "pages": [
+    "add",
+    "list"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

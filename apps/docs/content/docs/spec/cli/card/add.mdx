@@ -1,0 +1,46 @@
+---
+title: card add
+description: holiday card add 명령 계약
+type: reference
+summary: 카드 부채 계정에 청구주기를 부착한다.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+
+관련 기능: [cards](/docs/features/cards)
+
+<CommandSpec
+  command="card add"
+  mutates={true}
+  summary="카드 부채 계정에 청구주기를 부착한다."
+  signature={`holiday card add <code> --funding <code> --close-day <n> --payment-day <n> [--payment-month-offset 1] [--label]`}
+  flags={[
+    { name: '<code>', type: 'string', kind: 'arg', required: true },
+    { name: '--funding', type: 'string', required: true, description: '결제에 쓸 자산 계정' },
+    { name: '--close-day', type: 'number', required: true, description: '31 = 말일' },
+    { name: '--payment-day', type: 'number', required: true, description: '-1 = 말일' },
+    { name: '--payment-month-offset', type: 'number', default: '1' },
+    { name: '--label', type: 'string' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday card add Liabilities:Card:Shinhan --funding Assets:Bank:KB:Checking --close-day 14 --payment-day 1 --json`}
+/>

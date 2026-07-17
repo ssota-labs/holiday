@@ -1,0 +1,10 @@
+{
+  "title": "review",
+  "pages": [
+    "list",
+    "accept",
+    "reject"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}

@@ -1,0 +1,23 @@
+---
+title: US-fx
+description: 수동 환율을 기록하고 싶다
+type: conceptual
+summary: 과거 posting weight는 바뀌지 않는다
+---
+
+**As a** 1인 사용자  
+**I want** 수동 환율을 기록하고 싶다  
+**So that** 과거 posting weight는 바뀌지 않는다
+
+### 수락 기준
+
+1. fx add 는 이후 유도/재평가에만 영향
+2. fx show 가 해석 근거를 반환
+3. 관측 @@TOTAL 을 선호
+
+### 추적
+
+- 기능: [fx](/docs/features/fx)
+- 스펙: [`add`](/docs/spec/cli/fx/add)
+- 검증: ADR-001, ADR-003
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

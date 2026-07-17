@@ -1,0 +1,42 @@
+---
+title: close
+description: holiday close 명령 계약
+type: reference
+summary: "월 마감: 게이트 → FX 재평가 → 스냅샷 → period=closed. --dry-run은 쓰기 없음."
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+
+관련 기능: [close](/docs/features/close)
+
+<CommandSpec
+  command="close"
+  mutates={true}
+  summary="월 마감: 게이트 → FX 재평가 → 스냅샷 → period=closed. --dry-run은 쓰기 없음."
+  signature={`holiday close <month> [--dry-run]`}
+  flags={[
+    { name: '<month>', type: 'YYYY-MM', kind: 'arg', required: true },
+    { name: '--dry-run', type: 'boolean', default: 'false' },
+  ]}
+  exits={[
+    { code: 0, meaning: '마감(또는 dry-run 보고) 성공' },
+    { code: 1, meaning: 'close_blocked / unbalanced' },
+    { code: 2, meaning: 'closeGrain≠month, Income:FX:Unrealized 없음' },
+  ]}
+  example={`holiday close 2026-06 --dry-run --json`}
+/>

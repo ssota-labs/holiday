@@ -1,0 +1,78 @@
+---
+title: 데이터 모델
+description: 원장 테이블과 불변식
+type: reference
+summary: SQLite migration 5. 잔액은 weight. 스케줄은 저널 밖.
+---
+
+<SpecVersion
+  spec="data-model"
+  version="migration-5"
+  source="packages/store-sqlite/migrations"
+  history={[
+    {
+      version: 'migration-5',
+      date: '2026-07-17',
+      summary: 'init → triggers → loans → ingest → close (assert/snapshot)',
+      ref: 'packages/store-sqlite/migrations',
+    },
+  ]}
+/>
+
+SoR는 로컬 `.holiday/ledger.db`(SQLite). Postgres 엔진은 동일 논리 스키마를 2개 마이그레이션으로 squash하며, CLI는 열지 않는다.
+
+`book.schema_version` 상수(2)와 **마이그레이션 폴더 수(5)** 를 혼동하지 말 것.
+
+## 사실 / 예측 / 파생
+
+| 종류 | 예 | 저장 |
+|---|---|---|
+| 사실 | txn, posting, fx_rate, assertion | 저널·테이블 |
+| 예측 | card, installment, recurring, loan schedules | 저널 밖 |
+| 파생 | balance, cashflow | 조회 시 집계 |
+
+## 핵심 타입
+
+<AutoTypeTable path="packages/core/src/domain/account.ts" name="Account" />
+
+## 테이블 요약
+
+| 테이블 | 역할 |
+|---|---|
+| book | 싱글톤 메타 (functional_currency, close_grain, timezone) |
+| commodity / account | 레지스트리·차트 |
+| txn / posting | 저널. posting PK (txn_id, seq) |
+| period | 마감 구간 |
+| card, installment(+row), recurring, loan(+row) | 스케줄 |
+| fx_rate | 환율 |
+| ingest_batch / ingest_item | draft 게이트 |
+| balance_assertion | 외부 대사 |
+| snapshot / snapshot_balance | 마감 스냅샷 |
+| command_log | idempotency |
+| audit_log | 해시 체인 |
+| __holiday_migrations | 이름+sha256 ([POLICY-016](/docs/domain/policy#POLICY-016)) |
+
+<SchemaTable
+  name="posting"
+  kind="table"
+  source="packages/store-sqlite/src/schema.drizzle.ts"
+  description="다리. 잔액 불변식은 weight 합."
+  fields={[
+    { name: 'txn_id', type: 'ulid', unit: 'id', invariant: 'FK txn' },
+    { name: 'seq', type: 'int', unit: 'ordinal', invariant: 'PK with txn_id' },
+    { name: 'account_id', type: 'ulid', unit: 'id' },
+    { name: 'units_minor', type: 'i64', unit: 'minor', invariant: 'account commodity' },
+    { name: 'weight_minor', type: 'i64', unit: 'minor', invariant: 'Σ=0 per txn' },
+    { name: 'weight_source', type: 'identity|actual|rate|plug', unit: 'enum' },
+    { name: 'kind', type: 'normal|fx_revaluation|rounding', unit: 'enum' },
+  ]}
+/>
+
+## 불변식 링
+
+1. Domain — `Txn.create` (POLICY-001/002)
+2. Port — ValidatedTxn만 append
+3. Triggers — seal, placeholder, identity weight, sealed 불변, audit append-only 등 11개
+4. Audit — content hash chain
+
+상세: [system](/docs/design/system).

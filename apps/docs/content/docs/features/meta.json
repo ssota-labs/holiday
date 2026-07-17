@@ -1,0 +1,16 @@
+{
+  "title": "기능",
+  "pages": [
+    "accounts",
+    "cards",
+    "installments",
+    "recurring",
+    "loans",
+    "ingest",
+    "fx",
+    "close",
+    "cashflow"
+  ],
+  "collapsible": true,
+  "defaultOpen": false
+}
