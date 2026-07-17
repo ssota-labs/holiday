@@ -32,7 +32,7 @@ holiday verify
 
 <Cards>
   <Card title="도메인" href="/docs/domain/policy" description="용어집과 정책 카탈로그(POLICY-*)" />
-  <Card title="Features" href="/docs/features/cashflow" description="인제스트, 환율, 마감, 스케줄, 현금흐름" />
+  <Card title="Features" href="/docs/features/cashflow" description="데이터 수집, 환율, 마감, 스케줄, 현금흐름" />
   <Card title="개발" href="/docs/dev/system" description="시스템 설계, 데이터 모델, CLI, 스킬, ADR" />
 </Cards>
 
@@ -45,7 +45,7 @@ holiday verify
 | --- | --- |
 | 데이터 수집·검토 | `ingest submit`으로 draft 적재 → `review`로 posted/rejected |
 | 환율 | `fx add` / `list` / `show`. 수동 입력만 |
-| 잔고 단언·마감 | `assert`, `close` (게이트 검사 → FX 재평가 → 스냅샷 → `period.status=closed`) |
+| 잔액 대사·마감 | `assert`, `close` (게이트 검사 → FX 재평가 → 스냅샷 → `period.status=closed`) |
 | 스케줄 | 카드 청구주기, 할부, 정기지출, 대출 |
 | 현금흐름 | `cashflow` — 현금 계정에서 스케줄 지출을 투영 |
 | 감사 | `verify` — 불변식·해시 체인 |

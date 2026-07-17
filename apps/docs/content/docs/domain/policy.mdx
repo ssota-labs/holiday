@@ -258,4 +258,4 @@ holiday installment revise <id> --data '[…]'
 |---|---|---|
 | draft / 검토 | 불균형 draft 적재 거부. 기간 내 draft가 있으면 `close` 거부. `review accept`로 posted 승격 | `ingest`, `closeGate`, CLI `review` |
 | FX | posted `weight`는 환율 변경으로 소급 수정하지 않음. rate 유도 시 `fx_estimated` | `fx.ts`, `txn.ts` |
-| close / assertion | hard close grain은 book당 하나. assertion 불일치 시 마감 거부 | `close.ts`, CLI `assert` / `close` |
+| close / 잔액 대사 | hard close grain은 book당 하나. 잔액 대사 불일치 시 마감 거부 | `close.ts`, CLI `assert` / `close` |

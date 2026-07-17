@@ -68,7 +68,7 @@ commander가 한쪽만 해석하고 나머지를 무시하기 때문이다.
 | `fx add <base> <quote> <rate>` | yes | 환율 기록 (기표된 weight는 불변) |
 | `fx list` | no | 환율 목록 |
 | `fx show <base> <quote>` | no | 해석될 환율과 근거 |
-| `assert <account> <amount>` | yes | 잔고 단언 기록·대사 (실패 시 exit 1) |
+| `assert <account> <amount>` | yes | 잔액 대사 기록·대조 (실패 시 exit 1) |
 | `close <month>` | yes | 월 마감 (재평가·스냅샷·`period=closed`). `--dry-run`은 쓰기 없음 |
 | `ingest submit` | yes | 파싱된 거래를 draft로 적재 |
 | `review list` | no | pending draft |
