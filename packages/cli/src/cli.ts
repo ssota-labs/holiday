@@ -240,6 +240,37 @@ card
     },
   );
 
+card
+  .command('list')
+  .description('cards and their billing rules')
+  .action(async () => {
+    const ws = requireWorkspace();
+    const store = openStore(ws);
+    await store.init();
+    const now = assertIsoDate(today());
+    const result = await store.read(async (r) => {
+      const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
+      return (await r.listCards()).map((c) => ({
+        card: c,
+        code: accounts.get(c.accountId)?.code ?? '?',
+        funding: accounts.get(c.fundingAccountId)?.code ?? '?',
+        example: billingDatesFor(now, c.rule),
+      }));
+    });
+    await store.close();
+
+    if (jsonMode()) return out(result.map(({ card: c, code, funding }) => ({ ...c, code, funding })));
+    if (result.length === 0) return note('no cards. Add one with `holiday card add`.');
+    for (const { card: c, code, funding, example } of result) {
+      const close = c.rule.cycleCloseDay === 31 ? '말일' : `${c.rule.cycleCloseDay}일`;
+      const pay = c.rule.paymentDay === -1 ? '말일' : `${c.rule.paymentDay}일`;
+      const when = c.rule.paymentMonthOffset === 0 ? '당월' : c.rule.paymentMonthOffset === 1 ? '익월' : `${c.rule.paymentMonthOffset}개월 후`;
+      note(`${(c.label ?? code).padEnd(20)} ${close} 마감 → ${when} ${pay} 결제   ← ${funding}`);
+      // The rule in the abstract is unverifiable by a human; a worked date is not.
+      note(`${''.padEnd(20)} a purchase today (${now}) takes cash on ${example.paymentDate}`);
+    }
+  });
+
 const installment = program.command('installment').description('할부 — a purchase split across N bills');
 
 installment

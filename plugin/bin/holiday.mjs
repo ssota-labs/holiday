@@ -5477,6 +5477,31 @@ card.command("add <code>").description("attach a billing cycle to a card liabili
     note(`A purchase today (${today()}) closes ${dates.closeDate} and takes cash on ${dates.paymentDate}.`);
   }
 );
+card.command("list").description("cards and their billing rules").action(async () => {
+  const ws = requireWorkspace();
+  const store = openStore(ws);
+  await store.init();
+  const now = assertIsoDate(today());
+  const result = await store.read(async (r) => {
+    const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
+    return (await r.listCards()).map((c) => ({
+      card: c,
+      code: accounts.get(c.accountId)?.code ?? "?",
+      funding: accounts.get(c.fundingAccountId)?.code ?? "?",
+      example: billingDatesFor(now, c.rule)
+    }));
+  });
+  await store.close();
+  if (jsonMode()) return out(result.map(({ card: c, code, funding }) => ({ ...c, code, funding })));
+  if (result.length === 0) return note("no cards. Add one with `holiday card add`.");
+  for (const { card: c, code, funding, example } of result) {
+    const close = c.rule.cycleCloseDay === 31 ? "\uB9D0\uC77C" : `${c.rule.cycleCloseDay}\uC77C`;
+    const pay = c.rule.paymentDay === -1 ? "\uB9D0\uC77C" : `${c.rule.paymentDay}\uC77C`;
+    const when = c.rule.paymentMonthOffset === 0 ? "\uB2F9\uC6D4" : c.rule.paymentMonthOffset === 1 ? "\uC775\uC6D4" : `${c.rule.paymentMonthOffset}\uAC1C\uC6D4 \uD6C4`;
+    note(`${(c.label ?? code).padEnd(20)} ${close} \uB9C8\uAC10 \u2192 ${when} ${pay} \uACB0\uC81C   \u2190 ${funding}`);
+    note(`${"".padEnd(20)} a purchase today (${now}) takes cash on ${example.paymentDate}`);
+  }
+});
 var installment = program2.command("installment").description("\uD560\uBD80 \u2014 a purchase split across N bills");
 installment.command("add").description("record an installment purchase and build its schedule").requiredOption("--card <code>", "the card whose statement carries the rows").requiredOption("--expense <code>", "what you bought").requiredOption("--total <amount>", "the full purchase amount").requiredOption("--months <n>", "term", Number).option("--liability <code>", "installment balance account (default: <card>:Installment)").option("--date <date>", "purchase date", today()).option("--payee <name>").option("--label <text>").option("--remainder-on <first|last>", "which row absorbs the odd won", "first").action(
   async (o) => {
