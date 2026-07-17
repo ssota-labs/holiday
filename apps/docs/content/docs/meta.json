@@ -4,7 +4,7 @@
     "---도메인---",
     "domain/glossary",
     "domain/policy",
-    "---Features---",
+    "---기능---",
     "features/accounts",
     "features/ingest",
     "features/fx",
