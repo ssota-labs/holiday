@@ -17,6 +17,7 @@ import {
   Txn,
   buildInstallmentSchedule,
   projectCashflow,
+  type CashflowAssumption,
   addMonthsIso,
   assertCadence,
   describeCadence,
@@ -1525,19 +1526,53 @@ loan
     note(`${result.seq}회차 ${money(result.paid)} = 원금 ${money(result.principal)} + 이자 ${money(result.interest)}`);
   });
 
+/**
+ * Parse one `--spend`/`--receive` spec: "DATE AMOUNT LABEL".
+ *
+ * AMOUNT is a plain count of minor units in the book currency — 5000000 is
+ * ₩5,000,000 in a KRW book — entered POSITIVE; the sign comes from which flag was
+ * used, so the user never types a minus. Commas are allowed for readability.
+ */
+function parseAssume(spec: string, sign: bigint): CashflowAssumption {
+  const m = /^\s*(\d{4}-\d{2}-\d{2})\s+([\d,]+)\s+(.+?)\s*$/.exec(spec);
+  if (!m) {
+    throw new UsageError(`--spend/--receive want "DATE AMOUNT LABEL", got ${JSON.stringify(spec)}`);
+  }
+  const [, date, amount, label] = m;
+  const minor = BigInt(amount!.replace(/,/g, ''));
+  if (minor <= 0n) throw new UsageError(`amount must be positive (the flag sets direction): ${JSON.stringify(spec)}`);
+  return { date: assertIsoDate(date!), changeMinor: minor * sign, label: label! };
+}
+
+/** Commander collector for a repeatable option. */
+function collectAssume(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
 program
   .command('cashflow')
   .description('will the cash survive the card bills that are already coming')
   .option('--until <date>', 'projection horizon', addMonthsIso(today(), 3))
-  .action(async (o: { until: string }) => {
+  // What-if, folded into the same runway. Nothing is written — a purchase you are
+  // weighing, a bonus you expect. `--spend` leaves cash, `--receive` brings it in,
+  // so the user never guesses a sign. Repeatable: stack several to see them all at
+  // once. Format: "DATE AMOUNT LABEL", e.g. --spend "2026-09-01 5000000 새 노트북".
+  .option('--spend <spec>', 'hypothetical outflow "DATE AMOUNT LABEL" (repeatable)', collectAssume, [])
+  .option('--receive <spec>', 'hypothetical inflow "DATE AMOUNT LABEL" (repeatable)', collectAssume, [])
+  .action(async (o: { until: string; spend: string[]; receive: string[] }) => {
     const ws = requireWorkspace();
     const config = readConfig(ws);
     const store = await openLedger(ws);
 
     const now = assertIsoDate(today());
     const until = assertIsoDate(o.until);
+    // spend is money leaving (negative change), receive is money arriving.
+    const assume = [
+      ...o.spend.map((s) => parseAssume(s, -1n)),
+      ...o.receive.map((s) => parseAssume(s, 1n)),
+    ];
 
-    const proj = await store.read((r) => projectCashflow(r, { asOf: now, until }));
+    const proj = await store.read((r) => projectCashflow(r, { asOf: now, until, assume }));
     await store.close();
 
     const { runway } = proj;
@@ -1574,9 +1609,13 @@ program
     note('');
     for (const p of runway) {
       const short = p.balanceAfterMinor < 0n;
-      note(`${p.date}   -${money(p.outflowMinor).padStart(12)}   →  ${money(p.balanceAfterMinor).padStart(12)}${short ? '   ⚠ SHORT' : ''}`);
+      // A day's net can be an inflow now that --receive exists: a negative outflow
+      // is money arriving, so show it as +, not as a double-negative "- -3,000,000".
+      const net = p.outflowMinor >= 0n ? `-${money(p.outflowMinor)}` : `+${money(-p.outflowMinor)}`;
+      note(`${p.date}   ${net.padStart(13)}   →  ${money(p.balanceAfterMinor).padStart(12)}${short ? '   ⚠ SHORT' : ''}`);
       for (const b of p.items) {
-        note(`             ${b.label.padEnd(30)} ${money(b.amountMinor).padStart(12)}`);
+        const line = b.amountMinor >= 0n ? `-${money(b.amountMinor)}` : `+${money(-b.amountMinor)}`;
+        note(`             ${b.label.padEnd(30)} ${line.padStart(13)}`);
       }
     }
     const worst = runway.reduce((a, b) => (b.balanceAfterMinor < a.balanceAfterMinor ? b : a));

@@ -12,6 +12,11 @@ import {
 import type { LedgerRead } from '../ports/ledger-store.js';
 import { addMonthsIso } from './dates.js';
 
+/** A projected outflow, or a caller's hypothetical folded into the same runway. */
+type RunwayItem =
+  | ProjectedOutflow
+  | { readonly kind: 'assumption'; readonly paymentDate: IsoDate; readonly amountMinor: bigint; readonly label: string };
+
 /**
  * "Will the cash survive the bills that are already coming?" — assembled once.
  *
@@ -44,6 +49,23 @@ export interface CashflowGap {
   readonly detail: string;
 }
 
+/**
+ * A hypothetical the caller wants folded into the runway: a purchase they are
+ * considering, a bonus they expect, a lump-sum they might pay down. It is not in
+ * the ledger and never touches it — the whole point is to ask "what if" without
+ * writing anything.
+ *
+ * `changeMinor` is signed the way a cash leg is: money LEAVING the account is
+ * negative, money arriving is positive. So a ₩5,000,000 laptop is -5000000 and a
+ * ₩3,000,000 bonus is +3000000. Same rule as `txn add`, so the user does not
+ * learn a second sign convention.
+ */
+export interface CashflowAssumption {
+  readonly date: IsoDate;
+  readonly changeMinor: bigint;
+  readonly label: string;
+}
+
 export interface CashflowPoint {
   readonly date: IsoDate;
   readonly outflowMinor: bigint;
@@ -70,7 +92,7 @@ const POSTING_WINDOW_MONTHS = -4;
 
 export async function projectCashflow(
   r: LedgerRead,
-  opts: { readonly asOf: IsoDate; readonly until: IsoDate },
+  opts: { readonly asOf: IsoDate; readonly until: IsoDate; readonly assume?: readonly CashflowAssumption[] },
 ): Promise<CashflowProjection> {
   const { asOf, until } = opts;
   const book = await r.getBook();
@@ -124,11 +146,19 @@ export async function projectCashflow(
   const fundingByCard = new Map(cards.map((c) => [c.accountId, c.fundingAccountId]));
   const cardRules = new Map(cards.map((c) => [c.accountId, { rule: c.rule, fundingAccountId: c.fundingAccountId }]));
 
-  const runway = cashRunway<ProjectedOutflow>(openingCashMinor, [
+  // Assumptions ride in the same runway as real outflows — the user asked to see
+  // them "얹어서", not in a separate column. They are tagged so a reader can tell
+  // a hypothetical from a committed bill.
+  const assumed: RunwayItem[] = (opts.assume ?? [])
+    .filter((a) => a.date >= asOf && a.date <= until)
+    .map((a) => ({ kind: 'assumption', paymentDate: a.date, amountMinor: -a.changeMinor, label: a.label }));
+
+  const runway = cashRunway<RunwayItem>(openingCashMinor, [
     ...projectCardBills({ cards, postings, today: asOf, until }),
     ...projectInstallments({ installments, fundingByCard, today: asOf, until }),
     ...projectRecurring({ recurring, cardRules, today: asOf, until }),
     ...projectLoans({ loans, today: asOf, until }),
+    ...assumed,
   ]);
 
   const gaps: CashflowGap[] = [
@@ -170,7 +200,8 @@ export async function projectCashflow(
 }
 
 /** A human label for one projected outflow. Moved here so the CLI and the dashboard name things identically. */
-export function describeOutflow(b: ProjectedOutflow): string {
+export function describeOutflow(b: RunwayItem): string {
+  if (b.kind === 'assumption') return `가정: ${b.label}`;
   if (b.kind === 'loan') return `${b.label ?? '대출'} (${b.seq}/${b.termMonths})`;
   if (b.kind === 'installment') return `${b.label ?? '할부'} (${b.seq}/${b.months})`;
   if (b.kind === 'recurring') {

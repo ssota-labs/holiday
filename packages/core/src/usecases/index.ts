@@ -5,4 +5,5 @@ export {
   type CashflowProjection,
   type CashflowPoint,
   type CashflowGap,
+  type CashflowAssumption,
 } from './cashflow.js';
