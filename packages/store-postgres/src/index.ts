@@ -1,26 +1,20 @@
 /**
- * @holiday/store-postgres — INCOMPLETE. Does not yet implement LedgerStore.
+ * @holiday/store-postgres — the ledger on Postgres (Supabase, or pglite in tests).
  *
- * What is here and real:
- *   - schema.drizzle.ts   the ledger in pg-core, amounts as native bigint
- *   - migrations/         generated DDL + hand-written plpgsql triggers
- *   - client.ts           the driver seam: postgres.js (Supabase) and pglite (tests)
+ * This package is a driver, a schema, and migrations. It does NOT implement
+ * LedgerStore: that lives once in @holiday/store-sql and both engines run it.
  *
- * What is not here: the LedgerStore implementation. Until it exists this package
- * exports no store, deliberately — a partial adapter that threw on half its
- * methods would be a store lying about its tier, which is the exact failure the
- * tier contract exists to prevent. It is better to export nothing than to export
- * something that claims to be an engine and is not.
+ * The reason is a measurement rather than a preference. The store is ~1,500 lines
+ * and exactly eight of them were dialect-specific; mirroring it here would have
+ * produced two files that agree today and drift on the first hand-edit that lands
+ * in one and not the other — which is the failure the port boundary exists to
+ * prevent.
  *
- * The remaining work is a mechanical mirror of store-sqlite's ~1,500 lines:
- * `?` → `$1`, `GLOB` → `LIKE`, and sync → async throughout. The thinking is done;
- * the typing is not.
- *
- * When it lands, the proof that it works is already written:
- * `runLedgerStoreConformance('PgLedgerStore', factory)` — the same 26 cases that
- * SQLite passes. That suite exists precisely so a second engine cannot quietly be
- * worse than the first.
+ * The proof it works is `store.test.ts`: the same conformance suite SQLite passes,
+ * run against real Postgres via pglite.
  */
 export * from './client.js';
+export { PgDriver, pg, assertInt8ReadsAsBigInt } from './driver.js';
+export { pgEngine, pgLedgerStore, PG_SCHEMA_VERSION, type PgStoreOptions } from './store.js';
 export { MIGRATIONS } from './migrations.generated.js';
 export * as schema from './schema.drizzle.js';

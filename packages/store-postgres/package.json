@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "type": "module",
   "license": "MIT",
-  "exports": { ".": "./dist/index.js" },
-  "files": ["dist"],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "pnpm run migrations:inline && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -13,9 +17,18 @@
     "migrations:inline": "node --experimental-strip-types scripts/inline-migrations.ts",
     "migrations:build": "pnpm run migrations:generate && pnpm run migrations:inline"
   },
-  "dependencies": { "@holiday/core": "workspace:*" },
-  "peerDependencies": { "postgres": "^3.4.0" },
-  "peerDependenciesMeta": { "postgres": { "optional": true } },
+  "dependencies": {
+    "@holiday/core": "workspace:*",
+    "@holiday/store-sql": "workspace:*"
+  },
+  "peerDependencies": {
+    "postgres": "^3.4.0"
+  },
+  "peerDependenciesMeta": {
+    "postgres": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.4",
     "@holiday/store-testkit": "workspace:*",

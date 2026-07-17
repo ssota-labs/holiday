@@ -8685,7 +8685,7 @@ var UsageError = class extends Error {
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-// ../store-sqlite/dist/chain.js
+// ../store-sql/dist/chain.js
 import { createHash } from "node:crypto";
 var CHAIN_HASH_VERSION = 1;
 var GENESIS_HASH = "0".repeat(64);
@@ -8750,153 +8750,7 @@ function normalize(v) {
   return out2;
 }
 
-// ../store-sqlite/dist/db.js
-import { createRequire } from "node:module";
-var DatabaseSync = createRequire(import.meta.url)("node:sqlite").DatabaseSync;
-var Db = class {
-  #db;
-  #cache = /* @__PURE__ */ new Map();
-  constructor(path) {
-    this.#db = new DatabaseSync(path);
-  }
-  exec(sql) {
-    this.#db.exec(sql);
-  }
-  prepare(sql) {
-    const cached = this.#cache.get(sql);
-    if (cached)
-      return cached;
-    const stmt = this.#db.prepare(sql);
-    stmt.setReadBigInts(true);
-    this.#cache.set(sql, stmt);
-    return stmt;
-  }
-  run(sql, ...params) {
-    this.prepare(sql).run(...params);
-  }
-  get(sql, ...params) {
-    return this.prepare(sql).get(...params);
-  }
-  all(sql, ...params) {
-    return this.prepare(sql).all(...params);
-  }
-  /**
-   * IMMEDIATE, not DEFERRED: take the write lock up front so a concurrent writer
-   * fails at BEGIN rather than at COMMIT, where the work is already done.
-   */
-  transaction(fn) {
-    this.exec("BEGIN IMMEDIATE");
-    try {
-      const out2 = fn();
-      this.exec("COMMIT");
-      return out2;
-    } catch (e) {
-      try {
-        this.exec("ROLLBACK");
-      } catch {
-      }
-      throw e;
-    }
-  }
-  close() {
-    this.#cache.clear();
-    this.#db.close();
-  }
-};
-function toInt(v) {
-  const n = typeof v === "bigint" ? Number(v) : v;
-  if (!Number.isSafeInteger(n))
-    throw new RangeError(`expected a small integer, got ${v}`);
-  return n;
-}
-function toBool(v) {
-  return toInt(v) === 1;
-}
-function toBigInt(v) {
-  return typeof v === "bigint" ? v : BigInt(v);
-}
-
-// ../store-sqlite/dist/migrations.generated.js
-var MIGRATIONS = [
-  {
-    "name": "20260717100240_init",
-    "hash": "bb0945679071304270e05684c230172aee4157f064cbd23513200ed786c184fd",
-    "statements": [
-      'CREATE TABLE `account` (\n	`id` text PRIMARY KEY,\n	`code` text NOT NULL,\n	`type` text NOT NULL,\n	`parent_id` text,\n	`commodity` text,\n	`monetary` integer DEFAULT 1 NOT NULL,\n	`cash` integer DEFAULT 0 NOT NULL,\n	`placeholder` integer DEFAULT 0 NOT NULL,\n	`opened_on` text NOT NULL,\n	`closed_on` text,\n	CONSTRAINT `fk_account_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT "account_type_enum" CHECK("type" IN (\'asset\',\'liability\',\'equity\',\'income\',\'expense\')),\n	CONSTRAINT "account_monetary_bool" CHECK("monetary" IN (0,1)),\n	CONSTRAINT "account_cash_bool" CHECK("cash" IN (0,1)),\n	CONSTRAINT "account_placeholder_bool" CHECK("placeholder" IN (0,1))\n);',
-      "CREATE TABLE `audit_log` (\n	`seq` integer PRIMARY KEY,\n	`at` text NOT NULL,\n	`event` text NOT NULL,\n	`subject` text NOT NULL,\n	`detail` text DEFAULT '{}' NOT NULL,\n	`prev_hash` text NOT NULL,\n	`hash` text NOT NULL UNIQUE\n);",
-      "CREATE TABLE `book` (\n	`id` text PRIMARY KEY,\n	`schema_version` integer NOT NULL,\n	`functional_currency` text NOT NULL,\n	`close_grain` text DEFAULT 'month' NOT NULL,\n	`timezone` text DEFAULT 'Asia/Seoul' NOT NULL,\n	`dedupe_key_version` integer DEFAULT 1 NOT NULL,\n	`fx_max_staleness_days` integer DEFAULT 7 NOT NULL,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_book_functional_currency_commodity_code_fk` FOREIGN KEY (`functional_currency`) REFERENCES `commodity`(`code`),\n	CONSTRAINT \"book_singleton\" CHECK(\"id\" = 'book'),\n	CONSTRAINT \"book_close_grain_enum\" CHECK(\"close_grain\" IN ('day','week','month','quarter','year'))\n);",
-      'CREATE TABLE `card` (\n	`account_id` text PRIMARY KEY,\n	`funding_account_id` text NOT NULL,\n	`cycle_close_day` integer NOT NULL,\n	`payment_month_offset` integer NOT NULL,\n	`payment_day` integer NOT NULL,\n	`label` text,\n	CONSTRAINT `fk_card_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_card_funding_account_id_account_id_fk` FOREIGN KEY (`funding_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT "card_close_day_range" CHECK("cycle_close_day" BETWEEN 1 AND 31),\n	CONSTRAINT "card_offset_range" CHECK("payment_month_offset" BETWEEN 0 AND 3),\n	CONSTRAINT "card_payment_day_range" CHECK("payment_day" = -1 OR "payment_day" BETWEEN 1 AND 31)\n);',
-      "CREATE TABLE `command_log` (\n	`idem_key` text PRIMARY KEY,\n	`request_sha256` text NOT NULL,\n	`response_json` text NOT NULL,\n	`created_at` text NOT NULL\n);",
-      "CREATE TABLE `commodity` (\n	`code` text PRIMARY KEY,\n	`exponent` integer NOT NULL,\n	`kind` text NOT NULL,\n	`name` text NOT NULL,\n	CONSTRAINT \"commodity_exponent_range\" CHECK(\"exponent\" BETWEEN 0 AND 9),\n	CONSTRAINT \"commodity_kind_enum\" CHECK(\"kind\" IN ('fiat','crypto','security','unit'))\n);",
-      "CREATE TABLE `fx_rate` (\n	`id` text PRIMARY KEY,\n	`as_of` text NOT NULL,\n	`base` text NOT NULL,\n	`quote` text NOT NULL,\n	`rate` text NOT NULL,\n	`source` text NOT NULL,\n	`fetched_at` text NOT NULL,\n	CONSTRAINT `fk_fx_rate_base_commodity_code_fk` FOREIGN KEY (`base`) REFERENCES `commodity`(`code`),\n	CONSTRAINT `fk_fx_rate_quote_commodity_code_fk` FOREIGN KEY (`quote`) REFERENCES `commodity`(`code`)\n);",
-      'CREATE TABLE `installment` (\n	`id` text PRIMARY KEY,\n	`card_account_id` text NOT NULL,\n	`liability_account_id` text NOT NULL,\n	`txn_id` text,\n	`purchased_on` text NOT NULL,\n	`months` integer NOT NULL,\n	`total_minor` integer NOT NULL,\n	`commodity` text NOT NULL,\n	`interest_free` integer DEFAULT 1 NOT NULL,\n	`label` text,\n	CONSTRAINT `fk_installment_card_account_id_account_id_fk` FOREIGN KEY (`card_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_installment_liability_account_id_account_id_fk` FOREIGN KEY (`liability_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_installment_txn_id_txn_id_fk` FOREIGN KEY (`txn_id`) REFERENCES `txn`(`id`),\n	CONSTRAINT `fk_installment_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT "installment_months_positive" CHECK("months" >= 1),\n	CONSTRAINT "installment_total_positive" CHECK("total_minor" > 0),\n	CONSTRAINT "installment_accounts_differ" CHECK("card_account_id" <> "liability_account_id"),\n	CONSTRAINT "installment_interest_free_bool" CHECK("interest_free" IN (0,1))\n);',
-      'CREATE TABLE `installment_row` (\n	`installment_id` text NOT NULL,\n	`seq` integer NOT NULL,\n	`payment_date` text NOT NULL,\n	`principal_minor` integer NOT NULL,\n	`fee_minor` integer DEFAULT 0 NOT NULL,\n	CONSTRAINT `installment_row_pk` PRIMARY KEY(`installment_id`, `seq`),\n	CONSTRAINT `fk_installment_row_installment_id_installment_id_fk` FOREIGN KEY (`installment_id`) REFERENCES `installment`(`id`) ON DELETE CASCADE,\n	CONSTRAINT "installment_row_seq_positive" CHECK("seq" >= 1)\n);',
-      "CREATE TABLE `period` (\n	`id` text PRIMARY KEY,\n	`grain` text NOT NULL,\n	`start` text NOT NULL,\n	`end` text NOT NULL,\n	`status` text DEFAULT 'open' NOT NULL,\n	CONSTRAINT \"period_grain_enum\" CHECK(\"grain\" IN ('day','week','month','quarter','year')),\n	CONSTRAINT \"period_status_enum\" CHECK(\"status\" IN ('open','closed','locked'))\n);",
-      "CREATE TABLE `posting` (\n	`txn_id` text NOT NULL,\n	`seq` integer NOT NULL,\n	`account_id` text NOT NULL,\n	`units_minor` integer NOT NULL,\n	`commodity` text NOT NULL,\n	`weight_minor` integer NOT NULL,\n	`weight_source` text NOT NULL,\n	`fx_rate_text` text,\n	`fx_rate_id` text,\n	`lot_id` text,\n	`kind` text DEFAULT 'normal' NOT NULL,\n	`memo` text,\n	CONSTRAINT `posting_pk` PRIMARY KEY(`txn_id`, `seq`),\n	CONSTRAINT `fk_posting_txn_id_txn_id_fk` FOREIGN KEY (`txn_id`) REFERENCES `txn`(`id`),\n	CONSTRAINT `fk_posting_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_posting_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT \"posting_weight_source_enum\" CHECK(\"weight_source\" IN ('identity','actual','rate','plug')),\n	CONSTRAINT \"posting_kind_enum\" CHECK(\"kind\" IN ('normal','fx_revaluation','rounding'))\n);",
-      'CREATE TABLE `recurring` (\n	`id` text PRIMARY KEY,\n	`label` text NOT NULL,\n	`expense_account_id` text NOT NULL,\n	`funding_account_id` text NOT NULL,\n	`amount_minor` integer NOT NULL,\n	`commodity` text NOT NULL,\n	`cadence_kind` text NOT NULL,\n	`day_of_month` integer NOT NULL,\n	`month` integer,\n	`active_from` text NOT NULL,\n	`active_to` text,\n	CONSTRAINT `fk_recurring_expense_account_id_account_id_fk` FOREIGN KEY (`expense_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_recurring_funding_account_id_account_id_fk` FOREIGN KEY (`funding_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_recurring_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT "recurring_amount_positive" CHECK("amount_minor" > 0),\n	CONSTRAINT "recurring_cadence_enum" CHECK("cadence_kind" IN (\'monthly\',\'yearly\')),\n	CONSTRAINT "recurring_day_range" CHECK("day_of_month" = -1 OR "day_of_month" BETWEEN 1 AND 31),\n	CONSTRAINT "recurring_month_range" CHECK("month" IS NULL OR "month" BETWEEN 1 AND 12),\n	CONSTRAINT "recurring_yearly_needs_month" CHECK("cadence_kind" <> \'yearly\' OR "month" IS NOT NULL)\n);',
-      "CREATE TABLE `txn` (\n	`id` text PRIMARY KEY,\n	`date` text NOT NULL,\n	`booking_commodity` text NOT NULL,\n	`payee` text,\n	`narration` text DEFAULT '' NOT NULL,\n	`status` text NOT NULL,\n	`system_kind` text,\n	`corrects_txn_id` text,\n	`source_item_id` text,\n	`fx_estimated` integer DEFAULT 0 NOT NULL,\n	`tags_json` text DEFAULT '[]' NOT NULL,\n	`meta_json` text DEFAULT '{}' NOT NULL,\n	`sealed` integer DEFAULT 0 NOT NULL,\n	`reason` text,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_txn_booking_commodity_commodity_code_fk` FOREIGN KEY (`booking_commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT \"txn_status_enum\" CHECK(\"status\" IN ('draft','posted','void','rejected')),\n	CONSTRAINT \"txn_system_kind_enum\" CHECK(\"system_kind\" IS NULL OR \"system_kind\" IN ('fx_revaluation','closing_entry','opening_balance')),\n	CONSTRAINT \"txn_fx_estimated_bool\" CHECK(\"fx_estimated\" IN (0,1)),\n	CONSTRAINT \"txn_sealed_bool\" CHECK(\"sealed\" IN (0,1))\n);",
-      "CREATE INDEX `account_by_code` ON `account` (`code`);",
-      "CREATE UNIQUE INDEX `fx_rate_unique` ON `fx_rate` (`as_of`,`base`,`quote`,`source`);",
-      "CREATE INDEX `installment_by_card` ON `installment` (`card_account_id`);",
-      "CREATE INDEX `installment_row_by_date` ON `installment_row` (`payment_date`);",
-      "CREATE UNIQUE INDEX `period_grain_start` ON `period` (`grain`,`start`);",
-      "CREATE INDEX `posting_by_account` ON `posting` (`account_id`);",
-      "CREATE INDEX `recurring_by_funding` ON `recurring` (`funding_account_id`);",
-      "CREATE INDEX `txn_by_date` ON `txn` (`date`,`id`);",
-      "CREATE INDEX `txn_by_status` ON `txn` (`status`);"
-    ]
-  },
-  {
-    "name": "20260717100308_invariant_triggers",
-    "hash": "a9ecf50df0f46efb91cf73a25a7e3f885c5cd1b8c8d2200ad17677d1b96527a6",
-    "statements": [
-      "-- Ring 3: invariants enforced at rest.\n--\n-- Hand-written because drizzle-kit models no triggers at all \u2014 its schema DSL has\n-- no trigger builder, and `generate` neither creates nor drops them. This is a\n-- `generate --custom` migration, which is what the Drizzle docs prescribe for\n-- \"DDL alternations currently not supported by Drizzle Kit\".\n--\n-- These exist to catch bugs in the domain, unsafe casts, and someone opening the\n-- file with the sqlite3 CLI. The domain is the authority; this is the backstop.\n-- Only an engine-tier store can offer this at all, which is a standing argument\n-- against ever making a Notion-shaped store the system of record.\n--\n-- WARNING for future migrations: drizzle-kit's SQLite ALTER strategy recreates a\n-- table (create new \u2192 copy \u2192 drop old \u2192 rename), and SQLite drops the triggers\n-- attached to a dropped table. Any migration that recreates `txn`, `posting`,\n-- `account`, `commodity`, or `audit_log` MUST re-create the relevant triggers\n-- below, or the invariants silently stop being enforced while every test still\n-- passes. `holiday verify` would still catch violations after the fact; nothing\n-- would stop them going in.\n\nCREATE TRIGGER txn_seal_requires_balance\nBEFORE UPDATE OF sealed ON txn\nWHEN NEW.sealed = 1 AND OLD.sealed = 0\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: transaction has fewer than two postings')\n  WHERE (SELECT COUNT(*) FROM posting WHERE txn_id = NEW.id) < 2;\n\n  SELECT RAISE(ABORT, 'holiday: unbalanced transaction \u2014 postings must sum to exactly zero')\n  WHERE (SELECT COALESCE(SUM(weight_minor), 0) FROM posting WHERE txn_id = NEW.id) <> 0;\nEND;",
-      "CREATE TRIGGER posting_rejects_placeholder_account\nBEFORE INSERT ON posting\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: cannot post to a placeholder account')\n  WHERE (SELECT placeholder FROM account WHERE id = NEW.account_id) = 1;\nEND;",
-      "-- The most likely real error in the whole system: the vision model reads '$' as\n-- '\u20A9' and posts USD into a KRW-only account. This is where it dies.\nCREATE TRIGGER posting_commodity_conformance\nBEFORE INSERT ON posting\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: posting commodity does not match the account''s declared commodity')\n  WHERE (SELECT commodity FROM account WHERE id = NEW.account_id) IS NOT NULL\n    AND (SELECT commodity FROM account WHERE id = NEW.account_id) <> NEW.commodity;\nEND;",
-      "CREATE TRIGGER posting_identity_weight\nBEFORE INSERT ON posting\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: a posting already in the booking commodity must have weight = units')\n  WHERE NEW.commodity = (SELECT booking_commodity FROM txn WHERE id = NEW.txn_id)\n    AND NEW.weight_minor <> NEW.units_minor;\nEND;",
-      "-- The journal is append-only. Once sealed, postings are facts.\nCREATE TRIGGER posting_immutable_insert\nBEFORE INSERT ON posting\nWHEN (SELECT sealed FROM txn WHERE id = NEW.txn_id) = 1\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: cannot add a posting to a sealed transaction \u2014 write a correction instead');\nEND;",
-      "CREATE TRIGGER posting_immutable_update\nBEFORE UPDATE ON posting\nWHEN (SELECT sealed FROM txn WHERE id = OLD.txn_id) = 1\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: postings of a sealed transaction are immutable \u2014 write a correction instead');\nEND;",
-      "CREATE TRIGGER posting_immutable_delete\nBEFORE DELETE ON posting\nWHEN (SELECT sealed FROM txn WHERE id = OLD.txn_id) = 1\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: postings of a sealed transaction cannot be deleted \u2014 void or correct instead');\nEND;",
-      "CREATE TRIGGER txn_never_unseals\nBEFORE UPDATE OF sealed ON txn\nWHEN OLD.sealed = 1 AND NEW.sealed = 0\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: a sealed transaction cannot be unsealed');\nEND;",
-      "-- An exponent change silently rescales every amount of that commodity. It is a\n-- migration, not an edit.\nCREATE TRIGGER commodity_exponent_immutable\nBEFORE UPDATE OF exponent ON commodity\nWHEN OLD.exponent <> NEW.exponent\n  AND EXISTS (SELECT 1 FROM posting WHERE commodity = OLD.code)\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: cannot change the exponent of a commodity that has postings');\nEND;",
-      "-- An audit log you can quietly edit is decoration.\nCREATE TRIGGER audit_log_immutable_update\nBEFORE UPDATE ON audit_log\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: the audit log is append-only');\nEND;",
-      "CREATE TRIGGER audit_log_immutable_delete\nBEFORE DELETE ON audit_log\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: the audit log is append-only');\nEND;"
-    ]
-  },
-  {
-    "name": "20260717101844_loans",
-    "hash": "c7f4ab6db56f82d1ab73cd0ca78f7f06a83c5b65461aa35ba71f2c46b2426016",
-    "statements": [
-      'CREATE TABLE `loan` (\n	`account_id` text PRIMARY KEY,\n	`funding_account_id` text NOT NULL,\n	`interest_account_id` text NOT NULL,\n	`principal_minor` integer NOT NULL,\n	`commodity` text NOT NULL,\n	`annual_rate_text` text NOT NULL,\n	`method` text NOT NULL,\n	`term_months` integer NOT NULL,\n	`first_payment_date` text NOT NULL,\n	`payment_day` integer NOT NULL,\n	`label` text,\n	CONSTRAINT `fk_loan_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_funding_account_id_account_id_fk` FOREIGN KEY (`funding_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_interest_account_id_account_id_fk` FOREIGN KEY (`interest_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT "loan_principal_positive" CHECK("principal_minor" > 0),\n	CONSTRAINT "loan_term_positive" CHECK("term_months" >= 1),\n	CONSTRAINT "loan_method_enum" CHECK("method" IN (\'annuity\',\'equal_principal\',\'bullet\',\'interest_only\')),\n	CONSTRAINT "loan_payment_day_range" CHECK("payment_day" = -1 OR "payment_day" BETWEEN 1 AND 31),\n	CONSTRAINT "loan_accounts_differ" CHECK("account_id" <> "funding_account_id")\n);',
-      'CREATE TABLE `loan_schedule_row` (\n	`loan_id` text NOT NULL,\n	`seq` integer NOT NULL,\n	`due_date` text NOT NULL,\n	`opening_minor` integer NOT NULL,\n	`principal_minor` integer NOT NULL,\n	`interest_minor` integer NOT NULL,\n	`closing_minor` integer NOT NULL,\n	CONSTRAINT `loan_schedule_row_pk` PRIMARY KEY(`loan_id`, `seq`),\n	CONSTRAINT `fk_loan_schedule_row_loan_id_loan_account_id_fk` FOREIGN KEY (`loan_id`) REFERENCES `loan`(`account_id`) ON DELETE CASCADE,\n	CONSTRAINT "loan_schedule_seq_positive" CHECK("seq" >= 1)\n);',
-      "CREATE INDEX `loan_schedule_by_date` ON `loan_schedule_row` (`due_date`);"
-    ]
-  },
-  {
-    "name": "20260717105405_ingest",
-    "hash": "dea47ca026d33031e905e65bf8dacbb1463de0dd1488f8763f6e774867189b4c",
-    "statements": [
-      'CREATE TABLE `ingest_batch` (\n	`id` text PRIMARY KEY,\n	`source_sha256` text NOT NULL UNIQUE,\n	`source_name` text,\n	`submitted_at` text NOT NULL,\n	`item_count` integer DEFAULT 0 NOT NULL,\n	CONSTRAINT "ingest_batch_count_nonneg" CHECK("item_count" >= 0)\n);',
-      "CREATE TABLE `ingest_item` (\n	`id` text PRIMARY KEY,\n	`batch_id` text NOT NULL,\n	`dedupe_key` text NOT NULL,\n	`dedupe_authority` text NOT NULL,\n	`external_ref` text,\n	`merchant` text,\n	`txn_id` text,\n	`status` text DEFAULT 'pending' NOT NULL,\n	`reason` text,\n	`parsed_json` text NOT NULL,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_ingest_item_batch_id_ingest_batch_id_fk` FOREIGN KEY (`batch_id`) REFERENCES `ingest_batch`(`id`) ON DELETE CASCADE,\n	CONSTRAINT `fk_ingest_item_txn_id_txn_id_fk` FOREIGN KEY (`txn_id`) REFERENCES `txn`(`id`),\n	CONSTRAINT \"ingest_item_status_enum\" CHECK(\"status\" IN ('pending','accepted','rejected')),\n	CONSTRAINT \"ingest_item_authority_enum\" CHECK(\"dedupe_authority\" IN ('image','external_ref','natural'))\n);",
-      "CREATE INDEX `ingest_item_by_dedupe` ON `ingest_item` (`dedupe_key`);",
-      "CREATE INDEX `ingest_item_by_batch` ON `ingest_item` (`batch_id`);"
-    ]
-  },
-  {
-    "name": "20260717112827_close",
-    "hash": "a0fa3c8bef5f10c51f61bbd6f992481bbf7b6273d43406bccf7f581ee73e881c",
-    "statements": [
-      "CREATE TABLE `balance_assertion` (\n	`id` text PRIMARY KEY,\n	`account_id` text NOT NULL,\n	`as_of` text NOT NULL,\n	`commodity` text NOT NULL,\n	`expected_minor` integer NOT NULL,\n	`note` text,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_balance_assertion_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_balance_assertion_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`)\n);",
-      "CREATE TABLE `snapshot` (\n	`id` text PRIMARY KEY,\n	`period_id` text NOT NULL,\n	`kind` text NOT NULL,\n	`as_of` text NOT NULL,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_snapshot_period_id_period_id_fk` FOREIGN KEY (`period_id`) REFERENCES `period`(`id`),\n	CONSTRAINT \"snapshot_kind_enum\" CHECK(\"kind\" IN ('close','checkpoint'))\n);",
-      "CREATE TABLE `snapshot_balance` (\n	`snapshot_id` text NOT NULL,\n	`account_id` text NOT NULL,\n	`commodity` text NOT NULL,\n	`units_minor` integer NOT NULL,\n	`weight_minor` integer NOT NULL,\n	`period_units_minor` integer DEFAULT 0 NOT NULL,\n	`period_weight_minor` integer DEFAULT 0 NOT NULL,\n	CONSTRAINT `snapshot_balance_pk` PRIMARY KEY(`snapshot_id`, `account_id`, `commodity`),\n	CONSTRAINT `fk_snapshot_balance_snapshot_id_snapshot_id_fk` FOREIGN KEY (`snapshot_id`) REFERENCES `snapshot`(`id`) ON DELETE CASCADE,\n	CONSTRAINT `fk_snapshot_balance_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_snapshot_balance_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`)\n);",
-      "CREATE UNIQUE INDEX `balance_assertion_unique` ON `balance_assertion` (`account_id`,`as_of`,`commodity`);",
-      "CREATE INDEX `balance_assertion_by_date` ON `balance_assertion` (`as_of`);",
-      "CREATE UNIQUE INDEX `snapshot_unique` ON `snapshot` (`period_id`,`kind`);"
-    ]
-  }
-];
-
-// ../store-sqlite/dist/migrate.js
+// ../store-sql/dist/migrate.js
 var BOOKKEEPING = `
 CREATE TABLE IF NOT EXISTS __holiday_migrations (
   name       TEXT PRIMARY KEY,
@@ -8912,38 +8766,45 @@ Migrations are append-only. This ledger ran the old version, so re-running the n
     this.name = "MigrationDriftError";
   }
 };
-function runMigrations(db, now) {
-  db.exec(BOOKKEEPING);
-  const seen = new Map(db.all("SELECT name, hash FROM __holiday_migrations").map((r) => [r.name, r.hash]));
+async function runMigrations(db, migrations, now) {
+  await db.exec(BOOKKEEPING);
+  const seen = new Map((await db.all("SELECT name, hash FROM __holiday_migrations")).map((r) => [
+    r.name,
+    r.hash
+  ]));
   const applied = [];
-  for (const m of MIGRATIONS) {
+  for (const m of migrations) {
     const priorHash = seen.get(m.name);
     if (priorHash !== void 0) {
       if (priorHash !== m.hash)
         throw new MigrationDriftError(m.name, priorHash, m.hash);
       continue;
     }
-    db.transaction(() => {
+    await db.transaction(async (tx) => {
       for (const statement of m.statements)
-        db.exec(statement);
-      db.run("INSERT INTO __holiday_migrations (name, hash, applied_at) VALUES (?, ?, ?)", m.name, m.hash, now());
+        await tx.exec(statement);
+      await tx.run("INSERT INTO __holiday_migrations (name, hash, applied_at) VALUES (?, ?, ?)", m.name, m.hash, now());
     });
     applied.push(m.name);
   }
   return { applied, alreadyApplied: seen.size };
 }
 
-// ../store-sqlite/dist/schema.js
-var SCHEMA_VERSION = 2;
-var PRAGMAS = `
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
-PRAGMA busy_timeout = 5000;
--- A personal ledger writes a few rows a day. Correctness beats throughput.
-PRAGMA synchronous = FULL;
-`;
+// ../store-sql/dist/num.js
+function toInt(v) {
+  const n = typeof v === "bigint" ? Number(v) : v;
+  if (!Number.isSafeInteger(n))
+    throw new RangeError(`expected a small integer, got ${v}`);
+  return n;
+}
+function toBool(v) {
+  return toInt(v) === 1;
+}
+function toBigInt(v) {
+  return typeof v === "bigint" ? v : BigInt(v);
+}
 
-// ../store-sqlite/dist/store.js
+// ../store-sql/dist/store.js
 var CAPS = {
   tier: "engine",
   atomicMultiRowWrite: true,
@@ -8954,58 +8815,55 @@ var CAPS = {
   enforcesInvariantsAtRest: true,
   maxWriteOpsPerSecond: null
 };
-var SqliteLedgerStore = class {
-  name = "sqlite";
+var SqlLedgerStore = class {
+  name;
   capabilities = CAPS;
   #db;
+  #engine;
   #opts;
   #now;
   constructor(opts) {
     this.#opts = opts;
+    this.#engine = opts.engine;
     this.#now = opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString());
-    this.#db = new Db(opts.path);
+    this.#db = opts.engine.driver;
+    this.name = opts.engine.name;
   }
   async init() {
     assertEngineTier(this.name, this.capabilities);
-    this.#db.exec(PRAGMAS);
+    await this.#engine.init?.(this.#db);
   }
   async migrate() {
-    const result = runMigrations(this.#db, this.#now);
-    this.#seedBook();
+    const result = await runMigrations(this.#db, this.#engine.migrations, this.#now);
+    await this.#seedBook();
     return { from: result.alreadyApplied, to: result.alreadyApplied + result.applied.length };
   }
-  #seedBook() {
-    const existing = this.#db.get("SELECT functional_currency FROM book WHERE id = ?", "book");
+  async #seedBook() {
+    const existing = await this.#db.get("SELECT functional_currency FROM book WHERE id = ?", "book");
     if (existing) {
       if (existing.functional_currency !== this.#opts.book.functionalCurrency) {
         throw new Error(`this ledger is denominated in ${existing.functional_currency}, but was opened as ${this.#opts.book.functionalCurrency}. A book's functional currency cannot be changed in place.`);
       }
       return;
     }
-    this.#db.transaction(() => {
-      this.#db.run(`INSERT OR IGNORE INTO commodity (code, exponent, kind, name) VALUES (?, ?, ?, ?)`, this.#opts.book.functionalCurrency, 0, "fiat", this.#opts.book.functionalCurrency);
-      this.#db.run(`INSERT INTO book (id, schema_version, functional_currency, close_grain, timezone, created_at)
-         VALUES ('book', ?, ?, ?, ?, ?)`, SCHEMA_VERSION, this.#opts.book.functionalCurrency, this.#opts.book.closeGrain ?? "month", this.#opts.book.timezone ?? "Asia/Seoul", this.#now());
+    await this.#db.transaction(async (tx) => {
+      await tx.run(`INSERT OR IGNORE INTO commodity (code, exponent, kind, name) VALUES (?, ?, ?, ?)`, this.#opts.book.functionalCurrency, 0, "fiat", this.#opts.book.functionalCurrency);
+      await tx.run(`INSERT INTO book (id, schema_version, functional_currency, close_grain, timezone, created_at)
+         VALUES ('book', ?, ?, ?, ?, ?)`, this.#engine.schemaVersion, this.#opts.book.functionalCurrency, this.#opts.book.closeGrain ?? "month", this.#opts.book.timezone ?? "Asia/Seoul", this.#now());
     });
   }
+  /**
+   * Atomicity is the port's whole promise, so it is the driver's job — not a
+   * BEGIN/COMMIT hand-written here. SQLite takes the write lock up front with
+   * BEGIN IMMEDIATE; Postgres opens a real transaction on a reserved connection.
+   * Both roll back on throw, and the uow is handed the transaction's driver so
+   * the work cannot accidentally escape it.
+   */
   async unitOfWork(fn) {
-    const uow = new SqliteUow(this.#db, this.#now);
-    this.#db.exec("BEGIN IMMEDIATE");
-    let out2;
-    try {
-      out2 = await fn(uow);
-    } catch (e) {
-      try {
-        this.#db.exec("ROLLBACK");
-      } catch {
-      }
-      throw e;
-    }
-    this.#db.exec("COMMIT");
-    return out2;
+    return this.#db.transaction((tx) => fn(new SqlUow(tx, this.#now)));
   }
   async read(fn) {
-    return fn(new SqliteUow(this.#db, this.#now));
+    return fn(new SqlUow(this.#db, this.#now));
   }
   /**
    * The head of the audit chain.
@@ -9016,7 +8874,7 @@ var SqliteLedgerStore = class {
    * self-consistent and starts being evidence.
    */
   async chainHead() {
-    return chainHeadOf(this.#db);
+    return await chainHeadOf(this.#db);
   }
   /**
    * Fold the WAL back into the main file.
@@ -9027,13 +8885,13 @@ var SqliteLedgerStore = class {
    * omits last week is worse than no backup.
    */
   async checkpoint() {
-    this.#db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    await this.#engine.checkpoint?.(this.#db);
   }
   async close() {
-    this.#db.close();
+    await this.#db.close();
   }
 };
-var SqliteUow = class {
+var SqlUow = class {
   db;
   now;
   constructor(db, now) {
@@ -9041,7 +8899,7 @@ var SqliteUow = class {
     this.now = now;
   }
   async getBook() {
-    const r = this.db.get("SELECT * FROM book WHERE id = ?", "book");
+    const r = await this.db.get("SELECT * FROM book WHERE id = ?", "book");
     if (!r)
       throw new Error("holiday: this ledger has no book \u2014 run `holiday init` first");
     return {
@@ -9054,7 +8912,7 @@ var SqliteUow = class {
     };
   }
   async listCommodities() {
-    return this.db.all("SELECT * FROM commodity ORDER BY code").map((r) => ({
+    return (await this.db.all("SELECT * FROM commodity ORDER BY code")).map((r) => ({
       code: r.code,
       exponent: toInt(r.exponent),
       kind: r.kind,
@@ -9062,11 +8920,11 @@ var SqliteUow = class {
     }));
   }
   async upsertCommodity(c) {
-    this.db.run(`INSERT INTO commodity (code, exponent, kind, name) VALUES (?, ?, ?, ?)
+    await this.db.run(`INSERT INTO commodity (code, exponent, kind, name) VALUES (?, ?, ?, ?)
        ON CONFLICT(code) DO UPDATE SET exponent = excluded.exponent, kind = excluded.kind, name = excluded.name`, c.code, c.exponent, c.kind, c.name);
   }
   async getAccount(idOrCode) {
-    const r = this.db.get("SELECT * FROM account WHERE id = ? OR code = ?", idOrCode, idOrCode);
+    const r = await this.db.get("SELECT * FROM account WHERE id = ? OR code = ?", idOrCode, idOrCode);
     return r ? mapAccount(r) : null;
   }
   async listAccounts(filter) {
@@ -9078,7 +8936,7 @@ var SqliteUow = class {
     }
     if (filter?.prefix) {
       where.push("(code = ? OR code GLOB ?)");
-      params.push(filter.prefix, `${filter.prefix}:*`);
+      params.push(filter.prefix, this.db.dialect.subtreeWildcard(filter.prefix));
     }
     if (filter?.cash !== void 0) {
       where.push("cash = ?");
@@ -9087,10 +8945,10 @@ var SqliteUow = class {
     if (!filter?.includeClosed)
       where.push("closed_on IS NULL");
     const sql = `SELECT * FROM account ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY code`;
-    return this.db.all(sql, ...params).map(mapAccount);
+    return (await this.db.all(sql, ...params)).map(mapAccount);
   }
   async upsertAccount(a) {
-    this.db.run(`INSERT INTO account (id, code, type, parent_id, commodity, monetary, cash, placeholder, opened_on, closed_on)
+    await this.db.run(`INSERT INTO account (id, code, type, parent_id, commodity, monetary, cash, placeholder, opened_on, closed_on)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          code = excluded.code, type = excluded.type, parent_id = excluded.parent_id,
@@ -9106,16 +8964,16 @@ var SqliteUow = class {
    * postings are still going in. Nothing unsealed is ever readable as a fact.
    */
   async appendTxn(tx, opts) {
-    this.db.run(`INSERT INTO txn (id, date, booking_commodity, payee, narration, status, system_kind,
+    await this.db.run(`INSERT INTO txn (id, date, booking_commodity, payee, narration, status, system_kind,
                         corrects_txn_id, source_item_id, fx_estimated, tags_json, meta_json, sealed, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`, tx.id, tx.date, tx.bookingCommodity, tx.payee, tx.narration, opts.status, tx.systemKind, tx.correctsTxnId, tx.sourceItemId, tx.fxEstimated ? 1 : 0, JSON.stringify(tx.tags), JSON.stringify(tx.meta), this.now());
     for (const p of tx.postings) {
-      this.db.run(`INSERT INTO posting (txn_id, seq, account_id, units_minor, commodity, weight_minor,
+      await this.db.run(`INSERT INTO posting (txn_id, seq, account_id, units_minor, commodity, weight_minor,
                               weight_source, fx_rate_text, fx_rate_id, lot_id, kind, memo)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, tx.id, p.seq, p.accountId, p.units.minor, p.units.commodity, p.weightMinor, p.weightSource, p.fxRateText, p.fxRateId, p.lotId, p.kind, p.memo);
     }
-    this.db.run("UPDATE txn SET sealed = 1 WHERE id = ?", tx.id);
-    this.#appendAudit("txn_append", tx.id, {
+    await this.db.run("UPDATE txn SET sealed = 1 WHERE id = ?", tx.id);
+    await this.#appendAudit("txn_append", tx.id, {
       status: opts.status,
       contentSha256: txnContentHash(tx),
       hashVersion: CHAIN_HASH_VERSION
@@ -9123,43 +8981,43 @@ var SqliteUow = class {
     return tx.id;
   }
   /** Every mutation lands here. An audit trail with holes is not an audit trail. */
-  #appendAudit(event, subject, detail) {
-    const head = this.db.get("SELECT seq, hash FROM audit_log ORDER BY seq DESC LIMIT 1");
+  async #appendAudit(event, subject, detail) {
+    const head = await this.db.get("SELECT seq, hash FROM audit_log ORDER BY seq DESC LIMIT 1");
     const seq = head ? toInt(head.seq) + 1 : 1;
     const prevHash = head?.hash ?? GENESIS_HASH;
     const at = this.now();
     const detailJson = stableJson(detail);
     const hash = chainHash({ seq, at, event, subject, detail: detailJson, prevHash });
-    this.db.run("INSERT INTO audit_log (seq, at, event, subject, detail, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?, ?)", seq, at, event, subject, detailJson, prevHash, hash);
+    await this.db.run("INSERT INTO audit_log (seq, at, event, subject, detail, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?, ?)", seq, at, event, subject, detailJson, prevHash, hash);
   }
   async promoteDraft(id) {
-    const changed = this.#setStatus(id, "posted", "draft", null);
+    const changed = await this.#setStatus(id, "posted", "draft", null);
     if (!changed)
       throw new Error(`holiday: ${id} is not a draft, so it cannot be accepted`);
   }
   async rejectDraft(id, reason) {
-    const changed = this.#setStatus(id, "rejected", "draft", reason);
+    const changed = await this.#setStatus(id, "rejected", "draft", reason);
     if (!changed)
       throw new Error(`holiday: ${id} is not a draft, so it cannot be rejected`);
   }
   async voidTxn(id, reason) {
-    const changed = this.#setStatus(id, "void", "posted", reason);
+    const changed = await this.#setStatus(id, "void", "posted", reason);
     if (!changed)
       throw new Error(`holiday: ${id} is not posted, so it cannot be voided`);
   }
-  #setStatus(id, to, from, reason) {
-    const before = this.db.get("SELECT COUNT(*) AS n FROM txn WHERE id = ? AND status = ?", id, from);
+  async #setStatus(id, to, from, reason) {
+    const before = await this.db.get("SELECT COUNT(*) AS n FROM txn WHERE id = ? AND status = ?", id, from);
     if (!before || toInt(before.n) === 0)
       return false;
-    this.db.run("UPDATE txn SET status = ?, reason = ? WHERE id = ?", to, reason, id);
-    this.#appendAudit("txn_status", id, { from, to, reason });
+    await this.db.run("UPDATE txn SET status = ?, reason = ? WHERE id = ?", to, reason, id);
+    await this.#appendAudit("txn_status", id, { from, to, reason });
     return true;
   }
   async getTxn(id) {
-    const t = this.db.get("SELECT * FROM txn WHERE id = ? AND sealed = 1", id);
+    const t = await this.db.get("SELECT * FROM txn WHERE id = ? AND sealed = 1", id);
     if (!t)
       return null;
-    const rows = this.db.all(`SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status
+    const rows = await this.db.all(`SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status
        FROM posting p JOIN account a ON a.id = p.account_id JOIN txn t ON t.id = p.txn_id
        WHERE p.txn_id = ? ORDER BY p.seq`, id);
     return { txn: mapTxn(t, rows), status: t.status };
@@ -9168,7 +9026,7 @@ var SqliteUow = class {
     const { where, params } = buildWhere(q, "t");
     const limit = q.limit ? ` LIMIT ${toInt(q.limit)}` : "";
     const offset = q.offset ? ` OFFSET ${toInt(q.offset)}` : "";
-    const ts = this.db.all(`SELECT DISTINCT t.* FROM txn t WHERE ${where} ORDER BY t.date, t.id${limit}${offset}`, ...params);
+    const ts = await this.db.all(`SELECT DISTINCT t.* FROM txn t WHERE ${where} ORDER BY t.date, t.id${limit}${offset}`, ...params);
     const out2 = [];
     for (const t of ts) {
       const got = await this.getTxn(t.id);
@@ -9180,10 +9038,10 @@ var SqliteUow = class {
   async *streamPostings(q) {
     const { where, params } = buildWhere(q, "t");
     const accountWhere = q.accountPrefix ? " AND (a.code = ? OR a.code GLOB ?)" : "";
-    const accountParams = q.accountPrefix ? [q.accountPrefix, `${q.accountPrefix}:*`] : [];
+    const accountParams = q.accountPrefix ? [q.accountPrefix, this.db.dialect.subtreeWildcard(q.accountPrefix)] : [];
     const idWhere = q.accountIds?.length ? ` AND p.account_id IN (${q.accountIds.map(() => "?").join(",")})` : "";
     const idParams = q.accountIds ? [...q.accountIds] : [];
-    const rows = this.db.all(`SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status
+    const rows = await this.db.all(`SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status
        FROM posting p JOIN txn t ON t.id = p.txn_id JOIN account a ON a.id = p.account_id
        WHERE ${where}${accountWhere}${idWhere}
        ORDER BY t.date, t.id, p.seq`, ...params, ...accountParams, ...idParams);
@@ -9208,15 +9066,10 @@ var SqliteUow = class {
     const effective = q.asOf ? { ...q, to: q.asOf } : q;
     const { where, params } = buildWhere(effective, "t");
     const accountWhere = q.accountPrefix ? " AND (a.code = ? OR a.code GLOB ?)" : "";
-    const accountParams = q.accountPrefix ? [q.accountPrefix, `${q.accountPrefix}:*`] : [];
+    const accountParams = q.accountPrefix ? [q.accountPrefix, this.db.dialect.subtreeWildcard(q.accountPrefix)] : [];
     const idWhere = q.accountIds?.length ? ` AND p.account_id IN (${q.accountIds.map(() => "?").join(",")})` : "";
     const idParams = q.accountIds ? [...q.accountIds] : [];
-    return this.db.all(`SELECT p.account_id, a.code AS account_code, p.commodity,
-                SUM(p.units_minor) AS units, SUM(p.weight_minor) AS weight
-         FROM posting p JOIN txn t ON t.id = p.txn_id JOIN account a ON a.id = p.account_id
-         WHERE ${where}${accountWhere}${idWhere}
-         GROUP BY p.account_id, a.code, p.commodity
-         ORDER BY a.code, p.commodity`, ...params, ...accountParams, ...idParams).map((r) => ({
+    return (await this.db.all(`SELECT p.account_id, a.code AS account_code, p.commodity, SUM(p.units_minor) AS units, SUM(p.weight_minor) AS weight FROM posting p JOIN txn t ON t.id = p.txn_id JOIN account a ON a.id = p.account_id WHERE ${where}${accountWhere}${idWhere} GROUP BY p.account_id, a.code, p.commodity ORDER BY a.code, p.commodity`, ...params, ...accountParams, ...idParams)).map((r) => ({
       accountId: r.account_id,
       accountCode: r.account_code,
       commodity: r.commodity,
@@ -9235,7 +9088,7 @@ var SqliteUow = class {
       where.push("status = ?");
       params.push(filter.status);
     }
-    return this.db.all(`SELECT * FROM period ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY start`, ...params).map((r) => ({
+    return (await this.db.all(`SELECT * FROM period ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY start`, ...params)).map((r) => ({
       id: r.id,
       grain: r.grain,
       start: r.start,
@@ -9244,7 +9097,7 @@ var SqliteUow = class {
     }));
   }
   async findPeriodFor(date, grain) {
-    const r = this.db.get("SELECT * FROM period WHERE grain = ? AND start <= ? AND end >= ?", grain, date, date);
+    const r = await this.db.get("SELECT * FROM period WHERE grain = ? AND start <= ? AND end >= ?", grain, date, date);
     return r ? {
       id: r.id,
       grain: r.grain,
@@ -9254,14 +9107,14 @@ var SqliteUow = class {
     } : null;
   }
   async setPeriodStatus(id, s, meta) {
-    this.db.run("UPDATE period SET status = ? WHERE id = ?", s, id);
-    this.#appendAudit("period_status", id, { status: s, reason: meta.reason ?? null });
+    await this.db.run("UPDATE period SET status = ? WHERE id = ?", s, id);
+    await this.#appendAudit("period_status", id, { status: s, reason: meta.reason ?? null });
   }
   async listCards() {
-    return this.db.all("SELECT * FROM card ORDER BY account_id").map(mapCard);
+    return (await this.db.all("SELECT * FROM card ORDER BY account_id")).map(mapCard);
   }
   async getCard(accountId) {
-    const r = this.db.get("SELECT * FROM card WHERE account_id = ?", accountId);
+    const r = await this.db.get("SELECT * FROM card WHERE account_id = ?", accountId);
     return r ? mapCard(r) : null;
   }
   async upsertCard(c) {
@@ -9278,7 +9131,7 @@ var SqliteUow = class {
     if (funding.type !== "asset") {
       throw new Error(`holiday: ${funding.code} is a ${funding.type} account \u2014 a card is paid from an asset`);
     }
-    this.db.run(`INSERT INTO card (account_id, funding_account_id, cycle_close_day, payment_month_offset, payment_day, label)
+    await this.db.run(`INSERT INTO card (account_id, funding_account_id, cycle_close_day, payment_month_offset, payment_day, label)
        VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(account_id) DO UPDATE SET
          funding_account_id = excluded.funding_account_id,
@@ -9286,13 +9139,13 @@ var SqliteUow = class {
          payment_month_offset = excluded.payment_month_offset,
          payment_day = excluded.payment_day,
          label = excluded.label`, c.accountId, c.fundingAccountId, c.rule.cycleCloseDay, c.rule.paymentMonthOffset, c.rule.paymentDay, c.label);
-    this.#appendAudit("card_upsert", c.accountId, { rule: c.rule, fundingAccountId: c.fundingAccountId });
+    await this.#appendAudit("card_upsert", c.accountId, { rule: c.rule, fundingAccountId: c.fundingAccountId });
   }
   async listInstallments(filter) {
-    const plans = this.db.all("SELECT * FROM installment ORDER BY purchased_on, id");
+    const plans = await this.db.all("SELECT * FROM installment ORDER BY purchased_on, id");
     const out2 = [];
     for (const p of plans) {
-      const rows = this.#rowsOf(p.id);
+      const rows = await this.#rowsOf(p.id);
       if (filter?.activeOn && !rows.some((r) => r.paymentDate > filter.activeOn))
         continue;
       out2.push({ plan: mapInstallment(p), rows });
@@ -9300,11 +9153,11 @@ var SqliteUow = class {
     return out2;
   }
   async getInstallment(id) {
-    const p = this.db.get("SELECT * FROM installment WHERE id = ?", id);
-    return p ? { plan: mapInstallment(p), rows: this.#rowsOf(id) } : null;
+    const p = await this.db.get("SELECT * FROM installment WHERE id = ?", id);
+    return p ? { plan: mapInstallment(p), rows: await this.#rowsOf(id) } : null;
   }
-  #rowsOf(installmentId) {
-    return this.db.all("SELECT * FROM installment_row WHERE installment_id = ? ORDER BY seq", installmentId).map((r) => ({
+  async #rowsOf(installmentId) {
+    return (await this.db.all("SELECT * FROM installment_row WHERE installment_id = ? ORDER BY seq", installmentId)).map((r) => ({
       seq: toInt(r.seq),
       paymentDate: r.payment_date,
       principalMinor: toBigInt(r.principal_minor),
@@ -9328,7 +9181,7 @@ var SqliteUow = class {
     if (rows.length !== plan.months) {
       throw new Error(`holiday: plan says ${plan.months} months but got ${rows.length} rows`);
     }
-    this.db.run(`INSERT INTO installment (id, card_account_id, liability_account_id, txn_id, purchased_on,
+    await this.db.run(`INSERT INTO installment (id, card_account_id, liability_account_id, txn_id, purchased_on,
                                 months, total_minor, commodity, interest_free, label)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
@@ -9338,18 +9191,18 @@ var SqliteUow = class {
          months = excluded.months, total_minor = excluded.total_minor,
          commodity = excluded.commodity, interest_free = excluded.interest_free,
          label = excluded.label`, plan.id, plan.cardAccountId, plan.liabilityAccountId, plan.txnId, plan.purchasedOn, plan.months, plan.totalMinor, plan.commodity, plan.interestFree ? 1 : 0, plan.label);
-    this.db.run("DELETE FROM installment_row WHERE installment_id = ?", plan.id);
+    await this.db.run("DELETE FROM installment_row WHERE installment_id = ?", plan.id);
     for (const r of rows) {
-      this.db.run("INSERT INTO installment_row (installment_id, seq, payment_date, principal_minor, fee_minor) VALUES (?, ?, ?, ?, ?)", plan.id, r.seq, r.paymentDate, r.principalMinor, r.feeMinor);
+      await this.db.run("INSERT INTO installment_row (installment_id, seq, payment_date, principal_minor, fee_minor) VALUES (?, ?, ?, ?, ?)", plan.id, r.seq, r.paymentDate, r.principalMinor, r.feeMinor);
     }
-    this.#appendAudit("installment_upsert", plan.id, {
+    await this.#appendAudit("installment_upsert", plan.id, {
       months: plan.months,
       totalMinor: plan.totalMinor.toString(),
       cardAccountId: plan.cardAccountId
     });
   }
   async listRecurring(filter) {
-    const rows = this.db.all("SELECT * FROM recurring ORDER BY label, id").map(mapRecurring);
+    const rows = (await this.db.all("SELECT * FROM recurring ORDER BY label, id")).map(mapRecurring);
     if (!filter?.activeOn)
       return rows;
     return rows.filter((r) => isActiveOn(r, filter.activeOn));
@@ -9365,7 +9218,7 @@ var SqliteUow = class {
     if (funding.type !== "asset" && funding.type !== "liability") {
       throw new Error(`holiday: ${funding.code} is a ${funding.type} account \u2014 a recurring expense is funded from an asset (direct debit) or a liability (card)`);
     }
-    this.db.run(`INSERT INTO recurring (id, label, expense_account_id, funding_account_id, amount_minor, commodity,
+    await this.db.run(`INSERT INTO recurring (id, label, expense_account_id, funding_account_id, amount_minor, commodity,
                               cadence_kind, day_of_month, month, active_from, active_to)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
@@ -9374,21 +9227,25 @@ var SqliteUow = class {
          commodity = excluded.commodity, cadence_kind = excluded.cadence_kind,
          day_of_month = excluded.day_of_month, month = excluded.month,
          active_from = excluded.active_from, active_to = excluded.active_to`, r.id, r.label, r.expenseAccountId, r.fundingAccountId, r.amountMinor, r.commodity, r.cadence.kind, r.cadence.dayOfMonth, r.cadence.kind === "yearly" ? r.cadence.month : null, r.activeFrom, r.activeTo);
-    this.#appendAudit("recurring_upsert", r.id, {
+    await this.#appendAudit("recurring_upsert", r.id, {
       label: r.label,
       amountMinor: r.amountMinor.toString(),
       cadence: r.cadence
     });
   }
   async listLoans() {
-    return this.db.all("SELECT * FROM loan ORDER BY account_id").map((l) => ({ loan: mapLoan(l), rows: this.#loanRows(l.account_id) }));
+    const loans = await this.db.all("SELECT * FROM loan ORDER BY account_id");
+    const out2 = [];
+    for (const l of loans)
+      out2.push({ loan: mapLoan(l), rows: await this.#loanRows(l.account_id) });
+    return out2;
   }
   async getLoan(accountId) {
-    const l = this.db.get("SELECT * FROM loan WHERE account_id = ?", accountId);
-    return l ? { loan: mapLoan(l), rows: this.#loanRows(accountId) } : null;
+    const l = await this.db.get("SELECT * FROM loan WHERE account_id = ?", accountId);
+    return l ? { loan: mapLoan(l), rows: await this.#loanRows(accountId) } : null;
   }
-  #loanRows(loanId) {
-    return this.db.all("SELECT * FROM loan_schedule_row WHERE loan_id = ? ORDER BY seq", loanId).map((r) => ({
+  async #loanRows(loanId) {
+    return (await this.db.all("SELECT * FROM loan_schedule_row WHERE loan_id = ? ORDER BY seq", loanId)).map((r) => ({
       seq: toInt(r.seq),
       dueDate: r.due_date,
       openingMinor: toBigInt(r.opening_minor),
@@ -9421,7 +9278,7 @@ var SqliteUow = class {
     if (rows.length !== loan2.termMonths) {
       throw new Error(`holiday: loan says ${loan2.termMonths} months but got ${rows.length} rows`);
     }
-    this.db.run(`INSERT INTO loan (account_id, funding_account_id, interest_account_id, principal_minor, commodity,
+    await this.db.run(`INSERT INTO loan (account_id, funding_account_id, interest_account_id, principal_minor, commodity,
                          annual_rate_text, method, term_months, first_payment_date, payment_day, label)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(account_id) DO UPDATE SET
@@ -9431,12 +9288,12 @@ var SqliteUow = class {
          annual_rate_text = excluded.annual_rate_text, method = excluded.method,
          term_months = excluded.term_months, first_payment_date = excluded.first_payment_date,
          payment_day = excluded.payment_day, label = excluded.label`, loan2.accountId, loan2.fundingAccountId, loan2.interestAccountId, loan2.principalMinor, loan2.commodity, loan2.annualRateText, loan2.method, loan2.termMonths, loan2.firstPaymentDate, loan2.paymentDay, loan2.label);
-    this.db.run("DELETE FROM loan_schedule_row WHERE loan_id = ?", loan2.accountId);
+    await this.db.run("DELETE FROM loan_schedule_row WHERE loan_id = ?", loan2.accountId);
     for (const r of rows) {
-      this.db.run(`INSERT INTO loan_schedule_row (loan_id, seq, due_date, opening_minor, principal_minor, interest_minor, closing_minor)
+      await this.db.run(`INSERT INTO loan_schedule_row (loan_id, seq, due_date, opening_minor, principal_minor, interest_minor, closing_minor)
          VALUES (?, ?, ?, ?, ?, ?, ?)`, loan2.accountId, r.seq, r.dueDate, r.openingMinor, r.principalMinor, r.interestMinor, r.closingMinor);
     }
-    this.#appendAudit("loan_upsert", loan2.accountId, {
+    await this.#appendAudit("loan_upsert", loan2.accountId, {
       method: loan2.method,
       principalMinor: loan2.principalMinor.toString(),
       annualRateText: loan2.annualRateText,
@@ -9454,7 +9311,7 @@ var SqliteUow = class {
       where.push("as_of <= ?");
       params.push(filter.to);
     }
-    return this.db.all(`SELECT * FROM balance_assertion ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY as_of, account_id`, ...params).map((r) => ({
+    return (await this.db.all(`SELECT * FROM balance_assertion ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY as_of, account_id`, ...params)).map((r) => ({
       id: r.id,
       accountId: r.account_id,
       asOf: r.as_of,
@@ -9465,21 +9322,21 @@ var SqliteUow = class {
     }));
   }
   async putBalanceAssertion(a) {
-    this.db.run(`INSERT INTO balance_assertion (id, account_id, as_of, commodity, expected_minor, note, created_at)
+    await this.db.run(`INSERT INTO balance_assertion (id, account_id, as_of, commodity, expected_minor, note, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(account_id, as_of, commodity) DO UPDATE SET
          expected_minor = excluded.expected_minor, note = excluded.note, created_at = excluded.created_at`, a.id, a.accountId, a.asOf, a.commodity, a.expectedMinor, a.note, a.createdAt);
-    this.#appendAudit("assertion_put", a.accountId, { asOf: a.asOf, expectedMinor: a.expectedMinor.toString() });
+    await this.#appendAudit("assertion_put", a.accountId, { asOf: a.asOf, expectedMinor: a.expectedMinor.toString() });
   }
   async upsertPeriod(p) {
-    this.db.run(`INSERT INTO period (id, grain, start, end, status) VALUES (?, ?, ?, ?, ?)
+    await this.db.run(`INSERT INTO period (id, grain, start, end, status) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET status = excluded.status`, p.id, p.grain, p.start, p.end, p.status);
   }
   async getSnapshot(periodId, kind) {
-    const s = this.db.get("SELECT * FROM snapshot WHERE period_id = ? AND kind = ?", periodId, kind);
+    const s = await this.db.get("SELECT * FROM snapshot WHERE period_id = ? AND kind = ?", periodId, kind);
     if (!s)
       return null;
-    const balances = this.db.all("SELECT * FROM snapshot_balance WHERE snapshot_id = ?", s.id).map((b) => ({
+    const balances = (await this.db.all("SELECT * FROM snapshot_balance WHERE snapshot_id = ?", s.id)).map((b) => ({
       accountId: b.account_id,
       commodity: b.commodity,
       unitsMinor: toBigInt(b.units_minor),
@@ -9490,14 +9347,14 @@ var SqliteUow = class {
     return { id: s.id, periodId: s.period_id, kind: s.kind, asOf: s.as_of, createdAt: s.created_at, balances };
   }
   async writeSnapshot(s) {
-    this.db.run(`INSERT INTO snapshot (id, period_id, kind, as_of, created_at) VALUES (?, ?, ?, ?, ?)
+    await this.db.run(`INSERT INTO snapshot (id, period_id, kind, as_of, created_at) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(period_id, kind) DO UPDATE SET as_of = excluded.as_of, created_at = excluded.created_at`, s.id, s.periodId, s.kind, s.asOf, s.createdAt);
-    this.db.run("DELETE FROM snapshot_balance WHERE snapshot_id = ?", s.id);
+    await this.db.run("DELETE FROM snapshot_balance WHERE snapshot_id = ?", s.id);
     for (const b of s.balances) {
-      this.db.run(`INSERT INTO snapshot_balance (snapshot_id, account_id, commodity, units_minor, weight_minor, period_units_minor, period_weight_minor)
+      await this.db.run(`INSERT INTO snapshot_balance (snapshot_id, account_id, commodity, units_minor, weight_minor, period_units_minor, period_weight_minor)
          VALUES (?, ?, ?, ?, ?, ?, ?)`, s.id, b.accountId, b.commodity, b.unitsMinor, b.weightMinor, b.periodUnitsMinor, b.periodWeightMinor);
     }
-    this.#appendAudit("snapshot_write", s.periodId, { kind: s.kind, accounts: s.balances.length });
+    await this.#appendAudit("snapshot_write", s.periodId, { kind: s.kind, accounts: s.balances.length });
   }
   async listFxRates(filter) {
     const where = [];
@@ -9514,7 +9371,7 @@ var SqliteUow = class {
       where.push("as_of <= ?");
       params.push(filter.to);
     }
-    return this.db.all(`SELECT * FROM fx_rate ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY as_of DESC, base, quote`, ...params).map((r) => ({
+    return (await this.db.all(`SELECT * FROM fx_rate ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY as_of DESC, base, quote`, ...params)).map((r) => ({
       id: r.id,
       asOf: r.as_of,
       base: r.base,
@@ -9530,42 +9387,42 @@ var SqliteUow = class {
       parseRate(r.rate);
       if (r.base === r.quote)
         throw new Error(`holiday: ${r.base}\u2192${r.quote} is not an exchange rate`);
-      this.db.run(`INSERT INTO fx_rate (id, as_of, base, quote, rate, source, fetched_at)
+      await this.db.run(`INSERT INTO fx_rate (id, as_of, base, quote, rate, source, fetched_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(as_of, base, quote, source) DO UPDATE SET
            rate = excluded.rate, fetched_at = excluded.fetched_at`, r.id, r.asOf, r.base, r.quote, r.rate, r.source, r.fetchedAt);
       written += 1;
     }
     if (written > 0)
-      this.#appendAudit("fx_put", `${written} rate(s)`, { count: written });
+      await this.#appendAudit("fx_put", `${written} rate(s)`, { count: written });
     return written;
   }
   async findIngestBatchBySha(sha) {
-    const r = this.db.get("SELECT * FROM ingest_batch WHERE source_sha256 = ?", sha);
+    const r = await this.db.get("SELECT * FROM ingest_batch WHERE source_sha256 = ?", sha);
     return r ? mapBatch(r) : null;
   }
   async findIngestItemsByDedupeKey(key) {
-    return this.db.all("SELECT * FROM ingest_item WHERE dedupe_key = ? ORDER BY created_at", key).map(mapItem);
+    return (await this.db.all("SELECT * FROM ingest_item WHERE dedupe_key = ? ORDER BY created_at", key)).map(mapItem);
   }
   async listIngestItems(filter) {
     const sql = filter?.status ? "SELECT * FROM ingest_item WHERE status = ? ORDER BY created_at" : "SELECT * FROM ingest_item ORDER BY created_at";
     const params = filter?.status ? [filter.status] : [];
-    return this.db.all(sql, ...params).map(mapItem);
+    return (await this.db.all(sql, ...params)).map(mapItem);
   }
   async recordIngestBatch(b) {
-    this.db.run("INSERT INTO ingest_batch (id, source_sha256, source_name, submitted_at, item_count) VALUES (?, ?, ?, ?, ?)", b.id, b.sourceSha256, b.sourceName, b.submittedAt, b.itemCount);
+    await this.db.run("INSERT INTO ingest_batch (id, source_sha256, source_name, submitted_at, item_count) VALUES (?, ?, ?, ?, ?)", b.id, b.sourceSha256, b.sourceName, b.submittedAt, b.itemCount);
   }
   async recordIngestItem(i) {
-    this.db.run(`INSERT INTO ingest_item (id, batch_id, dedupe_key, dedupe_authority, external_ref, merchant,
+    await this.db.run(`INSERT INTO ingest_item (id, batch_id, dedupe_key, dedupe_authority, external_ref, merchant,
                                 txn_id, status, reason, parsed_json, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, i.id, i.batchId, i.dedupeKey, i.dedupeAuthority, i.externalRef, i.merchant, i.txnId, i.status, i.reason, i.parsedJson, i.createdAt);
   }
   async setIngestItemStatus(id, status, meta) {
-    this.db.run("UPDATE ingest_item SET status = ?, reason = ?, txn_id = COALESCE(?, txn_id) WHERE id = ?", status, meta.reason ?? null, meta.txnId ?? null, id);
-    this.#appendAudit("ingest_item_status", id, { status, reason: meta.reason ?? null });
+    await this.db.run("UPDATE ingest_item SET status = ?, reason = ?, txn_id = COALESCE(?, txn_id) WHERE id = ?", status, meta.reason ?? null, meta.txnId ?? null, id);
+    await this.#appendAudit("ingest_item_status", id, { status, reason: meta.reason ?? null });
   }
   async getCommandResult(idemKey) {
-    const r = this.db.get("SELECT * FROM command_log WHERE idem_key = ?", idemKey);
+    const r = await this.db.get("SELECT * FROM command_log WHERE idem_key = ?", idemKey);
     return r ? {
       idemKey: r.idem_key,
       requestSha256: r.request_sha256,
@@ -9581,19 +9438,19 @@ var SqliteUow = class {
       }
       return;
     }
-    this.db.run("INSERT INTO command_log (idem_key, request_sha256, response_json, created_at) VALUES (?, ?, ?, ?)", r.idemKey, r.requestSha256, r.responseJson, r.createdAt);
+    await this.db.run("INSERT INTO command_log (idem_key, request_sha256, response_json, created_at) VALUES (?, ?, ?, ?)", r.idemKey, r.requestSha256, r.responseJson, r.createdAt);
   }
   /** Ring 4. Cheap here because it is just SQL — over a Notion-shaped store it would be an hour. */
   async verify() {
     const problems = [];
-    for (const r of this.db.all("SELECT txn_id, SUM(weight_minor) AS residual FROM posting GROUP BY txn_id HAVING SUM(weight_minor) <> 0")) {
+    for (const r of await this.db.all("SELECT txn_id, SUM(weight_minor) AS residual FROM posting GROUP BY txn_id HAVING SUM(weight_minor) <> 0")) {
       problems.push({
         kind: "unbalanced_txn",
         subject: r.txn_id,
         detail: `postings sum to ${r.residual}, expected 0`
       });
     }
-    for (const r of this.db.all(`SELECT p.txn_id, p.seq, p.units_minor, p.weight_minor
+    for (const r of await this.db.all(`SELECT p.txn_id, p.seq, p.units_minor, p.weight_minor
        FROM posting p JOIN txn t ON t.id = p.txn_id
        WHERE p.commodity = t.booking_commodity AND p.weight_minor <> p.units_minor`)) {
       problems.push({
@@ -9602,7 +9459,7 @@ var SqliteUow = class {
         detail: `booking-commodity posting has weight ${r.weight_minor} but units ${r.units_minor}`
       });
     }
-    for (const r of this.db.all(`SELECT p.txn_id, p.seq, p.commodity, a.commodity AS declared
+    for (const r of await this.db.all(`SELECT p.txn_id, p.seq, p.commodity, a.commodity AS declared
        FROM posting p JOIN account a ON a.id = p.account_id
        WHERE a.commodity IS NOT NULL AND a.commodity <> p.commodity`)) {
       problems.push({
@@ -9611,15 +9468,15 @@ var SqliteUow = class {
         detail: `posting is ${r.commodity} but the account is declared ${r.declared}`
       });
     }
-    for (const r of this.db.all("SELECT id FROM txn WHERE sealed = 0")) {
+    for (const r of await this.db.all("SELECT id FROM txn WHERE sealed = 0")) {
       problems.push({
         kind: "unbalanced_txn",
         subject: r.id,
         detail: "transaction was never sealed \u2014 it was written but its balance was never asserted"
       });
     }
-    problems.push(...this.#verifyChain());
-    const counted = this.db.get("SELECT COUNT(*) AS n FROM txn");
+    problems.push(...await this.#verifyChain());
+    const counted = await this.db.get("SELECT COUNT(*) AS n FROM txn");
     return { ok: problems.length === 0, checked: counted ? toInt(counted.n) : 0, problems };
   }
   /**
@@ -9631,9 +9488,9 @@ var SqliteUow = class {
    * the chain recorded when it was written. That second one is the whole reason
    * the chain commits to content rather than to ids.
    */
-  #verifyChain() {
+  async #verifyChain() {
     const problems = [];
-    const rows = this.db.all("SELECT * FROM audit_log ORDER BY seq");
+    const rows = await this.db.all("SELECT * FROM audit_log ORDER BY seq");
     let expectedPrev = GENESIS_HASH;
     for (const r of rows) {
       const seq = toInt(r.seq);
@@ -9663,7 +9520,7 @@ var SqliteUow = class {
       if (r.event === "txn_append") {
         const detail = JSON.parse(r.detail);
         if (detail.contentSha256) {
-          const problem = this.#verifyTxnContent(r.subject, detail.contentSha256, detail.hashVersion);
+          const problem = await this.#verifyTxnContent(r.subject, detail.contentSha256, detail.hashVersion);
           if (problem)
             problems.push(problem);
         }
@@ -9671,8 +9528,8 @@ var SqliteUow = class {
     }
     return problems;
   }
-  #verifyTxnContent(txnId, expected, version) {
-    const t = this.db.get("SELECT * FROM txn WHERE id = ?", txnId);
+  async #verifyTxnContent(txnId, expected, version) {
+    const t = await this.db.get("SELECT * FROM txn WHERE id = ?", txnId);
     if (!t) {
       return {
         kind: "content_tampered",
@@ -9680,7 +9537,7 @@ var SqliteUow = class {
         detail: "the chain records this transaction but it is no longer in the ledger"
       };
     }
-    const rows = this.db.all(`SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status
+    const rows = await this.db.all(`SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status
        FROM posting p JOIN account a ON a.id = p.account_id JOIN txn t ON t.id = p.txn_id
        WHERE p.txn_id = ? ORDER BY p.seq`, txnId);
     const actual = txnContentHash(mapTxn(t, rows), version ?? CHAIN_HASH_VERSION);
@@ -9694,8 +9551,8 @@ var SqliteUow = class {
     return null;
   }
 };
-function chainHeadOf(db) {
-  const head = db.get("SELECT seq, hash FROM audit_log ORDER BY seq DESC LIMIT 1");
+async function chainHeadOf(db) {
+  const head = await db.get("SELECT seq, hash FROM audit_log ORDER BY seq DESC LIMIT 1");
   return head ? { seq: toInt(head.seq), hash: head.hash } : null;
 }
 function mapBatch(r) {
@@ -9834,6 +9691,234 @@ function buildWhere(q, alias) {
   return { where: where.join(" AND "), params };
 }
 
+// ../store-sqlite/dist/db.js
+import { createRequire } from "node:module";
+var DatabaseSync = createRequire(import.meta.url)("node:sqlite").DatabaseSync;
+var Db = class {
+  #db;
+  #cache = /* @__PURE__ */ new Map();
+  constructor(path) {
+    this.#db = new DatabaseSync(path);
+  }
+  exec(sql) {
+    this.#db.exec(sql);
+  }
+  prepare(sql) {
+    const cached = this.#cache.get(sql);
+    if (cached)
+      return cached;
+    const stmt = this.#db.prepare(sql);
+    stmt.setReadBigInts(true);
+    this.#cache.set(sql, stmt);
+    return stmt;
+  }
+  run(sql, ...params) {
+    this.prepare(sql).run(...params);
+  }
+  get(sql, ...params) {
+    return this.prepare(sql).get(...params);
+  }
+  all(sql, ...params) {
+    return this.prepare(sql).all(...params);
+  }
+  /**
+   * IMMEDIATE, not DEFERRED: take the write lock up front so a concurrent writer
+   * fails at BEGIN rather than at COMMIT, where the work is already done.
+   */
+  transaction(fn) {
+    this.exec("BEGIN IMMEDIATE");
+    try {
+      const out2 = fn();
+      this.exec("COMMIT");
+      return out2;
+    } catch (e) {
+      try {
+        this.exec("ROLLBACK");
+      } catch {
+      }
+      throw e;
+    }
+  }
+  close() {
+    this.#cache.clear();
+    this.#db.close();
+  }
+};
+
+// ../store-sqlite/dist/driver.js
+var SqliteDriver = class _SqliteDriver {
+  db;
+  dialect = {
+    name: "sqlite",
+    subtreeWildcard: (prefix) => `${prefix}:*`,
+    prepare: (sql) => sql
+  };
+  #inTransaction = false;
+  constructor(db) {
+    this.db = db;
+  }
+  static open(path) {
+    return new _SqliteDriver(new Db(path));
+  }
+  async get(sql, ...params) {
+    return this.db.get(sql, ...params);
+  }
+  async all(sql, ...params) {
+    return this.db.all(sql, ...params);
+  }
+  async run(sql, ...params) {
+    this.db.run(sql, ...params);
+  }
+  async exec(sql) {
+    this.db.exec(sql);
+  }
+  /**
+   * IMMEDIATE, not DEFERRED: take the write lock up front so a concurrent writer
+   * fails at BEGIN rather than at COMMIT, where the work is already done.
+   *
+   * Nested calls join the outer transaction rather than issuing a second BEGIN,
+   * which SQLite rejects outright. The migration runner wraps each migration in
+   * one of these, and seeding the book opens another inside migrate() — so the
+   * nesting is real, not hypothetical.
+   */
+  async transaction(fn) {
+    if (this.#inTransaction)
+      return fn(this);
+    this.db.exec("BEGIN IMMEDIATE");
+    this.#inTransaction = true;
+    try {
+      const out2 = await fn(this);
+      this.db.exec("COMMIT");
+      return out2;
+    } catch (e) {
+      try {
+        this.db.exec("ROLLBACK");
+      } catch {
+      }
+      throw e;
+    } finally {
+      this.#inTransaction = false;
+    }
+  }
+  async close() {
+    this.db.close();
+  }
+};
+
+// ../store-sqlite/dist/migrations.generated.js
+var MIGRATIONS = [
+  {
+    "name": "20260717100240_init",
+    "hash": "bb0945679071304270e05684c230172aee4157f064cbd23513200ed786c184fd",
+    "statements": [
+      'CREATE TABLE `account` (\n	`id` text PRIMARY KEY,\n	`code` text NOT NULL,\n	`type` text NOT NULL,\n	`parent_id` text,\n	`commodity` text,\n	`monetary` integer DEFAULT 1 NOT NULL,\n	`cash` integer DEFAULT 0 NOT NULL,\n	`placeholder` integer DEFAULT 0 NOT NULL,\n	`opened_on` text NOT NULL,\n	`closed_on` text,\n	CONSTRAINT `fk_account_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT "account_type_enum" CHECK("type" IN (\'asset\',\'liability\',\'equity\',\'income\',\'expense\')),\n	CONSTRAINT "account_monetary_bool" CHECK("monetary" IN (0,1)),\n	CONSTRAINT "account_cash_bool" CHECK("cash" IN (0,1)),\n	CONSTRAINT "account_placeholder_bool" CHECK("placeholder" IN (0,1))\n);',
+      "CREATE TABLE `audit_log` (\n	`seq` integer PRIMARY KEY,\n	`at` text NOT NULL,\n	`event` text NOT NULL,\n	`subject` text NOT NULL,\n	`detail` text DEFAULT '{}' NOT NULL,\n	`prev_hash` text NOT NULL,\n	`hash` text NOT NULL UNIQUE\n);",
+      "CREATE TABLE `book` (\n	`id` text PRIMARY KEY,\n	`schema_version` integer NOT NULL,\n	`functional_currency` text NOT NULL,\n	`close_grain` text DEFAULT 'month' NOT NULL,\n	`timezone` text DEFAULT 'Asia/Seoul' NOT NULL,\n	`dedupe_key_version` integer DEFAULT 1 NOT NULL,\n	`fx_max_staleness_days` integer DEFAULT 7 NOT NULL,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_book_functional_currency_commodity_code_fk` FOREIGN KEY (`functional_currency`) REFERENCES `commodity`(`code`),\n	CONSTRAINT \"book_singleton\" CHECK(\"id\" = 'book'),\n	CONSTRAINT \"book_close_grain_enum\" CHECK(\"close_grain\" IN ('day','week','month','quarter','year'))\n);",
+      'CREATE TABLE `card` (\n	`account_id` text PRIMARY KEY,\n	`funding_account_id` text NOT NULL,\n	`cycle_close_day` integer NOT NULL,\n	`payment_month_offset` integer NOT NULL,\n	`payment_day` integer NOT NULL,\n	`label` text,\n	CONSTRAINT `fk_card_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_card_funding_account_id_account_id_fk` FOREIGN KEY (`funding_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT "card_close_day_range" CHECK("cycle_close_day" BETWEEN 1 AND 31),\n	CONSTRAINT "card_offset_range" CHECK("payment_month_offset" BETWEEN 0 AND 3),\n	CONSTRAINT "card_payment_day_range" CHECK("payment_day" = -1 OR "payment_day" BETWEEN 1 AND 31)\n);',
+      "CREATE TABLE `command_log` (\n	`idem_key` text PRIMARY KEY,\n	`request_sha256` text NOT NULL,\n	`response_json` text NOT NULL,\n	`created_at` text NOT NULL\n);",
+      "CREATE TABLE `commodity` (\n	`code` text PRIMARY KEY,\n	`exponent` integer NOT NULL,\n	`kind` text NOT NULL,\n	`name` text NOT NULL,\n	CONSTRAINT \"commodity_exponent_range\" CHECK(\"exponent\" BETWEEN 0 AND 9),\n	CONSTRAINT \"commodity_kind_enum\" CHECK(\"kind\" IN ('fiat','crypto','security','unit'))\n);",
+      "CREATE TABLE `fx_rate` (\n	`id` text PRIMARY KEY,\n	`as_of` text NOT NULL,\n	`base` text NOT NULL,\n	`quote` text NOT NULL,\n	`rate` text NOT NULL,\n	`source` text NOT NULL,\n	`fetched_at` text NOT NULL,\n	CONSTRAINT `fk_fx_rate_base_commodity_code_fk` FOREIGN KEY (`base`) REFERENCES `commodity`(`code`),\n	CONSTRAINT `fk_fx_rate_quote_commodity_code_fk` FOREIGN KEY (`quote`) REFERENCES `commodity`(`code`)\n);",
+      'CREATE TABLE `installment` (\n	`id` text PRIMARY KEY,\n	`card_account_id` text NOT NULL,\n	`liability_account_id` text NOT NULL,\n	`txn_id` text,\n	`purchased_on` text NOT NULL,\n	`months` integer NOT NULL,\n	`total_minor` integer NOT NULL,\n	`commodity` text NOT NULL,\n	`interest_free` integer DEFAULT 1 NOT NULL,\n	`label` text,\n	CONSTRAINT `fk_installment_card_account_id_account_id_fk` FOREIGN KEY (`card_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_installment_liability_account_id_account_id_fk` FOREIGN KEY (`liability_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_installment_txn_id_txn_id_fk` FOREIGN KEY (`txn_id`) REFERENCES `txn`(`id`),\n	CONSTRAINT `fk_installment_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT "installment_months_positive" CHECK("months" >= 1),\n	CONSTRAINT "installment_total_positive" CHECK("total_minor" > 0),\n	CONSTRAINT "installment_accounts_differ" CHECK("card_account_id" <> "liability_account_id"),\n	CONSTRAINT "installment_interest_free_bool" CHECK("interest_free" IN (0,1))\n);',
+      'CREATE TABLE `installment_row` (\n	`installment_id` text NOT NULL,\n	`seq` integer NOT NULL,\n	`payment_date` text NOT NULL,\n	`principal_minor` integer NOT NULL,\n	`fee_minor` integer DEFAULT 0 NOT NULL,\n	CONSTRAINT `installment_row_pk` PRIMARY KEY(`installment_id`, `seq`),\n	CONSTRAINT `fk_installment_row_installment_id_installment_id_fk` FOREIGN KEY (`installment_id`) REFERENCES `installment`(`id`) ON DELETE CASCADE,\n	CONSTRAINT "installment_row_seq_positive" CHECK("seq" >= 1)\n);',
+      "CREATE TABLE `period` (\n	`id` text PRIMARY KEY,\n	`grain` text NOT NULL,\n	`start` text NOT NULL,\n	`end` text NOT NULL,\n	`status` text DEFAULT 'open' NOT NULL,\n	CONSTRAINT \"period_grain_enum\" CHECK(\"grain\" IN ('day','week','month','quarter','year')),\n	CONSTRAINT \"period_status_enum\" CHECK(\"status\" IN ('open','closed','locked'))\n);",
+      "CREATE TABLE `posting` (\n	`txn_id` text NOT NULL,\n	`seq` integer NOT NULL,\n	`account_id` text NOT NULL,\n	`units_minor` integer NOT NULL,\n	`commodity` text NOT NULL,\n	`weight_minor` integer NOT NULL,\n	`weight_source` text NOT NULL,\n	`fx_rate_text` text,\n	`fx_rate_id` text,\n	`lot_id` text,\n	`kind` text DEFAULT 'normal' NOT NULL,\n	`memo` text,\n	CONSTRAINT `posting_pk` PRIMARY KEY(`txn_id`, `seq`),\n	CONSTRAINT `fk_posting_txn_id_txn_id_fk` FOREIGN KEY (`txn_id`) REFERENCES `txn`(`id`),\n	CONSTRAINT `fk_posting_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_posting_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT \"posting_weight_source_enum\" CHECK(\"weight_source\" IN ('identity','actual','rate','plug')),\n	CONSTRAINT \"posting_kind_enum\" CHECK(\"kind\" IN ('normal','fx_revaluation','rounding'))\n);",
+      'CREATE TABLE `recurring` (\n	`id` text PRIMARY KEY,\n	`label` text NOT NULL,\n	`expense_account_id` text NOT NULL,\n	`funding_account_id` text NOT NULL,\n	`amount_minor` integer NOT NULL,\n	`commodity` text NOT NULL,\n	`cadence_kind` text NOT NULL,\n	`day_of_month` integer NOT NULL,\n	`month` integer,\n	`active_from` text NOT NULL,\n	`active_to` text,\n	CONSTRAINT `fk_recurring_expense_account_id_account_id_fk` FOREIGN KEY (`expense_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_recurring_funding_account_id_account_id_fk` FOREIGN KEY (`funding_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_recurring_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT "recurring_amount_positive" CHECK("amount_minor" > 0),\n	CONSTRAINT "recurring_cadence_enum" CHECK("cadence_kind" IN (\'monthly\',\'yearly\')),\n	CONSTRAINT "recurring_day_range" CHECK("day_of_month" = -1 OR "day_of_month" BETWEEN 1 AND 31),\n	CONSTRAINT "recurring_month_range" CHECK("month" IS NULL OR "month" BETWEEN 1 AND 12),\n	CONSTRAINT "recurring_yearly_needs_month" CHECK("cadence_kind" <> \'yearly\' OR "month" IS NOT NULL)\n);',
+      "CREATE TABLE `txn` (\n	`id` text PRIMARY KEY,\n	`date` text NOT NULL,\n	`booking_commodity` text NOT NULL,\n	`payee` text,\n	`narration` text DEFAULT '' NOT NULL,\n	`status` text NOT NULL,\n	`system_kind` text,\n	`corrects_txn_id` text,\n	`source_item_id` text,\n	`fx_estimated` integer DEFAULT 0 NOT NULL,\n	`tags_json` text DEFAULT '[]' NOT NULL,\n	`meta_json` text DEFAULT '{}' NOT NULL,\n	`sealed` integer DEFAULT 0 NOT NULL,\n	`reason` text,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_txn_booking_commodity_commodity_code_fk` FOREIGN KEY (`booking_commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT \"txn_status_enum\" CHECK(\"status\" IN ('draft','posted','void','rejected')),\n	CONSTRAINT \"txn_system_kind_enum\" CHECK(\"system_kind\" IS NULL OR \"system_kind\" IN ('fx_revaluation','closing_entry','opening_balance')),\n	CONSTRAINT \"txn_fx_estimated_bool\" CHECK(\"fx_estimated\" IN (0,1)),\n	CONSTRAINT \"txn_sealed_bool\" CHECK(\"sealed\" IN (0,1))\n);",
+      "CREATE INDEX `account_by_code` ON `account` (`code`);",
+      "CREATE UNIQUE INDEX `fx_rate_unique` ON `fx_rate` (`as_of`,`base`,`quote`,`source`);",
+      "CREATE INDEX `installment_by_card` ON `installment` (`card_account_id`);",
+      "CREATE INDEX `installment_row_by_date` ON `installment_row` (`payment_date`);",
+      "CREATE UNIQUE INDEX `period_grain_start` ON `period` (`grain`,`start`);",
+      "CREATE INDEX `posting_by_account` ON `posting` (`account_id`);",
+      "CREATE INDEX `recurring_by_funding` ON `recurring` (`funding_account_id`);",
+      "CREATE INDEX `txn_by_date` ON `txn` (`date`,`id`);",
+      "CREATE INDEX `txn_by_status` ON `txn` (`status`);"
+    ]
+  },
+  {
+    "name": "20260717100308_invariant_triggers",
+    "hash": "a9ecf50df0f46efb91cf73a25a7e3f885c5cd1b8c8d2200ad17677d1b96527a6",
+    "statements": [
+      "-- Ring 3: invariants enforced at rest.\n--\n-- Hand-written because drizzle-kit models no triggers at all \u2014 its schema DSL has\n-- no trigger builder, and `generate` neither creates nor drops them. This is a\n-- `generate --custom` migration, which is what the Drizzle docs prescribe for\n-- \"DDL alternations currently not supported by Drizzle Kit\".\n--\n-- These exist to catch bugs in the domain, unsafe casts, and someone opening the\n-- file with the sqlite3 CLI. The domain is the authority; this is the backstop.\n-- Only an engine-tier store can offer this at all, which is a standing argument\n-- against ever making a Notion-shaped store the system of record.\n--\n-- WARNING for future migrations: drizzle-kit's SQLite ALTER strategy recreates a\n-- table (create new \u2192 copy \u2192 drop old \u2192 rename), and SQLite drops the triggers\n-- attached to a dropped table. Any migration that recreates `txn`, `posting`,\n-- `account`, `commodity`, or `audit_log` MUST re-create the relevant triggers\n-- below, or the invariants silently stop being enforced while every test still\n-- passes. `holiday verify` would still catch violations after the fact; nothing\n-- would stop them going in.\n\nCREATE TRIGGER txn_seal_requires_balance\nBEFORE UPDATE OF sealed ON txn\nWHEN NEW.sealed = 1 AND OLD.sealed = 0\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: transaction has fewer than two postings')\n  WHERE (SELECT COUNT(*) FROM posting WHERE txn_id = NEW.id) < 2;\n\n  SELECT RAISE(ABORT, 'holiday: unbalanced transaction \u2014 postings must sum to exactly zero')\n  WHERE (SELECT COALESCE(SUM(weight_minor), 0) FROM posting WHERE txn_id = NEW.id) <> 0;\nEND;",
+      "CREATE TRIGGER posting_rejects_placeholder_account\nBEFORE INSERT ON posting\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: cannot post to a placeholder account')\n  WHERE (SELECT placeholder FROM account WHERE id = NEW.account_id) = 1;\nEND;",
+      "-- The most likely real error in the whole system: the vision model reads '$' as\n-- '\u20A9' and posts USD into a KRW-only account. This is where it dies.\nCREATE TRIGGER posting_commodity_conformance\nBEFORE INSERT ON posting\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: posting commodity does not match the account''s declared commodity')\n  WHERE (SELECT commodity FROM account WHERE id = NEW.account_id) IS NOT NULL\n    AND (SELECT commodity FROM account WHERE id = NEW.account_id) <> NEW.commodity;\nEND;",
+      "CREATE TRIGGER posting_identity_weight\nBEFORE INSERT ON posting\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: a posting already in the booking commodity must have weight = units')\n  WHERE NEW.commodity = (SELECT booking_commodity FROM txn WHERE id = NEW.txn_id)\n    AND NEW.weight_minor <> NEW.units_minor;\nEND;",
+      "-- The journal is append-only. Once sealed, postings are facts.\nCREATE TRIGGER posting_immutable_insert\nBEFORE INSERT ON posting\nWHEN (SELECT sealed FROM txn WHERE id = NEW.txn_id) = 1\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: cannot add a posting to a sealed transaction \u2014 write a correction instead');\nEND;",
+      "CREATE TRIGGER posting_immutable_update\nBEFORE UPDATE ON posting\nWHEN (SELECT sealed FROM txn WHERE id = OLD.txn_id) = 1\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: postings of a sealed transaction are immutable \u2014 write a correction instead');\nEND;",
+      "CREATE TRIGGER posting_immutable_delete\nBEFORE DELETE ON posting\nWHEN (SELECT sealed FROM txn WHERE id = OLD.txn_id) = 1\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: postings of a sealed transaction cannot be deleted \u2014 void or correct instead');\nEND;",
+      "CREATE TRIGGER txn_never_unseals\nBEFORE UPDATE OF sealed ON txn\nWHEN OLD.sealed = 1 AND NEW.sealed = 0\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: a sealed transaction cannot be unsealed');\nEND;",
+      "-- An exponent change silently rescales every amount of that commodity. It is a\n-- migration, not an edit.\nCREATE TRIGGER commodity_exponent_immutable\nBEFORE UPDATE OF exponent ON commodity\nWHEN OLD.exponent <> NEW.exponent\n  AND EXISTS (SELECT 1 FROM posting WHERE commodity = OLD.code)\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: cannot change the exponent of a commodity that has postings');\nEND;",
+      "-- An audit log you can quietly edit is decoration.\nCREATE TRIGGER audit_log_immutable_update\nBEFORE UPDATE ON audit_log\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: the audit log is append-only');\nEND;",
+      "CREATE TRIGGER audit_log_immutable_delete\nBEFORE DELETE ON audit_log\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: the audit log is append-only');\nEND;"
+    ]
+  },
+  {
+    "name": "20260717101844_loans",
+    "hash": "c7f4ab6db56f82d1ab73cd0ca78f7f06a83c5b65461aa35ba71f2c46b2426016",
+    "statements": [
+      'CREATE TABLE `loan` (\n	`account_id` text PRIMARY KEY,\n	`funding_account_id` text NOT NULL,\n	`interest_account_id` text NOT NULL,\n	`principal_minor` integer NOT NULL,\n	`commodity` text NOT NULL,\n	`annual_rate_text` text NOT NULL,\n	`method` text NOT NULL,\n	`term_months` integer NOT NULL,\n	`first_payment_date` text NOT NULL,\n	`payment_day` integer NOT NULL,\n	`label` text,\n	CONSTRAINT `fk_loan_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_funding_account_id_account_id_fk` FOREIGN KEY (`funding_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_interest_account_id_account_id_fk` FOREIGN KEY (`interest_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT "loan_principal_positive" CHECK("principal_minor" > 0),\n	CONSTRAINT "loan_term_positive" CHECK("term_months" >= 1),\n	CONSTRAINT "loan_method_enum" CHECK("method" IN (\'annuity\',\'equal_principal\',\'bullet\',\'interest_only\')),\n	CONSTRAINT "loan_payment_day_range" CHECK("payment_day" = -1 OR "payment_day" BETWEEN 1 AND 31),\n	CONSTRAINT "loan_accounts_differ" CHECK("account_id" <> "funding_account_id")\n);',
+      'CREATE TABLE `loan_schedule_row` (\n	`loan_id` text NOT NULL,\n	`seq` integer NOT NULL,\n	`due_date` text NOT NULL,\n	`opening_minor` integer NOT NULL,\n	`principal_minor` integer NOT NULL,\n	`interest_minor` integer NOT NULL,\n	`closing_minor` integer NOT NULL,\n	CONSTRAINT `loan_schedule_row_pk` PRIMARY KEY(`loan_id`, `seq`),\n	CONSTRAINT `fk_loan_schedule_row_loan_id_loan_account_id_fk` FOREIGN KEY (`loan_id`) REFERENCES `loan`(`account_id`) ON DELETE CASCADE,\n	CONSTRAINT "loan_schedule_seq_positive" CHECK("seq" >= 1)\n);',
+      "CREATE INDEX `loan_schedule_by_date` ON `loan_schedule_row` (`due_date`);"
+    ]
+  },
+  {
+    "name": "20260717105405_ingest",
+    "hash": "dea47ca026d33031e905e65bf8dacbb1463de0dd1488f8763f6e774867189b4c",
+    "statements": [
+      'CREATE TABLE `ingest_batch` (\n	`id` text PRIMARY KEY,\n	`source_sha256` text NOT NULL UNIQUE,\n	`source_name` text,\n	`submitted_at` text NOT NULL,\n	`item_count` integer DEFAULT 0 NOT NULL,\n	CONSTRAINT "ingest_batch_count_nonneg" CHECK("item_count" >= 0)\n);',
+      "CREATE TABLE `ingest_item` (\n	`id` text PRIMARY KEY,\n	`batch_id` text NOT NULL,\n	`dedupe_key` text NOT NULL,\n	`dedupe_authority` text NOT NULL,\n	`external_ref` text,\n	`merchant` text,\n	`txn_id` text,\n	`status` text DEFAULT 'pending' NOT NULL,\n	`reason` text,\n	`parsed_json` text NOT NULL,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_ingest_item_batch_id_ingest_batch_id_fk` FOREIGN KEY (`batch_id`) REFERENCES `ingest_batch`(`id`) ON DELETE CASCADE,\n	CONSTRAINT `fk_ingest_item_txn_id_txn_id_fk` FOREIGN KEY (`txn_id`) REFERENCES `txn`(`id`),\n	CONSTRAINT \"ingest_item_status_enum\" CHECK(\"status\" IN ('pending','accepted','rejected')),\n	CONSTRAINT \"ingest_item_authority_enum\" CHECK(\"dedupe_authority\" IN ('image','external_ref','natural'))\n);",
+      "CREATE INDEX `ingest_item_by_dedupe` ON `ingest_item` (`dedupe_key`);",
+      "CREATE INDEX `ingest_item_by_batch` ON `ingest_item` (`batch_id`);"
+    ]
+  },
+  {
+    "name": "20260717112827_close",
+    "hash": "a0fa3c8bef5f10c51f61bbd6f992481bbf7b6273d43406bccf7f581ee73e881c",
+    "statements": [
+      "CREATE TABLE `balance_assertion` (\n	`id` text PRIMARY KEY,\n	`account_id` text NOT NULL,\n	`as_of` text NOT NULL,\n	`commodity` text NOT NULL,\n	`expected_minor` integer NOT NULL,\n	`note` text,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_balance_assertion_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_balance_assertion_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`)\n);",
+      "CREATE TABLE `snapshot` (\n	`id` text PRIMARY KEY,\n	`period_id` text NOT NULL,\n	`kind` text NOT NULL,\n	`as_of` text NOT NULL,\n	`created_at` text NOT NULL,\n	CONSTRAINT `fk_snapshot_period_id_period_id_fk` FOREIGN KEY (`period_id`) REFERENCES `period`(`id`),\n	CONSTRAINT \"snapshot_kind_enum\" CHECK(\"kind\" IN ('close','checkpoint'))\n);",
+      "CREATE TABLE `snapshot_balance` (\n	`snapshot_id` text NOT NULL,\n	`account_id` text NOT NULL,\n	`commodity` text NOT NULL,\n	`units_minor` integer NOT NULL,\n	`weight_minor` integer NOT NULL,\n	`period_units_minor` integer DEFAULT 0 NOT NULL,\n	`period_weight_minor` integer DEFAULT 0 NOT NULL,\n	CONSTRAINT `snapshot_balance_pk` PRIMARY KEY(`snapshot_id`, `account_id`, `commodity`),\n	CONSTRAINT `fk_snapshot_balance_snapshot_id_snapshot_id_fk` FOREIGN KEY (`snapshot_id`) REFERENCES `snapshot`(`id`) ON DELETE CASCADE,\n	CONSTRAINT `fk_snapshot_balance_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_snapshot_balance_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`)\n);",
+      "CREATE UNIQUE INDEX `balance_assertion_unique` ON `balance_assertion` (`account_id`,`as_of`,`commodity`);",
+      "CREATE INDEX `balance_assertion_by_date` ON `balance_assertion` (`as_of`);",
+      "CREATE UNIQUE INDEX `snapshot_unique` ON `snapshot` (`period_id`,`kind`);"
+    ]
+  }
+];
+
+// ../store-sqlite/dist/schema.js
+var SCHEMA_VERSION = 2;
+var PRAGMAS = `
+PRAGMA journal_mode = WAL;
+PRAGMA foreign_keys = ON;
+PRAGMA busy_timeout = 5000;
+-- A personal ledger writes a few rows a day. Correctness beats throughput.
+PRAGMA synchronous = FULL;
+`;
+
+// ../store-sqlite/dist/store.js
+function sqliteEngine(path) {
+  return {
+    name: "sqlite",
+    driver: SqliteDriver.open(path),
+    migrations: MIGRATIONS,
+    schemaVersion: SCHEMA_VERSION,
+    // Pragmas are per-connection, so they are set on open and never migrated.
+    init: async (d) => d.exec(PRAGMAS),
+    // ledger.db is meant to be committed, and an un-checkpointed file can be
+    // missing the most recent transactions — they are still sitting in the -wal
+    // that git is (correctly) ignoring. A backup that silently omits last week is
+    // worse than no backup.
+    checkpoint: async (d) => d.exec("PRAGMA wal_checkpoint(TRUNCATE)")
+  };
+}
+function sqliteLedgerStore(opts) {
+  return new SqlLedgerStore({
+    engine: sqliteEngine(opts.path),
+    book: opts.book,
+    ...opts.now ? { now: opts.now } : {}
+  });
+}
+
 // src/workspace.ts
 var DIR = ".holiday";
 var NoWorkspaceError = class extends Error {
@@ -9883,7 +9968,7 @@ function createWorkspace(root, config) {
 }
 function openStore(ws) {
   const config = readConfig(ws);
-  return new SqliteLedgerStore({
+  return sqliteLedgerStore({
     path: join(ws, "ledger.db"),
     book: {
       functionalCurrency: config.functionalCurrency,
