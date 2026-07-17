@@ -5,8 +5,8 @@
 캡쳐를 찍어두고 수기로 정리하면 장부가 실제로 맞는지 검증할 방법이 없다. `holiday`는
 에이전트가 캡쳐를 읽고 CLI를 호출하면 CLI가 복식부기 불변식·통화·스케줄을 책임진다.
 
-> **경고:** v0.1이다. 원장 포맷은 아직 약속이 아니고, 캡쳐 인제스트 명령도 리뷰 큐도
-> 없다 — 에이전트가 읽고 쓰면 그게 확정이다. 자기 돈으로 쓰기 전에 [무엇이 없는지](#아직-없는-것)를 읽어라.
+> **경고:** v0.1이다. 원장 포맷은 아직 약속이 아니다 — 마이그레이션은 append-only지만
+> 스키마는 굳지 않았다. 자기 돈으로 쓰기 전에 [무엇이 없는지](#아직-없는-것)를 읽어라.
 
 ## 왜 하나 더 만드나
 
@@ -101,12 +101,17 @@ holiday cashflow
 ## 구조
 
 ```
-packages/core/          도메인 + 포트. 어댑터에서 아무것도 import하지 않는다
-packages/store-sqlite/  engine 티어 어댑터
+packages/core/          도메인 + 포트 + 유스케이스. 어댑터에서 아무것도 import하지 않는다
+packages/store-sql/     LedgerStore 구현 — 딱 하나 (방언 독립)
+packages/store-sqlite/  드라이버 + 스키마 + PRAGMA
+packages/store-postgres/드라이버 + 스키마 + plpgsql
 packages/store-testkit/ 적합성 스위트 — 포트의 실행 가능한 계약
-packages/cli/           composition root
+packages/cli/           composition root + dash 템플릿 (npm 배포)
+packages/ui/            shadcn primitive
+packages/blocks/        대시보드 어휘 (도메인 블록 + json-render 카탈로그)
 apps/docs/              Fumadocs
-plugin/                 Claude Code 플러그인 (bin/holiday.mjs = 커밋된 번들)
+plugins/claude-code/    Claude Code 플러그인 (스킬만)
+plugins/codex/          Codex 플러그인 (스킬만)
 ```
 
 ```bash
@@ -117,11 +122,17 @@ pnpm install && pnpm -r run build && pnpm -r run test
 
 명시해두는 게 즉흥으로 메우는 것보다 낫다.
 
-- **캡쳐 인제스트 명령이 없다.** 에이전트가 이미지를 읽고 `txn add`를 호출한다. **리뷰
-  큐도 없다** — 쓰면 확정이다.
+- **OCR이 없다.** 에이전트가 파서다. `ingest submit`은 에이전트가 읽은 것을 받고,
+  이미지는 해시 말고는 보지 않는다. 제출은 **드래프트**로 들어가 사람이 `review accept`
+  하기 전까지 잔액에서 제외된다.
+- **자동 승인이 없다.** 모든 드래프트에 사람이 필요하다. 룰 엔진은 없다.
 - **유이자 할부수수료를 계산하지 않는다.** 명세서에서 읽은 값은 받는다(`--fees`).
   카드사 공식은 제각각이라 그럴듯하게 틀린 숫자가 예측을 조용히 오염시킨다.
-- **기간 마감, 환율 테이블, Supabase 어댑터, 대시보드** — 없다.
+- **환율을 자동으로 가져오지 않는다.** `fx add`가 사용자가 준 값을 받는다. 없는 환율은
+  추측하지 않고 throw한다.
+- **대시보드는 스냅샷이지 라이브가 아니다.** `dash data`가 마지막으로 구운 것을 렌더한다.
+  Codex Sites는 원격 정적 호스팅이라 `ledger.db`를 열 수 없다 — 라이브가 필요하면
+  Supabase 어댑터에 물려야 한다.
 - **18자리 ERC-20 토큰은 표현 불가.** i64라 ETH는 8자리로 절사한다. 개인 순자산엔
   충분하고 온체인 대사엔 틀리다.
 
