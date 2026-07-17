@@ -10,7 +10,7 @@ summary: SKILL.md는 항상 로드된다. references/는 작업이 요구할 때
   version="0.1.0"
   source="plugins/claude-code/.claude-plugin/plugin.json"
   history={[
-    { version: '0.1.0', date: '2026-07-17', summary: 'holiday-cfo — SKILL.md + references 4개. 인제스트·리뷰 포함', ref: 'plugins/claude-code/skills/holiday-cfo/SKILL.md' },
+    { version: '0.1.0', date: '2026-07-17', summary: 'holiday-cfo — SKILL.md + references 4개. 수집·리뷰 포함', ref: 'plugins/claude-code/skills/holiday-cfo/SKILL.md' },
   ]}
 />
 
@@ -57,8 +57,9 @@ summary: SKILL.md는 항상 로드된다. references/는 작업이 요구할 때
 
 ## SKILL.md가 지면을 어디에 쓰나
 
-절반이 **금지사항**이다. 이유가 있다: 인제스트 명령도 리뷰 큐도 없어서 **모델이 읽고
-쓰면 그게 확정**이다. 에이전트가 이 시스템에서 가장 약한 고리다.
+절반이 **금지사항**이다. 이유가 있다: 수집과 리뷰 게이트가 있어도 **모델이 읽은 숫자
+자체는 아무도 검증하지 못한다** — 사람이 `₩1,240,00`을 확정하면 틀리게 확정된다.
+에이전트가 이 시스템에서 가장 약한 고리다.
 
 <Canvas
   height={280}
