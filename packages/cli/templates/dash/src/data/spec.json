@@ -1,11 +1,13 @@
 {
-  "root": {
-    "type": "Dashboard",
-    "props": { "title": "가계부" },
-    "children": [
-      { "type": "LedgerHealth", "props": {} },
-      { "type": "CashRunway", "props": {} },
-      { "type": "BalanceTable", "props": { "account": "Assets" } }
-    ]
+  "root": "dashboard",
+  "elements": {
+    "dashboard": {
+      "type": "Dashboard",
+      "props": { "title": "가계부" },
+      "children": ["health", "runway", "balances"]
+    },
+    "health": { "type": "LedgerHealth", "props": {} },
+    "runway": { "type": "CashRunway", "props": {} },
+    "balances": { "type": "BalanceTable", "props": { "account": "Assets" } }
   }
 }

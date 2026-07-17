@@ -30,6 +30,22 @@ rather than showing a blank card.
 - `LedgerHealth` — is the ledger trustworthy right now. Show it before anything else on the page is believed.
 - `Note` — a sentence of context. No figures in it: a retyped number will not update when the ledger does, and a stale number beside a live one is how a dashboard starts lying.
 
+## The shape of spec.json
+
+It is **flat**, not nested. `root` names an element by key; `children` are keys,
+not inline objects. Nesting the objects directly renders nothing.
+
+```json
+{
+  "root": "dashboard",
+  "elements": {
+    "dashboard": { "type": "Dashboard", "props": { "title": "가계부" }, "children": ["health", "runway"] },
+    "health": { "type": "LedgerHealth", "props": {} },
+    "runway": { "type": "CashRunway", "props": {} }
+  }
+}
+```
+
 ## Refresh
 
 ```sh

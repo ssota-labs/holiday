@@ -68,7 +68,7 @@ export const { registry } = defineRegistry(catalog, {
               {breach ? (
                 <Badge variant="destructive">{breach.date} 마이너스</Badge>
               ) : (
-                <Badge variant="secondary">{props.horizonDays}일 이상 버팀</Badge>
+                <Badge variant="secondary">{props.horizonDays ?? 90}일 이상 버팀</Badge>
               )}
             </CardTitle>
           </CardHeader>

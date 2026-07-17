@@ -1,7 +1,13 @@
 import { defineCatalog } from '@json-render/core';
 // The React schema: what a spec node looks like (type, props, children).
 // Ours is the CATALOG on top of it — which component types exist at all.
-import { schema } from '@json-render/react';
+// Imported from the /schema subpath, not the package root: the root barrel
+// pulls in the Renderer and its react-state context, which calls createContext at
+// load — fatal in a server/RSC environment (vinext prerenders there). The schema
+// entry depends only on @json-render/core, so a server component can evaluate this
+// catalog safely. Without this the dashboard renders client-side but its static
+// prerender is blank, which is exactly what Codex Sites ships.
+import { schema } from '@json-render/react/schema';
 import { z } from 'zod';
 
 /**
