@@ -50,11 +50,11 @@ export function Rule(props: RuleProps) {
 
       <div className="text-fd-muted-foreground border-t px-4 py-3 text-sm">
         <p className="mb-2">
-          <span className="text-fd-foreground font-medium">어기면:</span> {consequence}
+          <span className="text-fd-foreground font-medium">위반 시:</span> {consequence}
         </p>
         <p className="flex items-center gap-2">
           <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" />
-          <span>강제하는 테스트:</span>
+          <span>검증 테스트:</span>
           <a
             className="text-fd-primary font-mono text-xs underline underline-offset-2"
             href={`${REPO_BLOB}/${test}`}
