@@ -14,19 +14,19 @@ summary: 모든 변경 명령은 exit code와 stderr 봉투가 계약이다.
   ]}
 />
 
-CLI가 코어다. Claude Code 스킬도 Codex도 이걸 shell out 한다 — 분기가 0이다.
+코어는 CLI다. Claude Code 스킬도 Codex도 여기를 shell out한다. 다른 분기는 없다.
 
-여기 있는 건 원장 명령이다. 스케줄 명령(`card`·`installment`·`recurring`·`loan`)과 `ingest`는
-[Features](/docs/features/cashflow)에 각각의 함정과 함께 있다.
+아래에 둔 것은 원장 명령이다. 스케줄 명령(`card`·`installment`·`recurring`·`loan`)과
+`ingest`가 빠뜨리기 쉬운 함정은 [Features](/docs/features/cashflow)에 모았다.
 
-에러는 항상 stderr에 JSON 봉투 하나로 나온다:
+에러는 언제나 stderr에 JSON 봉투 하나로만 낸다:
 
 ```json
 {"error":{"code":"unbalanced","message":"postings do not balance: they sum to 50 KRW minor units…"}}
 ```
 
-주 호출자가 사람이 아니라 에이전트라서다. 스택 트레이스는 파싱이 안 되고 맨 메시지는
-모호하다.
+주 호출자가 사람이 아니라 에이전트여서다. 스택 트레이스는 파싱이 안 되고, 맨 위
+메시지 한 줄만으로는 뜻이 흐리다.
 
 <CommandSpec
   command="txn add"
@@ -54,8 +54,8 @@ CLI가 코어다. Claude Code 스킬도 Codex도 이걸 shell out 한다 — 분
 {"id":"01KXQ…","status":"posted","fxEstimated":false}`}
 />
 
-`@@`는 **총액**이지 환율이 아니다. `@`(단위당 환율)는 의도적으로 거부한다 — 환율을
-되곱하면 정확한 정수에 안 떨어지고, 그게 허용오차 문제를 정문으로 들여보내는 길이다.
+`@@`가 가리키는 건 **총액**이지 환율이 아니다. `@`(단위당 환율)는 일부러 막는다.
+환율을 되곱하면 정확한 정수에 안 떨어지고, 그게 허용오차를 정문으로 들이는 길이어서다.
 
 <CommandSpec
   command="cashflow"
@@ -81,9 +81,9 @@ cash on hand (2026-07-17):  3000000 KRW
 ⚠ Short by 17000 KRW on 2026-10-01.`}
 />
 
-⚠ 줄이 답이다. 카드로 결제되는 정기지출은 발생일이 아니라 **청구주기를 타고** 나가서,
-`넷플릭스 (2026-08-17 결제분)`처럼 결제일을 같이 찍는다 — 안 그러면 "이게 왜 10월에
-있지"에 답할 방법이 없다.
+답이 바로 ⚠ 줄이다. 카드로 빠지는 정기지출은 발생일이 아니라 **청구주기를 타고** 나간다.
+그래서 `넷플릭스 (2026-08-17 결제분)`처럼 결제일까지 같이 찍는다. 안 그러면 "이게 왜
+10월에 있지"에 답할 길이 없다.
 
 <CommandSpec
   command="verify"
@@ -124,8 +124,8 @@ $ holiday account add Assets:Property:Apartment --commodity KRW --non-monetary
 Assets:Property:Apartment is not marked --cash, so it is NOT counted in \`holiday cashflow\`.`}
 />
 
-`--cash`가 없을 때 **소리내어 말하는** 게 중요하다. 예측에서 항목이 조용히 빠지면
-"모르겠다"여야 할 게 "괜찮다"로 읽힌다.
+`--cash`를 빠뜨렸을 때 **소리 내어 말하는** 쪽이 맞다. 예측에서 항목이 조용히 빠지면
+"모르겠다"가 "괜찮다"로 읽히기 때문이다.
 
 <CommandSpec
   command="checkpoint"
@@ -135,6 +135,6 @@ Assets:Property:Apartment is not marked --cash, so it is NOT counted in \`holida
   exits={[{ code: 0, meaning: 'ledger.db를 커밋해도 안전함' }]}
 />
 
-ledger.db는 커밋하라고 만든 파일이다. checkpoint 없이 커밋하면 최근 거래가 git이
-(올바르게) 무시하는 `-wal`에 남아 있다. **지난주가 조용히 빠진 백업은 백업이 없는 것보다
-나쁘다.**
+ledger.db는 커밋용으로 둔 파일이다. checkpoint 없이 커밋하면 최근 거래가 git이
+(올바르게) 무시하는 `-wal`에 남는다. **지난주가 조용히 빠진 백업은 백업이 없는 것보다
+더 나쁘다.**

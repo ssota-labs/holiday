@@ -7,7 +7,10 @@ related: ['/docs/domain/policy', '/docs/dev/cli']
 ---
 
 > **지켜야 하는 규칙:** [POLICY-003](/docs/domain/policy#policy-003) · [POLICY-006](/docs/domain/policy#policy-006) · [POLICY-007](/docs/domain/policy#policy-007) · [POLICY-009](/docs/domain/policy#policy-009)
-> 무엇을 하는지는 여기, 항상 참이어야 하는 것은 [도메인 정책](/docs/domain/policy)에 있다.
+> 동작은 이 페이지에서 설명하고, 불변식은 [도메인 정책](/docs/domain/policy)에 모아 둔다.
+
+구매일에 부채 전액이 서고, 현금만 N개월에 걸쳐 나간다. 잔액은 별도 계정에 산다.
+안 그러면 첫 청구서가 12배 부푼다.
 
 <CommandSpec
   command="installment add"
@@ -36,4 +39,4 @@ created Liabilities:Card:Shinhan:Installment (installment balances are kept apar
 12개월 무이자 할부, 1200000 KRW. First 2026-09-01, last 2027-08-01.`}
 />
 
-### 유이자 할부 — 받되, 계산하지 않는다
+### 유이자 할부 — 수수료는 받기만 하고 계산하지 않는다
