@@ -119,3 +119,46 @@ node:sqlite 드라이버가 없다.
 반올림은 **half away from zero** — 은행이 하는 방식이다. banker's rounding으로 영리하게
 굴면 `loan check`가 매달 ₩1 차이를 영원히 보고한다.
 </Decision>
+
+<Decision
+  id="ADR-006"
+  title="스토어는 하나. 방언만 갈라진다"
+  status="accepted"
+  date="2026-07-17"
+  commit="2c90bef"
+  rejected={[
+    { option: 'store-sqlite를 기계 변환해서 store-postgres 만들기 (착수 직전까지 갔다)', because: '쓰는 날에는 두 파일이 일치하지만, 한쪽에만 들어간 첫 손수정에서 갈라진다. 포트 경계를 둔 이유가 정확히 그걸 막으려는 건데 그 경계를 배신하는 방법이었다.' },
+    { option: 'Drizzle로 스키마 하나 두고 두 엔진에 공유', because: 'ADR-005. sqliteTable과 pgTable은 별개 빌더고 트리거 본문은 진짜로 다른 SQL이다. 스키마는 공유가 불가능하다 — 하지만 그게 스토어까지 갈라야 한다는 뜻은 아니었다.' },
+    { option: 'node:sqlite에 맞춰 스토어를 동기로 유지', because: 'Postgres를 동기로 만들 방법이 없다. 동기 엔진에 비동기 외투를 입히는 건 값이 싸고(모든 호출이 즉시 resolve된다) 반대 방향은 불가능하다.' },
+  ]}
+>
+전제를 믿지 않고 **셌다.** 스토어 1,486줄 중 SQLite 고유인 것:
+
+| | |
+|---|---|
+| `GLOB` | 3 |
+| `PRAGMA` | 3 |
+| `INSERT OR IGNORE` | 1 |
+| `BEGIN IMMEDIATE` | 1 |
+| **합계** | **8** |
+
+여덟 줄. 구조적 차이는 `node:sqlite`가 동기라는 것 하나뿐이었고, 그건 **드라이버
+인터페이스**를 두라는 근거지 스토어를 하나 더 쓰라는 근거가 아니다.
+
+그래서 `@holiday/store-sql`이 `LedgerStore`를 하나만 구현하고, 엔진 패키지는 드라이버·
+스키마·마이그레이션만 가진다. 8곳은 `Dialect`로 접힌다 — `subtreeWildcard()`와
+`prepare()`, 그리고 엔진의 선택적 `init`/`checkpoint` 훅.
+
+**`GLOB`이 공유 SQL에 남아있는 건 SQLite-ism을 흘린 게 아니다.** 이 매칭은 대소문자를
+구분해야 하는데 SQLite의 `LIKE`는 구분하지 않는다 — `Assets:bank:x`가 `Assets:Bank`
+접두사에 걸린다. `GLOB`이 SQLite에서 그걸 쓰는 철자이고, Postgres에서는 `LIKE`가 이미
+대소문자를 구분한다. 같은 의미, 두 방언. 드라이버가 번역한다.
+
+**이 리팩터를 판단 가능하게 만든 건 적합성 스위트다.** 1,486줄을 옮기고 전부 비동기로
+바꿨는데 18개가 그대로 통과했다. 스위트가 없었으면 "아마 같을 것"이 최선이었다.
+
+부산물로 타입체커가 잡아준 것: `await this.db.all<T>(...).map(...)`은
+`await (….map(…))`으로 파싱돼서 `.map`이 Promise에 붙는다. 전 호출부에 괄호가 필요했고
+20군데가 한 번에 드러났다.
+</Decision>
+
