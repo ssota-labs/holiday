@@ -62,5 +62,14 @@ export const MIGRATIONS: readonly InlinedMigration[] = [
       "-- An audit log you can quietly edit is decoration.\nCREATE TRIGGER audit_log_immutable_update\nBEFORE UPDATE ON audit_log\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: the audit log is append-only');\nEND;",
       "CREATE TRIGGER audit_log_immutable_delete\nBEFORE DELETE ON audit_log\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: the audit log is append-only');\nEND;"
     ]
+  },
+  {
+    "name": "20260717101844_loans",
+    "hash": "c7f4ab6db56f82d1ab73cd0ca78f7f06a83c5b65461aa35ba71f2c46b2426016",
+    "statements": [
+      "CREATE TABLE `loan` (\n\t`account_id` text PRIMARY KEY,\n\t`funding_account_id` text NOT NULL,\n\t`interest_account_id` text NOT NULL,\n\t`principal_minor` integer NOT NULL,\n\t`commodity` text NOT NULL,\n\t`annual_rate_text` text NOT NULL,\n\t`method` text NOT NULL,\n\t`term_months` integer NOT NULL,\n\t`first_payment_date` text NOT NULL,\n\t`payment_day` integer NOT NULL,\n\t`label` text,\n\tCONSTRAINT `fk_loan_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n\tCONSTRAINT `fk_loan_funding_account_id_account_id_fk` FOREIGN KEY (`funding_account_id`) REFERENCES `account`(`id`),\n\tCONSTRAINT `fk_loan_interest_account_id_account_id_fk` FOREIGN KEY (`interest_account_id`) REFERENCES `account`(`id`),\n\tCONSTRAINT `fk_loan_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n\tCONSTRAINT \"loan_principal_positive\" CHECK(\"principal_minor\" > 0),\n\tCONSTRAINT \"loan_term_positive\" CHECK(\"term_months\" >= 1),\n\tCONSTRAINT \"loan_method_enum\" CHECK(\"method\" IN ('annuity','equal_principal','bullet','interest_only')),\n\tCONSTRAINT \"loan_payment_day_range\" CHECK(\"payment_day\" = -1 OR \"payment_day\" BETWEEN 1 AND 31),\n\tCONSTRAINT \"loan_accounts_differ\" CHECK(\"account_id\" <> \"funding_account_id\")\n);",
+      "CREATE TABLE `loan_schedule_row` (\n\t`loan_id` text NOT NULL,\n\t`seq` integer NOT NULL,\n\t`due_date` text NOT NULL,\n\t`opening_minor` integer NOT NULL,\n\t`principal_minor` integer NOT NULL,\n\t`interest_minor` integer NOT NULL,\n\t`closing_minor` integer NOT NULL,\n\tCONSTRAINT `loan_schedule_row_pk` PRIMARY KEY(`loan_id`, `seq`),\n\tCONSTRAINT `fk_loan_schedule_row_loan_id_loan_account_id_fk` FOREIGN KEY (`loan_id`) REFERENCES `loan`(`account_id`) ON DELETE CASCADE,\n\tCONSTRAINT \"loan_schedule_seq_positive\" CHECK(\"seq\" >= 1)\n);",
+      "CREATE INDEX `loan_schedule_by_date` ON `loan_schedule_row` (`due_date`);"
+    ]
   }
 ];

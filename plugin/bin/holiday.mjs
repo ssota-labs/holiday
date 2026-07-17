@@ -7892,6 +7892,201 @@ function upcomingBills(from, until, rule) {
   return out2.sort((a, b) => a.paymentDate < b.paymentDate ? -1 : 1);
 }
 
+// ../core/dist/domain/rate.js
+var RATE_SCALE = 10n ** 18n;
+var RATE_ONE = RATE_SCALE;
+var RateError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "RateError";
+  }
+};
+var PERCENT_RE = /^(\d+)(?:\.(\d+))?$/;
+function parseAnnualPercent(text) {
+  const m = PERCENT_RE.exec(text.trim());
+  if (!m) {
+    throw new RateError(`${JSON.stringify(text)} is not an annual percentage. Write it the way the contract does, e.g. "4.2" for 4.2%.`);
+  }
+  const [, whole, frac = ""] = m;
+  if (frac.length > 12)
+    throw new RateError(`${text}: more than 12 decimal places in a rate is noise`);
+  const scaled = BigInt(`${whole}${frac.padEnd(18, "0")}`);
+  return scaled / 100n;
+}
+function monthlyFromAnnual(annualScaled) {
+  return annualScaled / 12n;
+}
+function mulRate(a, b) {
+  return a * b / RATE_SCALE;
+}
+function powRate(base, n) {
+  if (!Number.isInteger(n) || n < 0)
+    throw new RateError(`exponent must be a non-negative integer, got ${n}`);
+  let result = RATE_ONE;
+  let b = base;
+  let e = n;
+  while (e > 0) {
+    if (e & 1)
+      result = mulRate(result, b);
+    b = mulRate(b, b);
+    e >>= 1;
+  }
+  return result;
+}
+function applyRate(amountMinor, rateScaled) {
+  return roundDiv(amountMinor * rateScaled, RATE_SCALE);
+}
+function roundDiv(numerator, denominator) {
+  if (denominator === 0n)
+    throw new RateError("division by zero");
+  const negative = numerator < 0n !== denominator < 0n;
+  const n = numerator < 0n ? -numerator : numerator;
+  const d = denominator < 0n ? -denominator : denominator;
+  const q = n / d;
+  const r = n % d;
+  const rounded = r * 2n >= d ? q + 1n : q;
+  return negative ? -rounded : rounded;
+}
+function formatAnnualPercent(annualScaled, places = 3) {
+  const pct = annualScaled * 100n;
+  const divisor = RATE_SCALE / 10n ** BigInt(places);
+  const v = roundDiv(pct, divisor);
+  const s = v.toString().padStart(places + 1, "0");
+  const cut = s.length - places;
+  return places === 0 ? s : `${s.slice(0, cut)}.${s.slice(cut)}`;
+}
+
+// ../core/dist/domain/loan.js
+var LoanError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "LoanError";
+  }
+};
+function buildLoanSchedule(opts) {
+  const { principalMinor, monthlyRate, method, termMonths, firstPaymentDate, paymentDay } = opts;
+  if (principalMinor <= 0n)
+    throw new LoanError(`a loan principal must be positive, got ${principalMinor}`);
+  if (!Number.isInteger(termMonths) || termMonths < 1) {
+    throw new LoanError(`termMonths must be a positive integer, got ${termMonths}`);
+  }
+  if (monthlyRate < 0n)
+    throw new LoanError("a negative interest rate is not supported");
+  if (method === "annuity" && monthlyRate === 0n) {
+    throw new LoanError("a 0% loan cannot use the annuity method \u2014 it is equal_principal. Use that.");
+  }
+  const dates = paymentDates(firstPaymentDate, paymentDay, termMonths);
+  const principals = principalSplit(principalMinor, monthlyRate, method, termMonths);
+  const rows = [];
+  let opening = principalMinor;
+  for (let i = 0; i < termMonths; i++) {
+    const interest = applyRate(opening, monthlyRate);
+    const principal = principals[i];
+    const closing = opening - principal;
+    rows.push({
+      seq: i + 1,
+      dueDate: dates[i],
+      openingMinor: opening,
+      principalMinor: principal,
+      interestMinor: interest,
+      closingMinor: closing
+    });
+    opening = closing;
+  }
+  return rows;
+}
+function principalSplit(principalMinor, monthlyRate, method, termMonths) {
+  const n = BigInt(termMonths);
+  if (method === "interest_only") {
+    return Array.from({ length: termMonths }, () => 0n);
+  }
+  if (method === "bullet") {
+    const rows2 = Array.from({ length: termMonths }, () => 0n);
+    rows2[termMonths - 1] = principalMinor;
+    return rows2;
+  }
+  if (method === "equal_principal") {
+    const base = principalMinor / n;
+    const rows2 = Array.from({ length: termMonths }, () => base);
+    rows2[termMonths - 1] = principalMinor - base * (n - 1n);
+    return rows2;
+  }
+  const factor = powRate(RATE_ONE + monthlyRate, termMonths);
+  const denominator = factor - RATE_ONE;
+  if (denominator <= 0n)
+    throw new LoanError("rate/term combination produced a degenerate annuity factor");
+  const ratio = roundDiv(mulRate(monthlyRate, factor) * RATE_ONE, denominator);
+  const payment = applyRate(principalMinor, ratio);
+  const rows = [];
+  let opening = principalMinor;
+  for (let i = 0; i < termMonths; i++) {
+    const interest = applyRate(opening, monthlyRate);
+    let principal = payment - interest;
+    if (i === termMonths - 1 || principal > opening)
+      principal = opening;
+    if (principal < 0n) {
+      throw new LoanError(`the level payment (${payment}) does not cover the interest (${interest}) at month ${i + 1}. This loan never amortizes \u2014 check the rate and term.`);
+    }
+    rows.push(principal);
+    opening -= principal;
+  }
+  return rows;
+}
+function paymentDates(first, paymentDay, termMonths) {
+  const [fy, fm] = first.split("-").map(Number);
+  return Array.from({ length: termMonths }, (_, i) => {
+    const zero = fm - 1 + i;
+    const y = fy + Math.floor(zero / 12);
+    const m = (zero % 12 + 12) % 12 + 1;
+    const d = clampDay(y, m, paymentDay);
+    return assertIsoDate(`${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+  });
+}
+function schedulePrincipal(rows) {
+  return rows.reduce((s, r) => s + r.principalMinor, 0n);
+}
+function scheduleInterest(rows) {
+  return rows.reduce((s, r) => s + r.interestMinor, 0n);
+}
+function rowForDate(rows, date) {
+  return rows.find((r) => r.dueDate === date) ?? null;
+}
+function loanCheck(opts) {
+  const { rows, ledgerBalanceMinor, asOf, principalMinor } = opts;
+  const due = rows.filter((r) => r.dueDate <= asOf);
+  const expected = due.length > 0 ? due[due.length - 1].closingMinor : principalMinor;
+  const actual = -ledgerBalanceMinor;
+  const delta = actual - expected;
+  return {
+    asOf,
+    expectedMinor: expected,
+    actualMinor: actual,
+    deltaMinor: delta,
+    ok: delta === 0n,
+    explanation: explain(delta, due.length, rows.length)
+  };
+}
+function explain(delta, paidRows, totalRows) {
+  if (delta === 0n)
+    return `on schedule \u2014 ${paidRows}/${totalRows} payments due so far`;
+  if (delta > 0n) {
+    return `you owe ${delta} more than the schedule expects. Usually a missed or partial payment, an unrecorded rate change, or a fee added to the balance.`;
+  }
+  return `you owe ${-delta} less than the schedule expects. Usually a prepayment (\uC911\uB3C4\uC0C1\uD658), or a payment recorded with too much going to principal.`;
+}
+function describeMethod(m) {
+  switch (m) {
+    case "annuity":
+      return "\uC6D0\uB9AC\uAE08\uADE0\uB4F1";
+    case "equal_principal":
+      return "\uC6D0\uAE08\uADE0\uB4F1";
+    case "bullet":
+      return "\uB9CC\uAE30\uC77C\uC2DC\uC0C1\uD658";
+    case "interest_only":
+      return "\uAC70\uCE58 (\uC774\uC790\uB9CC)";
+  }
+}
+
 // ../core/dist/domain/installment.js
 var InstallmentError = class extends Error {
   constructor(message) {
@@ -8107,6 +8302,31 @@ function projectRecurring(opts) {
         occurredOn,
         paymentDate,
         amountMinor: r.amountMinor
+      });
+    }
+  }
+  return out2.sort((a, b) => a.paymentDate < b.paymentDate ? -1 : 1);
+}
+function projectLoans(opts) {
+  const out2 = [];
+  for (const l of opts.loans) {
+    for (const r of l.rows) {
+      if (r.dueDate <= opts.today || r.dueDate > opts.until)
+        continue;
+      const amountMinor = r.principalMinor + r.interestMinor;
+      if (amountMinor === 0n)
+        continue;
+      out2.push({
+        kind: "loan",
+        loanAccountId: l.accountId,
+        fundingAccountId: l.fundingAccountId,
+        label: l.label,
+        paymentDate: r.dueDate,
+        amountMinor,
+        principalMinor: r.principalMinor,
+        interestMinor: r.interestMinor,
+        seq: r.seq,
+        termMonths: l.termMonths
       });
     }
   }
@@ -8382,6 +8602,15 @@ var MIGRATIONS = [
       "-- An exponent change silently rescales every amount of that commodity. It is a\n-- migration, not an edit.\nCREATE TRIGGER commodity_exponent_immutable\nBEFORE UPDATE OF exponent ON commodity\nWHEN OLD.exponent <> NEW.exponent\n  AND EXISTS (SELECT 1 FROM posting WHERE commodity = OLD.code)\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: cannot change the exponent of a commodity that has postings');\nEND;",
       "-- An audit log you can quietly edit is decoration.\nCREATE TRIGGER audit_log_immutable_update\nBEFORE UPDATE ON audit_log\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: the audit log is append-only');\nEND;",
       "CREATE TRIGGER audit_log_immutable_delete\nBEFORE DELETE ON audit_log\nBEGIN\n  SELECT RAISE(ABORT, 'holiday: the audit log is append-only');\nEND;"
+    ]
+  },
+  {
+    "name": "20260717101844_loans",
+    "hash": "c7f4ab6db56f82d1ab73cd0ca78f7f06a83c5b65461aa35ba71f2c46b2426016",
+    "statements": [
+      'CREATE TABLE `loan` (\n	`account_id` text PRIMARY KEY,\n	`funding_account_id` text NOT NULL,\n	`interest_account_id` text NOT NULL,\n	`principal_minor` integer NOT NULL,\n	`commodity` text NOT NULL,\n	`annual_rate_text` text NOT NULL,\n	`method` text NOT NULL,\n	`term_months` integer NOT NULL,\n	`first_payment_date` text NOT NULL,\n	`payment_day` integer NOT NULL,\n	`label` text,\n	CONSTRAINT `fk_loan_account_id_account_id_fk` FOREIGN KEY (`account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_funding_account_id_account_id_fk` FOREIGN KEY (`funding_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_interest_account_id_account_id_fk` FOREIGN KEY (`interest_account_id`) REFERENCES `account`(`id`),\n	CONSTRAINT `fk_loan_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n	CONSTRAINT "loan_principal_positive" CHECK("principal_minor" > 0),\n	CONSTRAINT "loan_term_positive" CHECK("term_months" >= 1),\n	CONSTRAINT "loan_method_enum" CHECK("method" IN (\'annuity\',\'equal_principal\',\'bullet\',\'interest_only\')),\n	CONSTRAINT "loan_payment_day_range" CHECK("payment_day" = -1 OR "payment_day" BETWEEN 1 AND 31),\n	CONSTRAINT "loan_accounts_differ" CHECK("account_id" <> "funding_account_id")\n);',
+      'CREATE TABLE `loan_schedule_row` (\n	`loan_id` text NOT NULL,\n	`seq` integer NOT NULL,\n	`due_date` text NOT NULL,\n	`opening_minor` integer NOT NULL,\n	`principal_minor` integer NOT NULL,\n	`interest_minor` integer NOT NULL,\n	`closing_minor` integer NOT NULL,\n	CONSTRAINT `loan_schedule_row_pk` PRIMARY KEY(`loan_id`, `seq`),\n	CONSTRAINT `fk_loan_schedule_row_loan_id_loan_account_id_fk` FOREIGN KEY (`loan_id`) REFERENCES `loan`(`account_id`) ON DELETE CASCADE,\n	CONSTRAINT "loan_schedule_seq_positive" CHECK("seq" >= 1)\n);',
+      "CREATE INDEX `loan_schedule_by_date` ON `loan_schedule_row` (`due_date`);"
     ]
   }
 ];
@@ -8870,6 +9099,69 @@ var SqliteUow = class {
       cadence: r.cadence
     });
   }
+  async listLoans() {
+    return this.db.all("SELECT * FROM loan ORDER BY account_id").map((l) => ({ loan: mapLoan(l), rows: this.#loanRows(l.account_id) }));
+  }
+  async getLoan(accountId) {
+    const l = this.db.get("SELECT * FROM loan WHERE account_id = ?", accountId);
+    return l ? { loan: mapLoan(l), rows: this.#loanRows(accountId) } : null;
+  }
+  #loanRows(loanId) {
+    return this.db.all("SELECT * FROM loan_schedule_row WHERE loan_id = ? ORDER BY seq", loanId).map((r) => ({
+      seq: toInt(r.seq),
+      dueDate: r.due_date,
+      openingMinor: toBigInt(r.opening_minor),
+      principalMinor: toBigInt(r.principal_minor),
+      interestMinor: toBigInt(r.interest_minor),
+      closingMinor: toBigInt(r.closing_minor)
+    }));
+  }
+  async upsertLoan(loan2, rows) {
+    const acct = await this.getAccount(loan2.accountId);
+    if (!acct)
+      throw new Error(`holiday: no such account: ${loan2.accountId}`);
+    if (acct.type !== "liability") {
+      throw new Error(`holiday: ${acct.code} is a ${acct.type} account \u2014 a loan must be a liability`);
+    }
+    const funding = await this.getAccount(loan2.fundingAccountId);
+    if (!funding || funding.type !== "asset") {
+      throw new Error(`holiday: a loan is paid from an asset account`);
+    }
+    const interest = await this.getAccount(loan2.interestAccountId);
+    if (!interest || interest.type !== "expense") {
+      throw new Error(`holiday: loan interest must be booked to an expense account`);
+    }
+    if (loan2.method !== "interest_only") {
+      const principal = schedulePrincipal(rows);
+      if (principal !== loan2.principalMinor) {
+        throw new Error(`holiday: schedule repays ${principal} but the loan is ${loan2.principalMinor}`);
+      }
+    }
+    if (rows.length !== loan2.termMonths) {
+      throw new Error(`holiday: loan says ${loan2.termMonths} months but got ${rows.length} rows`);
+    }
+    this.db.run(`INSERT INTO loan (account_id, funding_account_id, interest_account_id, principal_minor, commodity,
+                         annual_rate_text, method, term_months, first_payment_date, payment_day, label)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(account_id) DO UPDATE SET
+         funding_account_id = excluded.funding_account_id,
+         interest_account_id = excluded.interest_account_id,
+         principal_minor = excluded.principal_minor, commodity = excluded.commodity,
+         annual_rate_text = excluded.annual_rate_text, method = excluded.method,
+         term_months = excluded.term_months, first_payment_date = excluded.first_payment_date,
+         payment_day = excluded.payment_day, label = excluded.label`, loan2.accountId, loan2.fundingAccountId, loan2.interestAccountId, loan2.principalMinor, loan2.commodity, loan2.annualRateText, loan2.method, loan2.termMonths, loan2.firstPaymentDate, loan2.paymentDay, loan2.label);
+    this.db.run("DELETE FROM loan_schedule_row WHERE loan_id = ?", loan2.accountId);
+    for (const r of rows) {
+      this.db.run(`INSERT INTO loan_schedule_row (loan_id, seq, due_date, opening_minor, principal_minor, interest_minor, closing_minor)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`, loan2.accountId, r.seq, r.dueDate, r.openingMinor, r.principalMinor, r.interestMinor, r.closingMinor);
+    }
+    this.#appendAudit("loan_upsert", loan2.accountId, {
+      method: loan2.method,
+      principalMinor: loan2.principalMinor.toString(),
+      annualRateText: loan2.annualRateText,
+      termMonths: loan2.termMonths
+    });
+  }
   async getCommandResult(idemKey) {
     const r = this.db.get("SELECT * FROM command_log WHERE idem_key = ?", idemKey);
     return r ? {
@@ -9003,6 +9295,21 @@ var SqliteUow = class {
 function chainHeadOf(db) {
   const head = db.get("SELECT seq, hash FROM audit_log ORDER BY seq DESC LIMIT 1");
   return head ? { seq: toInt(head.seq), hash: head.hash } : null;
+}
+function mapLoan(r) {
+  return {
+    accountId: r.account_id,
+    fundingAccountId: r.funding_account_id,
+    interestAccountId: r.interest_account_id,
+    principalMinor: toBigInt(r.principal_minor),
+    commodity: r.commodity,
+    annualRateText: r.annual_rate_text,
+    method: r.method,
+    termMonths: toInt(r.term_months),
+    firstPaymentDate: r.first_payment_date,
+    paymentDay: toInt(r.payment_day),
+    label: r.label
+  };
 }
 function mapRecurring(r) {
   return {
@@ -9579,6 +9886,212 @@ recurring.command("list").description("active recurring expenses").action(async 
   note("");
   note(`monthly total: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
 });
+var loan = program2.command("loan").description("\uB300\uCD9C \u2014 \uC0C1\uD658 \uC2A4\uCF00\uC904\uACFC \uB300\uC0AC");
+loan.command("add <code>").description("attach an amortization schedule to a loan liability account").requiredOption("--funding <code>", "the asset account payments come from").requiredOption("--interest <code>", "the expense account interest is booked to").requiredOption("--principal <amount>", "the loan amount").requiredOption("--rate <percent>", "annual rate as the contract writes it, e.g. 4.2").requiredOption("--months <n>", "term", Number).requiredOption("--first-payment <date>", "due date of the first payment").option("--method <m>", "annuity | equal_principal | bullet | interest_only", "annuity").option("--payment-day <n>", "day of month payments land. -1 = \uB9D0\uC77C", Number).option("--label <text>").action(
+  async (code, o) => {
+    const ws = requireWorkspace();
+    const config = readConfig(ws);
+    const store = await openLedger(ws);
+    const firstPaymentDate = assertIsoDate(o.firstPayment);
+    const principal = amounts.parse(o.principal, config.functionalCurrency);
+    const annual = parseAnnualPercent(o.rate);
+    const method = o.method;
+    const paymentDay = o.paymentDay ?? Number(firstPaymentDate.slice(8, 10));
+    const rows = buildLoanSchedule({
+      principalMinor: principal.minor,
+      monthlyRate: monthlyFromAnnual(annual),
+      method,
+      termMonths: o.months,
+      firstPaymentDate,
+      paymentDay
+    });
+    await store.unitOfWork(async (uow) => {
+      const acct = await uow.getAccount(code);
+      if (!acct) throw new UsageError(`no such account: ${code}`);
+      const funding = await uow.getAccount(o.funding);
+      if (!funding) throw new UsageError(`no such account: ${o.funding}`);
+      const interest = await uow.getAccount(o.interest);
+      if (!interest) throw new UsageError(`no such account: ${o.interest}`);
+      await uow.upsertLoan(
+        {
+          accountId: acct.id,
+          fundingAccountId: funding.id,
+          interestAccountId: interest.id,
+          principalMinor: principal.minor,
+          commodity: principal.commodity,
+          annualRateText: o.rate,
+          method,
+          termMonths: o.months,
+          firstPaymentDate,
+          paymentDay,
+          label: o.label ?? null
+        },
+        rows
+      );
+    });
+    await store.close();
+    const money = (m) => amounts.format({ minor: m, commodity: principal.commodity });
+    out({
+      loan: code,
+      method,
+      rows: rows.length,
+      firstPayment: rows[0].dueDate,
+      lastPayment: rows.at(-1).dueDate,
+      totalInterestMinor: scheduleInterest(rows).toString()
+    });
+    note(
+      `${describeMethod(method)} ${money(principal.minor)} @ ${formatAnnualPercent(annual)}% \xD7 ${o.months}\uAC1C\uC6D4. ${rows[0].dueDate} ~ ${rows.at(-1).dueDate}.`
+    );
+    note(`1\uD68C\uCC28 ${money(rows[0].principalMinor + rows[0].interestMinor)} (\uC6D0\uAE08 ${money(rows[0].principalMinor)} + \uC774\uC790 ${money(rows[0].interestMinor)})`);
+    note(`\uCD1D \uC774\uC790 ${money(scheduleInterest(rows))}`);
+    note(`\uC774\uAC74 \uC608\uCE21\uC785\uB2C8\uB2E4. \uC2E4\uC81C \uC794\uC561\uACFC \uC5B4\uAE0B\uB098\uB294\uC9C0\uB294 \`holiday loan check\`.`);
+  }
+);
+loan.command("list").description("loans and where they stand").action(async () => {
+  const ws = requireWorkspace();
+  const config = readConfig(ws);
+  const store = await openLedger(ws);
+  const now = assertIsoDate(today());
+  const result = await store.read(async (r) => {
+    const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
+    const loans = await r.listLoans();
+    const balances = await r.getBalances({ asOf: now });
+    return loans.map((l) => ({
+      ...l,
+      code: accounts.get(l.loan.accountId)?.code ?? "?",
+      balance: balances.filter((b) => b.accountId === l.loan.accountId).reduce((s, b) => s + b.weightMinor, 0n)
+    }));
+  });
+  await store.close();
+  if (jsonMode()) {
+    return out(
+      result.map((l) => ({
+        ...l.loan,
+        code: l.code,
+        principalMinor: l.loan.principalMinor.toString(),
+        outstandingMinor: (-l.balance).toString()
+      }))
+    );
+  }
+  if (result.length === 0) return note("no loans.");
+  for (const l of result) {
+    const money = (m) => amounts.format({ minor: m, commodity: l.loan.commodity });
+    note(
+      `${(l.loan.label ?? l.code).padEnd(24)} ${describeMethod(l.loan.method).padEnd(14)} ${l.loan.annualRateText}% \xD7 ${l.loan.termMonths}\uAC1C\uC6D4   \uC794\uC561 ${money(-l.balance)}`
+    );
+  }
+});
+loan.command("check [code]").description("does the ledger agree with the schedule").option("--as-of <date>", "ISO date", today()).action(async (code, o) => {
+  const ws = requireWorkspace();
+  const config = readConfig(ws);
+  const store = await openLedger(ws);
+  const asOf = assertIsoDate(o.asOf);
+  const results = await store.read(async (r) => {
+    const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
+    const all = await r.listLoans();
+    const wanted = code ? all.filter((l) => accounts.get(l.loan.accountId)?.code === code) : all;
+    if (code && wanted.length === 0) throw new UsageError(`no loan on account: ${code}`);
+    const balances = await r.getBalances({ asOf });
+    return wanted.map((l) => {
+      const ledgerBalanceMinor = balances.filter((b) => b.accountId === l.loan.accountId).reduce((s, b) => s + b.weightMinor, 0n);
+      return {
+        code: accounts.get(l.loan.accountId)?.code ?? "?",
+        label: l.loan.label,
+        commodity: l.loan.commodity,
+        result: loanCheck({
+          rows: l.rows,
+          ledgerBalanceMinor,
+          asOf,
+          principalMinor: l.loan.principalMinor
+        })
+      };
+    });
+  });
+  await store.close();
+  if (jsonMode()) {
+    return out(
+      results.map((r) => ({
+        code: r.code,
+        ok: r.result.ok,
+        expectedMinor: r.result.expectedMinor.toString(),
+        actualMinor: r.result.actualMinor.toString(),
+        deltaMinor: r.result.deltaMinor.toString(),
+        explanation: r.result.explanation
+      }))
+    );
+  }
+  if (results.length === 0) return note("no loans to check.");
+  let bad = 0;
+  for (const r of results) {
+    const money = (m) => amounts.format({ minor: m, commodity: r.commodity });
+    note(`${r.label ?? r.code}  (${asOf})`);
+    note(`  \uC2A4\uCF00\uC904:  ${money(r.result.expectedMinor).padStart(16)}`);
+    note(`  \uC6D0\uC7A5:    ${money(r.result.actualMinor).padStart(16)}`);
+    if (r.result.ok) {
+      note(`  \u2713 ${r.result.explanation}`);
+    } else {
+      bad += 1;
+      note(`  \u26A0 \uCC28\uC774 ${money(r.result.deltaMinor)}`);
+      note(`    ${r.result.explanation}`);
+    }
+    note("");
+  }
+  if (bad > 0) throw new LedgerError("loan_drift", `${bad} loan(s) disagree with their schedule`);
+});
+loan.command("pay <code>").description("record a loan payment, split into principal and interest by the schedule").requiredOption("--date <date>", "the due date being paid").option("--amount <amount>", "what actually left the account, if it differs from the schedule").action(async (code, o) => {
+  const ws = requireWorkspace();
+  const config = readConfig(ws);
+  const store = await openLedger(ws);
+  const date = assertIsoDate(o.date);
+  const result = await store.unitOfWork(async (uow) => {
+    const acct = await uow.getAccount(code);
+    if (!acct) throw new UsageError(`no such account: ${code}`);
+    const l = await uow.getLoan(acct.id);
+    if (!l) throw new UsageError(`${code} has no loan schedule. Add one with \`holiday loan add\`.`);
+    const row = rowForDate(l.rows, date);
+    if (!row) {
+      throw new UsageError(
+        `the schedule has no payment due on ${date}. Due dates are ${l.rows[0].dueDate}, ${l.rows[1]?.dueDate ?? "\u2026"}, \u2026 \u2014 check the date, or record it with \`holiday txn add\`.`
+      );
+    }
+    const scheduled = row.principalMinor + row.interestMinor;
+    const paid = o.amount ? amounts.parse(o.amount, l.loan.commodity).minor : scheduled;
+    if (paid !== scheduled) {
+      note(`\u26A0 \uC2E4\uC81C ${paid}, \uC2A4\uCF00\uC904 ${scheduled}. \uCC28\uC561\uC744 \uC6D0\uAE08\uC5D0 \uBC18\uC601\uD569\uB2C8\uB2E4 \u2014 \uBA85\uC138\uC11C\uC640 \uB300\uC870\uD558\uC138\uC694.`);
+    }
+    const interest = row.interestMinor;
+    const principal = paid - interest;
+    if (principal < 0n) {
+      throw new UsageError(
+        `${paid} does not even cover the scheduled interest (${interest}). Record this by hand with \`holiday txn add\` \u2014 this is not an ordinary payment.`
+      );
+    }
+    const txn = Txn.create({
+      id: nextUlid(),
+      date,
+      bookingCommodity: config.functionalCurrency,
+      payee: l.loan.label ?? code,
+      narration: `${row.seq}/${l.loan.termMonths} \uC0C1\uD658`,
+      postings: [
+        { accountId: acct.id, units: amounts.fromMinor(principal, l.loan.commodity) },
+        { accountId: l.loan.interestAccountId, units: amounts.fromMinor(interest, l.loan.commodity) },
+        { accountId: l.loan.fundingAccountId, units: amounts.fromMinor(-paid, l.loan.commodity) }
+      ]
+    });
+    if (!txn.ok) throw new LedgerError("unbalanced", txn.error.map(describeTxnError).join("\n"));
+    await uow.appendTxn(txn.value, { status: "posted" });
+    return { txnId: txn.value.id, seq: row.seq, principal, interest, paid, commodity: l.loan.commodity };
+  });
+  await store.close();
+  const money = (m) => amounts.format({ minor: m, commodity: result.commodity });
+  out({
+    id: result.txnId,
+    seq: result.seq,
+    principalMinor: result.principal.toString(),
+    interestMinor: result.interest.toString()
+  });
+  note(`${result.seq}\uD68C\uCC28 ${money(result.paid)} = \uC6D0\uAE08 ${money(result.principal)} + \uC774\uC790 ${money(result.interest)}`);
+});
 program2.command("cashflow").description("will the cash survive the card bills that are already coming").option("--until <date>", "projection horizon", addMonthsIso(today(), 3)).action(async (o) => {
   const ws = requireWorkspace();
   const config = readConfig(ws);
@@ -9618,7 +10131,14 @@ program2.command("cashflow").description("will the cash survive the card bills t
       rows: i.rows
     }));
     const recurring2 = await r.listRecurring({ activeOn: now });
-    return { cards, openingCash, postings, installments, recurring: recurring2, unmarked };
+    const loans = (await r.listLoans()).map((l) => ({
+      accountId: l.loan.accountId,
+      fundingAccountId: l.loan.fundingAccountId,
+      label: l.loan.label,
+      termMonths: l.loan.termMonths,
+      rows: l.rows
+    }));
+    return { cards, openingCash, postings, installments, recurring: recurring2, unmarked, loans };
   });
   await store.close();
   const fundingByCard = new Map(result.cards.map((c) => [c.accountId, c.fundingAccountId]));
@@ -9629,7 +10149,13 @@ program2.command("cashflow").description("will the cash survive the card bills t
   const bills = projectCardBills({ cards: result.cards, postings: result.postings, today: now, until });
   const instRows = projectInstallments({ installments: result.installments, fundingByCard, today: now, until });
   const recRows = projectRecurring({ recurring: result.recurring, cardRules, today: now, until });
-  const runway = cashRunway(result.openingCash, [...bills, ...instRows, ...recRows]);
+  const loanRows = projectLoans({ loans: result.loans, today: now, until });
+  const runway = cashRunway(result.openingCash, [
+    ...bills,
+    ...instRows,
+    ...recRows,
+    ...loanRows
+  ]);
   if (jsonMode()) {
     return out({
       openingCashMinor: result.openingCash.toString(),
@@ -9675,6 +10201,7 @@ program2.command("cashflow").description("will the cash survive the card bills t
   }
 });
 function describeOutflow(b) {
+  if (b.kind === "loan") return `${b.label ?? "\uB300\uCD9C"} (${b.seq}/${b.termMonths})`;
   if (b.kind === "installment") return `${b.label ?? "\uD560\uBD80"} (${b.seq}/${b.months})`;
   if (b.kind === "recurring") {
     return b.viaCardAccountId ? `${b.label} (${b.occurredOn} \uACB0\uC81C\uBD84)` : b.label;

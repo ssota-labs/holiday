@@ -329,3 +329,67 @@ export const auditLog = sqliteTable('audit_log', {
   prevHash: text('prev_hash').notNull(),
   hash: text('hash').notNull().unique(),
 });
+
+/**
+ * 대출. The fourth and last schedule, same shape as the other three: a forecast,
+ * outside the journal, meeting the ledger at pre-fill and reconciliation.
+ *
+ * `interest_account_id` is here because a loan payment is the one transaction a
+ * user cannot split themselves — a statement says "₩1,247,300 paid to KB" and
+ * nothing else. The schedule knows the principal/interest breakdown; this says
+ * where the interest half is booked.
+ */
+export const loan = sqliteTable(
+  'loan',
+  {
+    accountId: text('account_id')
+      .primaryKey()
+      .references(() => account.id),
+    fundingAccountId: text('funding_account_id')
+      .notNull()
+      .references(() => account.id),
+    interestAccountId: text('interest_account_id')
+      .notNull()
+      .references(() => account.id),
+    principalMinor: integer('principal_minor').notNull(),
+    commodity: text('commodity')
+      .notNull()
+      .references(() => commodity.code),
+    // Annual percentage as a decimal STRING. Never a float — this gets compounded
+    // 360 times.
+    annualRateText: text('annual_rate_text').notNull(),
+    method: text('method').notNull(),
+    termMonths: integer('term_months').notNull(),
+    firstPaymentDate: text('first_payment_date').notNull(),
+    // -1 means 말일.
+    paymentDay: integer('payment_day').notNull(),
+    label: text('label'),
+  },
+  (t) => [
+    check('loan_principal_positive', sql`${t.principalMinor} > 0`),
+    check('loan_term_positive', sql`${t.termMonths} >= 1`),
+    check('loan_method_enum', sql`${t.method} IN ('annuity','equal_principal','bullet','interest_only')`),
+    check('loan_payment_day_range', sql`${t.paymentDay} = -1 OR ${t.paymentDay} BETWEEN 1 AND 31`),
+    check('loan_accounts_differ', sql`${t.accountId} <> ${t.fundingAccountId}`),
+  ],
+);
+
+export const loanScheduleRow = sqliteTable(
+  'loan_schedule_row',
+  {
+    loanId: text('loan_id')
+      .notNull()
+      .references(() => loan.accountId, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    dueDate: text('due_date').notNull(),
+    openingMinor: integer('opening_minor').notNull(),
+    principalMinor: integer('principal_minor').notNull(),
+    interestMinor: integer('interest_minor').notNull(),
+    closingMinor: integer('closing_minor').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.loanId, t.seq] }),
+    index('loan_schedule_by_date').on(t.dueDate),
+    check('loan_schedule_seq_positive', sql`${t.seq} >= 1`),
+  ],
+);

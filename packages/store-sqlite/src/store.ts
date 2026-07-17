@@ -15,7 +15,11 @@ import {
   type InstallmentPlan,
   type InstallmentRow,
   type InstallmentWithRows,
+  type Loan,
+  type LoanScheduleRow,
+  type LoanWithSchedule,
   type RecurringExpense,
+  schedulePrincipal,
   assertCadence,
   assertCardCycleRule,
   isActiveOn,
@@ -754,6 +758,110 @@ class SqliteUow implements LedgerUow {
     });
   }
 
+  async listLoans(): Promise<readonly LoanWithSchedule[]> {
+    return this.db
+      .all<LoanRowRaw>('SELECT * FROM loan ORDER BY account_id')
+      .map((l) => ({ loan: mapLoan(l), rows: this.#loanRows(l.account_id) }));
+  }
+
+  async getLoan(accountId: AccountId): Promise<LoanWithSchedule | null> {
+    const l = this.db.get<LoanRowRaw>('SELECT * FROM loan WHERE account_id = ?', accountId);
+    return l ? { loan: mapLoan(l), rows: this.#loanRows(accountId) } : null;
+  }
+
+  #loanRows(loanId: string): LoanScheduleRow[] {
+    return this.db
+      .all<{
+        seq: bigint;
+        due_date: string;
+        opening_minor: bigint;
+        principal_minor: bigint;
+        interest_minor: bigint;
+        closing_minor: bigint;
+      }>('SELECT * FROM loan_schedule_row WHERE loan_id = ? ORDER BY seq', loanId)
+      .map((r) => ({
+        seq: toInt(r.seq),
+        dueDate: r.due_date as IsoDate,
+        openingMinor: toBigInt(r.opening_minor),
+        principalMinor: toBigInt(r.principal_minor),
+        interestMinor: toBigInt(r.interest_minor),
+        closingMinor: toBigInt(r.closing_minor),
+      }));
+  }
+
+  async upsertLoan(loan: Loan, rows: readonly LoanScheduleRow[]): Promise<void> {
+    const acct = await this.getAccount(loan.accountId);
+    if (!acct) throw new Error(`holiday: no such account: ${loan.accountId}`);
+    if (acct.type !== 'liability') {
+      throw new Error(`holiday: ${acct.code} is a ${acct.type} account — a loan must be a liability`);
+    }
+    const funding = await this.getAccount(loan.fundingAccountId);
+    if (!funding || funding.type !== 'asset') {
+      throw new Error(`holiday: a loan is paid from an asset account`);
+    }
+    const interest = await this.getAccount(loan.interestAccountId);
+    if (!interest || interest.type !== 'expense') {
+      throw new Error(`holiday: loan interest must be booked to an expense account`);
+    }
+    // 'interest_only' never amortizes, so its rows legitimately sum to zero.
+    // Every other method must repay exactly the loan, or it never reconciles.
+    if (loan.method !== 'interest_only') {
+      const principal = schedulePrincipal(rows);
+      if (principal !== loan.principalMinor) {
+        throw new Error(`holiday: schedule repays ${principal} but the loan is ${loan.principalMinor}`);
+      }
+    }
+    if (rows.length !== loan.termMonths) {
+      throw new Error(`holiday: loan says ${loan.termMonths} months but got ${rows.length} rows`);
+    }
+
+    this.db.run(
+      `INSERT INTO loan (account_id, funding_account_id, interest_account_id, principal_minor, commodity,
+                         annual_rate_text, method, term_months, first_payment_date, payment_day, label)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(account_id) DO UPDATE SET
+         funding_account_id = excluded.funding_account_id,
+         interest_account_id = excluded.interest_account_id,
+         principal_minor = excluded.principal_minor, commodity = excluded.commodity,
+         annual_rate_text = excluded.annual_rate_text, method = excluded.method,
+         term_months = excluded.term_months, first_payment_date = excluded.first_payment_date,
+         payment_day = excluded.payment_day, label = excluded.label`,
+      loan.accountId,
+      loan.fundingAccountId,
+      loan.interestAccountId,
+      loan.principalMinor,
+      loan.commodity,
+      loan.annualRateText,
+      loan.method,
+      loan.termMonths,
+      loan.firstPaymentDate,
+      loan.paymentDay,
+      loan.label,
+    );
+    // Wholesale replace: the schedule is a forecast, and forecasts change when the
+    // rate resets or you prepay. Only the journal is append-only.
+    this.db.run('DELETE FROM loan_schedule_row WHERE loan_id = ?', loan.accountId);
+    for (const r of rows) {
+      this.db.run(
+        `INSERT INTO loan_schedule_row (loan_id, seq, due_date, opening_minor, principal_minor, interest_minor, closing_minor)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        loan.accountId,
+        r.seq,
+        r.dueDate,
+        r.openingMinor,
+        r.principalMinor,
+        r.interestMinor,
+        r.closingMinor,
+      );
+    }
+    this.#appendAudit('loan_upsert', loan.accountId, {
+      method: loan.method,
+      principalMinor: loan.principalMinor.toString(),
+      annualRateText: loan.annualRateText,
+      termMonths: loan.termMonths,
+    });
+  }
+
   async getCommandResult(idemKey: string): Promise<CommandResult | null> {
     const r = this.db.get<{ idem_key: string; request_sha256: string; response_json: string; created_at: string }>(
       'SELECT * FROM command_log WHERE idem_key = ?',
@@ -934,6 +1042,36 @@ class SqliteUow implements LedgerUow {
 function chainHeadOf(db: Db): { seq: number; hash: string } | null {
   const head = db.get<{ seq: bigint; hash: string }>('SELECT seq, hash FROM audit_log ORDER BY seq DESC LIMIT 1');
   return head ? { seq: toInt(head.seq), hash: head.hash } : null;
+}
+
+interface LoanRowRaw {
+  account_id: string;
+  funding_account_id: string;
+  interest_account_id: string;
+  principal_minor: bigint;
+  commodity: string;
+  annual_rate_text: string;
+  method: string;
+  term_months: bigint;
+  first_payment_date: string;
+  payment_day: bigint;
+  label: string | null;
+}
+
+function mapLoan(r: LoanRowRaw): Loan {
+  return {
+    accountId: r.account_id as AccountId,
+    fundingAccountId: r.funding_account_id as AccountId,
+    interestAccountId: r.interest_account_id as AccountId,
+    principalMinor: toBigInt(r.principal_minor),
+    commodity: r.commodity as CommodityCode,
+    annualRateText: r.annual_rate_text,
+    method: r.method as Loan['method'],
+    termMonths: toInt(r.term_months),
+    firstPaymentDate: r.first_payment_date as IsoDate,
+    paymentDay: toInt(r.payment_day),
+    label: r.label,
+  };
 }
 
 interface RecurringRowRaw {

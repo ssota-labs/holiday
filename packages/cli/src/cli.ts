@@ -34,6 +34,17 @@ import {
   displaySignOf,
   projectCardBills,
   reviseSchedule,
+  type AmortizationMethod,
+  type LoanScheduleRow,
+  buildLoanSchedule,
+  describeMethod,
+  formatAnnualPercent,
+  loanCheck,
+  monthlyFromAnnual,
+  parseAnnualPercent,
+  rowForDate,
+  projectLoans,
+  scheduleInterest,
 } from '@holiday/core';
 
 import { UsageError, parseLeg } from './legs.js';
@@ -629,6 +640,283 @@ recurring
     note(`monthly total: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
   });
 
+const loan = program.command('loan').description('대출 — 상환 스케줄과 대사');
+
+loan
+  .command('add <code>')
+  .description('attach an amortization schedule to a loan liability account')
+  .requiredOption('--funding <code>', 'the asset account payments come from')
+  .requiredOption('--interest <code>', 'the expense account interest is booked to')
+  .requiredOption('--principal <amount>', 'the loan amount')
+  .requiredOption('--rate <percent>', 'annual rate as the contract writes it, e.g. 4.2')
+  .requiredOption('--months <n>', 'term', Number)
+  .requiredOption('--first-payment <date>', 'due date of the first payment')
+  .option('--method <m>', 'annuity | equal_principal | bullet | interest_only', 'annuity')
+  .option('--payment-day <n>', 'day of month payments land. -1 = 말일', Number)
+  .option('--label <text>')
+  .action(
+    async (
+      code: string,
+      o: {
+        funding: string;
+        interest: string;
+        principal: string;
+        rate: string;
+        months: number;
+        firstPayment: string;
+        method: string;
+        paymentDay?: number;
+        label?: string;
+      },
+    ) => {
+      const ws = requireWorkspace();
+      const config = readConfig(ws);
+      const store = await openLedger(ws);
+
+      const firstPaymentDate = assertIsoDate(o.firstPayment);
+      const principal = amounts.parse(o.principal, config.functionalCurrency);
+      const annual = parseAnnualPercent(o.rate);
+      const method = o.method as AmortizationMethod;
+      const paymentDay = o.paymentDay ?? Number(firstPaymentDate.slice(8, 10));
+
+      const rows = buildLoanSchedule({
+        principalMinor: principal.minor,
+        monthlyRate: monthlyFromAnnual(annual),
+        method,
+        termMonths: o.months,
+        firstPaymentDate,
+        paymentDay,
+      });
+
+      await store.unitOfWork(async (uow) => {
+        const acct = await uow.getAccount(code);
+        if (!acct) throw new UsageError(`no such account: ${code}`);
+        const funding = await uow.getAccount(o.funding);
+        if (!funding) throw new UsageError(`no such account: ${o.funding}`);
+        const interest = await uow.getAccount(o.interest);
+        if (!interest) throw new UsageError(`no such account: ${o.interest}`);
+        await uow.upsertLoan(
+          {
+            accountId: acct.id,
+            fundingAccountId: funding.id,
+            interestAccountId: interest.id,
+            principalMinor: principal.minor,
+            commodity: principal.commodity,
+            annualRateText: o.rate,
+            method,
+            termMonths: o.months,
+            firstPaymentDate,
+            paymentDay,
+            label: o.label ?? null,
+          },
+          rows,
+        );
+      });
+      await store.close();
+
+      const money = (m: bigint) => amounts.format({ minor: m, commodity: principal.commodity });
+      out({
+        loan: code,
+        method,
+        rows: rows.length,
+        firstPayment: rows[0]!.dueDate,
+        lastPayment: rows.at(-1)!.dueDate,
+        totalInterestMinor: scheduleInterest(rows).toString(),
+      });
+      note(
+        `${describeMethod(method)} ${money(principal.minor)} @ ${formatAnnualPercent(annual)}% × ${o.months}개월. ` +
+          `${rows[0]!.dueDate} ~ ${rows.at(-1)!.dueDate}.`,
+      );
+      // The number a borrower actually wants and never gets told: what it costs.
+      note(`1회차 ${money(rows[0]!.principalMinor + rows[0]!.interestMinor)} (원금 ${money(rows[0]!.principalMinor)} + 이자 ${money(rows[0]!.interestMinor)})`);
+      note(`총 이자 ${money(scheduleInterest(rows))}`);
+      note(`이건 예측입니다. 실제 잔액과 어긋나는지는 \`holiday loan check\`.`);
+    },
+  );
+
+loan
+  .command('list')
+  .description('loans and where they stand')
+  .action(async () => {
+    const ws = requireWorkspace();
+    const config = readConfig(ws);
+    const store = await openLedger(ws);
+    const now = assertIsoDate(today());
+    const result = await store.read(async (r) => {
+      const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
+      const loans = await r.listLoans();
+      const balances = await r.getBalances({ asOf: now });
+      return loans.map((l) => ({
+        ...l,
+        code: accounts.get(l.loan.accountId)?.code ?? '?',
+        balance: balances
+          .filter((b) => b.accountId === l.loan.accountId)
+          .reduce((s, b) => s + b.weightMinor, 0n),
+      }));
+    });
+    await store.close();
+
+    if (jsonMode()) {
+      return out(
+        result.map((l) => ({
+          ...l.loan,
+          code: l.code,
+          principalMinor: l.loan.principalMinor.toString(),
+          outstandingMinor: (-l.balance).toString(),
+        })),
+      );
+    }
+    if (result.length === 0) return note('no loans.');
+    for (const l of result) {
+      const money = (m: bigint) => amounts.format({ minor: m, commodity: l.loan.commodity });
+      note(
+        `${(l.loan.label ?? l.code).padEnd(24)} ${describeMethod(l.loan.method).padEnd(14)} ` +
+          `${l.loan.annualRateText}% × ${l.loan.termMonths}개월   잔액 ${money(-l.balance)}`,
+      );
+    }
+  });
+
+loan
+  .command('check [code]')
+  .description('does the ledger agree with the schedule')
+  .option('--as-of <date>', 'ISO date', today())
+  .action(async (code: string | undefined, o: { asOf: string }) => {
+    const ws = requireWorkspace();
+    const config = readConfig(ws);
+    const store = await openLedger(ws);
+    const asOf = assertIsoDate(o.asOf);
+
+    const results = await store.read(async (r) => {
+      const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
+      const all = await r.listLoans();
+      const wanted = code ? all.filter((l) => accounts.get(l.loan.accountId)?.code === code) : all;
+      if (code && wanted.length === 0) throw new UsageError(`no loan on account: ${code}`);
+
+      const balances = await r.getBalances({ asOf });
+      return wanted.map((l) => {
+        const ledgerBalanceMinor = balances
+          .filter((b) => b.accountId === l.loan.accountId)
+          .reduce((s, b) => s + b.weightMinor, 0n);
+        return {
+          code: accounts.get(l.loan.accountId)?.code ?? '?',
+          label: l.loan.label,
+          commodity: l.loan.commodity,
+          result: loanCheck({
+            rows: l.rows,
+            ledgerBalanceMinor,
+            asOf,
+            principalMinor: l.loan.principalMinor,
+          }),
+        };
+      });
+    });
+    await store.close();
+
+    if (jsonMode()) {
+      return out(
+        results.map((r) => ({
+          code: r.code,
+          ok: r.result.ok,
+          expectedMinor: r.result.expectedMinor.toString(),
+          actualMinor: r.result.actualMinor.toString(),
+          deltaMinor: r.result.deltaMinor.toString(),
+          explanation: r.result.explanation,
+        })),
+      );
+    }
+    if (results.length === 0) return note('no loans to check.');
+
+    let bad = 0;
+    for (const r of results) {
+      const money = (m: bigint) => amounts.format({ minor: m, commodity: r.commodity });
+      note(`${r.label ?? r.code}  (${asOf})`);
+      note(`  스케줄:  ${money(r.result.expectedMinor).padStart(16)}`);
+      note(`  원장:    ${money(r.result.actualMinor).padStart(16)}`);
+      if (r.result.ok) {
+        note(`  ✓ ${r.result.explanation}`);
+      } else {
+        bad += 1;
+        note(`  ⚠ 차이 ${money(r.result.deltaMinor)}`);
+        note(`    ${r.result.explanation}`);
+      }
+      note('');
+    }
+    if (bad > 0) throw new LedgerError('loan_drift', `${bad} loan(s) disagree with their schedule`);
+  });
+
+loan
+  .command('pay <code>')
+  .description('record a loan payment, split into principal and interest by the schedule')
+  .requiredOption('--date <date>', 'the due date being paid')
+  .option('--amount <amount>', 'what actually left the account, if it differs from the schedule')
+  .action(async (code: string, o: { date: string; amount?: string }) => {
+    const ws = requireWorkspace();
+    const config = readConfig(ws);
+    const store = await openLedger(ws);
+    const date = assertIsoDate(o.date);
+
+    const result = await store.unitOfWork(async (uow) => {
+      const acct = await uow.getAccount(code);
+      if (!acct) throw new UsageError(`no such account: ${code}`);
+      const l = await uow.getLoan(acct.id);
+      if (!l) throw new UsageError(`${code} has no loan schedule. Add one with \`holiday loan add\`.`);
+
+      const row: LoanScheduleRow | null = rowForDate(l.rows, date);
+      if (!row) {
+        throw new UsageError(
+          `the schedule has no payment due on ${date}. Due dates are ` +
+            `${l.rows[0]!.dueDate}, ${l.rows[1]?.dueDate ?? '…'}, … — check the date, or record it with \`holiday txn add\`.`,
+        );
+      }
+
+      // The whole point of the loan module. A statement says "₩1,247,300 paid to
+      // KB" and nothing else; neither the user nor a vision model can split that
+      // without the schedule.
+      const scheduled = row.principalMinor + row.interestMinor;
+      const paid = o.amount ? amounts.parse(o.amount, l.loan.commodity).minor : scheduled;
+      if (paid !== scheduled) {
+        // Do NOT silently reallocate. Interest is what the lender charged; the
+        // difference is principal, and if that is wrong the user needs to see it
+        // rather than have us quietly rebalance the entry.
+        note(`⚠ 실제 ${paid}, 스케줄 ${scheduled}. 차액을 원금에 반영합니다 — 명세서와 대조하세요.`);
+      }
+      const interest = row.interestMinor;
+      const principal = paid - interest;
+      if (principal < 0n) {
+        throw new UsageError(
+          `${paid} does not even cover the scheduled interest (${interest}). ` +
+            `Record this by hand with \`holiday txn add\` — this is not an ordinary payment.`,
+        );
+      }
+
+      const txn = Txn.create({
+        id: nextUlid() as TxnId,
+        date,
+        bookingCommodity: config.functionalCurrency,
+        payee: l.loan.label ?? code,
+        narration: `${row.seq}/${l.loan.termMonths} 상환`,
+        postings: [
+          { accountId: acct.id, units: amounts.fromMinor(principal, l.loan.commodity) },
+          { accountId: l.loan.interestAccountId, units: amounts.fromMinor(interest, l.loan.commodity) },
+          { accountId: l.loan.fundingAccountId, units: amounts.fromMinor(-paid, l.loan.commodity) },
+        ],
+      });
+      if (!txn.ok) throw new LedgerError('unbalanced', txn.error.map(describeTxnError).join('\n'));
+      await uow.appendTxn(txn.value, { status: 'posted' });
+      return { txnId: txn.value.id, seq: row.seq, principal, interest, paid, commodity: l.loan.commodity };
+    });
+    await store.close();
+
+    const money = (m: bigint) => amounts.format({ minor: m, commodity: result.commodity });
+    out({
+      id: result.txnId,
+      seq: result.seq,
+      principalMinor: result.principal.toString(),
+      interestMinor: result.interest.toString(),
+    });
+    note(`${result.seq}회차 ${money(result.paid)} = 원금 ${money(result.principal)} + 이자 ${money(result.interest)}`);
+  });
+
 program
   .command('cashflow')
   .description('will the cash survive the card bills that are already coming')
@@ -686,7 +974,14 @@ program
         rows: i.rows,
       }));
       const recurring = await r.listRecurring({ activeOn: now });
-      return { cards, openingCash, postings, installments, recurring, unmarked };
+      const loans = (await r.listLoans()).map((l) => ({
+        accountId: l.loan.accountId,
+        fundingAccountId: l.loan.fundingAccountId,
+        label: l.loan.label,
+        termMonths: l.loan.termMonths,
+        rows: l.rows,
+      }));
+      return { cards, openingCash, postings, installments, recurring, unmarked, loans };
     });
     await store.close();
 
@@ -699,7 +994,13 @@ program
     const bills = projectCardBills({ cards: result.cards, postings: result.postings, today: now, until });
     const instRows = projectInstallments({ installments: result.installments, fundingByCard, today: now, until });
     const recRows = projectRecurring({ recurring: result.recurring, cardRules, today: now, until });
-    const runway = cashRunway<ProjectedOutflow>(result.openingCash, [...bills, ...instRows, ...recRows]);
+    const loanRows = projectLoans({ loans: result.loans, today: now, until });
+    const runway = cashRunway<ProjectedOutflow>(result.openingCash, [
+      ...bills,
+      ...instRows,
+      ...recRows,
+      ...loanRows,
+    ]);
 
     if (jsonMode()) {
       return out({
@@ -750,6 +1051,7 @@ program
   });
 
 function describeOutflow(b: ProjectedOutflow): string {
+  if (b.kind === 'loan') return `${b.label ?? '대출'} (${b.seq}/${b.termMonths})`;
   if (b.kind === 'installment') return `${b.label ?? '할부'} (${b.seq}/${b.months})`;
   if (b.kind === 'recurring') {
     // Show the charge date when a card sits in between, since "why is this here"

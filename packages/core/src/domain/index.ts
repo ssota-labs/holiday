@@ -5,6 +5,8 @@ export * from './amount.js';
 export * from './account.js';
 export * from './txn.js';
 export * from './billing.js';
+export * from './rate.js';
+export * from './loan.js';
 export * from './installment.js';
 export * from './recurring.js';
 export * from './cashflow.js';

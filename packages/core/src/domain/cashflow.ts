@@ -1,6 +1,7 @@
 import type { AccountCode, AccountId, IsoDate } from './account.js';
 import { type CardCycleRule, billingDatesFor, cycleRangeFor, nextDay, upcomingBills } from './billing.js';
 import type { CommodityCode } from './commodity.js';
+import type { LoanScheduleRow } from './loan.js';
 import { type RecurringExpense, isActiveOn, occurrencesBetween } from './recurring.js';
 import type { TxnId } from './txn.js';
 
@@ -244,10 +245,75 @@ export function projectRecurring(opts: {
   return out.sort((a, b) => (a.paymentDate < b.paymentDate ? -1 : 1));
 }
 
+/** A loan payment that has not been made yet. */
+export interface ProjectedLoanPayment {
+  readonly kind: 'loan';
+  readonly loanAccountId: AccountId;
+  readonly fundingAccountId: AccountId;
+  readonly label: string | null;
+  readonly paymentDate: IsoDate;
+  readonly amountMinor: bigint;
+  readonly principalMinor: bigint;
+  readonly interestMinor: bigint;
+  readonly seq: number;
+  readonly termMonths: number;
+}
+
+export interface LoanForProjection {
+  readonly accountId: AccountId;
+  readonly fundingAccountId: AccountId;
+  readonly label: string | null;
+  readonly termMonths: number;
+  readonly rows: readonly LoanScheduleRow[];
+}
+
+/**
+ * Loan payments still to come.
+ *
+ * The fourth schedule, and it lands in the same runway as the other three — which
+ * is the point. A card bill, a 할부 row, a subscription and a mortgage payment are
+ * all just cash leaving on a date, and the question "does the balance survive" is
+ * only answerable if all four are in one place.
+ *
+ * Like 정기지출, only payments strictly after today are projected: a payment
+ * already made is a posting, and the ledger counts it. Unlike 정기지출, a loan
+ * payment that is *overdue* is not projected either — `loan check` is what
+ * surfaces a missed payment, and inventing a phantom outflow for it here would
+ * double-count the moment it gets paid late.
+ */
+export function projectLoans(opts: {
+  readonly loans: readonly LoanForProjection[];
+  readonly today: IsoDate;
+  readonly until: IsoDate;
+}): ProjectedLoanPayment[] {
+  const out: ProjectedLoanPayment[] = [];
+  for (const l of opts.loans) {
+    for (const r of l.rows) {
+      if (r.dueDate <= opts.today || r.dueDate > opts.until) continue;
+      const amountMinor = r.principalMinor + r.interestMinor;
+      if (amountMinor === 0n) continue;
+      out.push({
+        kind: 'loan',
+        loanAccountId: l.accountId,
+        fundingAccountId: l.fundingAccountId,
+        label: l.label,
+        paymentDate: r.dueDate,
+        amountMinor,
+        principalMinor: r.principalMinor,
+        interestMinor: r.interestMinor,
+        seq: r.seq,
+        termMonths: l.termMonths,
+      });
+    }
+  }
+  return out.sort((a, b) => (a.paymentDate < b.paymentDate ? -1 : 1));
+}
+
 export type ProjectedOutflow =
   | (ProjectedBill & { readonly kind?: 'card' })
   | ProjectedInstallment
-  | ProjectedRecurring;
+  | ProjectedRecurring
+  | ProjectedLoanPayment;
 
 export interface CashRunwayPoint<T> {
   readonly date: IsoDate;
