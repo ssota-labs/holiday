@@ -11,6 +11,7 @@
     "test": "node --test scripts/*.test.mjs && turbo run test",
     "typecheck": "turbo run typecheck",
     "lint": "eslint .",
+    "lint:changed": "node scripts/lint-changed.mjs",
     "check:docs-first": "node scripts/check-docs-first.mjs"
   },
   "devDependencies": {
