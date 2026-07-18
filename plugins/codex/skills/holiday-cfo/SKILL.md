@@ -1,6 +1,6 @@
 ---
 name: holiday-cfo
-description: Record and query a personal double-entry ledger — 가계부, 카드 거래, 부채, 할부, 정기지출, 현금흐름 예측. Use when the user wants to record spending or income, asks what they owe or own, asks whether their cash will survive upcoming card bills (현금흐름), sets up a card/할부/정기지출, or closes their books. Also use when the user shares a screenshot of a bank or card transaction and wants it recorded. Do NOT use for general financial advice or investment questions.
+description: Record and query a personal double-entry ledger — 가계부, 카드 거래, 부채, 할부, 정기지출, 정기수입, 현금흐름 예측. Use when the user wants to record spending or income, asks what they owe or own, asks whether their cash will survive upcoming card bills (현금흐름), sets up a card/할부/정기지출/정기수입, or closes their books. Also use when the user shares a screenshot of a bank or card transaction and wants it recorded. Do NOT use for general financial advice or investment questions.
 ---
 
 # holiday — a double-entry ledger you drive from chat
@@ -75,8 +75,8 @@ holiday cashflow --until 2026-12-31   # will the cash survive what is already co
 ```
 
 `cashflow` is usually the real question behind "how am I doing": it walks forward
-from today's cash and subtracts every card bill, 할부 row and 정기지출 already
-committed, and flags the day the balance goes negative. Read the ⚠ line out loud.
+from today's cash and folds in every card bill, 할부 row, 정기지출 and 정기수입
+already committed, and flags the day the balance goes negative. Read the ⚠ line out loud.
 
 **What-if, without writing anything:** `holiday cashflow --spend "2026-09-01 5000000
 새 노트북" --receive "2026-12-25 3000000 보너스"` folds hypotheticals into the runway

@@ -120,7 +120,7 @@ summary: 코드·정책·CLI가 같은 말로 말한다. 섹션별 Term.
 ## 스케줄
 
 <Glossary>
-  <Term term="schedule / forecast" ko="스케줄·예측" code="card|installment|recurring|loan" notTo="저널 사실">
+  <Term term="schedule / forecast" ko="스케줄·예측" code="card|installment|recurring|income|loan" notTo="저널 사실">
     저널 밖의 미래 투영. 바꾸어도 과거 posting은 그대로.
   </Term>
   <Term term="billing cycle" ko="청구주기" code="card · cycle_close_day">
@@ -141,6 +141,9 @@ summary: 코드·정책·CLI가 같은 말로 말한다. 섹션별 Term.
   <Term term="recurring" ko="정기지출" code="recurring">
     월세·구독 등. today 이하 발생은 투영하지 않음 (POLICY-005).
   </Term>
+  <Term term="recurring income" ko="정기수입" code="recurring_income">
+    급여·고정 수입. today 이하 발생은 투영하지 않음 (POLICY-017). `--cash` 입금만 런웨이.
+  </Term>
   <Term term="loan" ko="대출" code="loan">
     상환 스케줄 + 원장 대사. 스케줄은 예측, `loan pay`는 저널 사실.
   </Term>
@@ -153,13 +156,13 @@ summary: 코드·정책·CLI가 같은 말로 말한다. 섹션별 Term.
 
 <Glossary>
   <Term term="cash runway" ko="현금 런웨이" code="cashRunway · cashflow">
-    cash 계정 opening에서 스케줄 유출을 날짜별로 빼 잔액을 본다. 저장 테이블 아님.
+    cash 계정 opening에서 스케줄 유출·유입을 날짜별로 반영해 잔액을 본다. 저장 테이블 아님.
   </Term>
   <Term term="opening cash" ko="기초 현금" code="account.cash 합">
     `--cash` 계정들의 잔액 합. cashflow의 시작점.
   </Term>
   <Term term="projected outflow" ko="투영 유출" code="ProjectedOutflow">
-    카드·할부·정기·대출이 특정 날짜에 현금으로 나가는 예측분.
+    카드·할부·정기(출)·대출이 특정 날짜에 현금으로 나가는 예측분. 정기수입은 같은 런웨이에 유입으로 합류.
   </Term>
   <Term term="SHORT" ko="부족" code="⚠ SHORT">
     잔액이 음수가 되는 날. cashflow의 payoff 신호.

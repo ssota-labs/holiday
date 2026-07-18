@@ -2,13 +2,13 @@
 title: 현금흐름
 description: 런웨이와 SHORT
 type: guide
-summary: cash 계정 opening + 스케줄 투영. --spend/--receive 가정. 음수면 부족.
+summary: cash 계정 opening + 스케줄 투영(출·입). --spend/--receive 가정. 음수면 부족.
 related:
   - /docs/design/adr
   - /docs/planning/stories/us-cashflow-short
 ---
 
-제품의 payoff 명령. 카드·할부·정기·대출 출금을 날짜별로 쌓아 잔액을 본다.
+제품의 payoff 명령. 카드·할부·정기(출·입)·대출을 날짜별로 쌓아 잔액을 본다.
 
 ## 수락 기준
 
@@ -18,33 +18,36 @@ related:
 4. reads-only (원장 불변)
 5. `--spend` / `--receive`는 원장을 건드리지 않는 가정 유출·유입
 
-## 네 스케줄 → 런웨이
+## 다섯 스케줄 → 런웨이
 
 | | 모양 | 계정 |
 |---|---|---|
 | **카드 청구주기** | 회전 — 사용기간이 닫히고 결제일에 전액 | `Liabilities:Card:*` |
 | **할부** | 고정 N개월 분할 | `Liabilities:Card:*:Installment` (별도) |
 | **대출** | 분할상환 (원금+이자) | `Liabilities:Loans:*` |
-| **정기지출** | 반복 발생 | 계정 아님 (스케줄 테이블) |
+| **정기지출** | 반복 유출 | 계정 아님 (스케줄 테이블) |
+| **정기수입** | 반복 유입 | 계정 아님 (스케줄 테이블) |
 
 <Canvas
-  height={380}
+  height={470}
   nodes={[
     { id: 'card', type: 'doc', position: { x: 0, y: 0 }, data: { label: 'card', description: '청구주기', kind: 'forecast', handles: { target: false } } },
     { id: 'inst', type: 'doc', position: { x: 0, y: 90 }, data: { label: 'installment', description: '할부 N회차', kind: 'forecast', handles: { target: false } } },
     { id: 'rec', type: 'doc', position: { x: 0, y: 180 }, data: { label: 'recurring', description: '정기지출 카덴스', kind: 'forecast', handles: { target: false } } },
-    { id: 'loan', type: 'doc', position: { x: 0, y: 270 }, data: { label: 'loan', description: '상환 스케줄', kind: 'forecast', handles: { target: false } } },
-    { id: 'ledger', type: 'doc', position: { x: 0, y: 360 }, data: { label: 'posting', description: '원장 — 이미 쓴 돈', kind: 'fact', handles: { target: false } } },
-    { id: 'runway', type: 'doc', position: { x: 300, y: 170 }, data: { label: 'cashRunway', description: '날짜별로 묶어 잔고를 걸어감', kind: 'derived' } },
-    { id: 'answer', type: 'doc', position: { x: 560, y: 170 }, data: { label: '⚠ 부족', description: '버티나 못 버티나', kind: 'derived', handles: { source: false } } },
+    { id: 'inc', type: 'doc', position: { x: 0, y: 270 }, data: { label: 'income', description: '정기수입 카덴스', kind: 'forecast', handles: { target: false } } },
+    { id: 'loan', type: 'doc', position: { x: 0, y: 360 }, data: { label: 'loan', description: '상환 스케줄', kind: 'forecast', handles: { target: false } } },
+    { id: 'ledger', type: 'doc', position: { x: 0, y: 450 }, data: { label: 'posting', description: '원장 — 이미 쓴 돈', kind: 'fact', handles: { target: false } } },
+    { id: 'runway', type: 'doc', position: { x: 300, y: 220 }, data: { label: 'cashRunway', description: '날짜별로 묶어 잔고를 걸어감', kind: 'derived' } },
+    { id: 'answer', type: 'doc', position: { x: 560, y: 220 }, data: { label: '⚠ 부족', description: '버티나 못 버티나', kind: 'derived', handles: { source: false } } },
   ]}
   edges={[
     { id: 'l1', source: 'card', target: 'runway' },
     { id: 'l2', source: 'inst', target: 'runway' },
     { id: 'l3', source: 'rec', target: 'runway' },
-    { id: 'l4', source: 'loan', target: 'runway' },
-    { id: 'l5', source: 'ledger', target: 'runway', animated: true },
-    { id: 'l6', source: 'runway', target: 'answer', animated: true },
+    { id: 'l4', source: 'inc', target: 'runway' },
+    { id: 'l5', source: 'loan', target: 'runway' },
+    { id: 'l6', source: 'ledger', target: 'runway', animated: true },
+    { id: 'l7', source: 'runway', target: 'answer', animated: true },
   ]}
 />
 
@@ -60,18 +63,20 @@ related:
 ```
 현재 현금 (2026-07-17):  350000000 KRW
 
-2026-07-25   -      800000   →     349200000
+2026-07-25   +    2200000   →     352200000
+             급여                                  +3000000
              월세                                   800000
-2026-08-01   -      400000   →     348800000
+2026-08-01   -      400000   →     351800000
              신한  2026-06-15..2026-07-14           400000
-2026-08-25   -     2267052   →     346532948
+2026-08-25   +     732948   →     352532948
+             급여                                  +3000000
              월세                                   800000
              KB 주담대 (1/360)                      1467052
-2026-09-01   -      100000   →     346432948
+2026-09-01   -      100000   →     352432948
              냉장고 (1/12)                           100000
 ```
 
-8/25에 월세와 주담대가 **같은 날 합류**한다. 실제 통장이 하는 일 그대로다.
+8/25에 급여·월세·주담대가 **같은 날 합류**한다. 실제 통장이 하는 일 그대로다.
 
 `⚠ 부족`이 답이다. 잔액은 숫자 하나를 주지만 현금흐름은 **어느 날 터지는지**를 준다.
 

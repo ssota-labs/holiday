@@ -1,0 +1,22 @@
+---
+title: US-income
+description: 급여·고정 수입을 등록하고 싶다
+type: conceptual
+summary: 미도래분만 투영되고 --cash 입금만 런웨이에 잡힌다
+---
+
+**As a** 1인 사용자  
+**I want** 급여·고정 수입을 등록하고 싶다  
+**So that** 미도래분만 투영되고 `--cash` 입금만 런웨이에 잡힌다
+
+### 수락 기준
+
+1. 오늘 이전 발생은 투영하지 않는다 (POLICY-017)
+2. 입금 계정이 `--cash`가 아니면 gap으로 알리고 런웨이에서 제외한다
+
+### 추적
+
+- 기능: [income](/docs/features/income)
+- 스펙: [`add`](/docs/spec/cli/income/add)
+- 검증: POLICY-017
+- PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

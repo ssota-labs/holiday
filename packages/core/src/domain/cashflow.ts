@@ -2,7 +2,12 @@ import type { AccountCode, AccountId, IsoDate } from './account.js';
 import { type CardCycleRule, billingDatesFor, cycleRangeFor, nextDay, upcomingBills } from './billing.js';
 import type { CommodityCode } from './commodity.js';
 import type { LoanScheduleRow } from './loan.js';
-import { type RecurringExpense, isActiveOn, occurrencesBetween } from './recurring.js';
+import {
+  type RecurringExpense,
+  type RecurringIncome,
+  isActiveOn,
+  occurrencesBetween,
+} from './recurring.js';
 import type { TxnId } from './txn.js';
 
 /**
@@ -245,6 +250,55 @@ export function projectRecurring(opts: {
   return out.sort((a, b) => (a.paymentDate < b.paymentDate ? -1 : 1));
 }
 
+/** A 정기수입 occurrence that has not landed yet. */
+export interface ProjectedRecurringIncome {
+  readonly kind: 'income';
+  readonly recurringIncomeId: string;
+  readonly label: string;
+  readonly incomeAccountId: AccountId;
+  readonly depositAccountId: AccountId;
+  readonly paymentDate: IsoDate;
+  /**
+   * Negative = cash arriving. Same runway convention as `--receive`:
+   * `cashRunway` does `balance -= amountMinor`, so a negative amount raises it.
+   */
+  readonly amountMinor: bigint;
+}
+
+/**
+ * 정기수입 that has not landed yet.
+ *
+ * Same double-counting rule as 정기지출: only occurrences strictly after `today`.
+ * Yesterday's paycheck is already a posting in the opening cash balance; projecting
+ * it again would invent money. Today's occurrence is skipped for the same reason —
+ * understating cash is safer than a runway nobody trusts after it double-counts.
+ *
+ * No card-cycle branch: salary hits the deposit account on the occurrence date.
+ */
+export function projectRecurringIncome(opts: {
+  readonly incomes: readonly RecurringIncome[];
+  readonly today: IsoDate;
+  readonly until: IsoDate;
+}): ProjectedRecurringIncome[] {
+  const out: ProjectedRecurringIncome[] = [];
+
+  for (const r of opts.incomes) {
+    for (const paymentDate of occurrencesBetween(r.cadence, nextDay(opts.today), opts.until)) {
+      if (!isActiveOn(r, paymentDate)) continue;
+      out.push({
+        kind: 'income',
+        recurringIncomeId: r.id,
+        label: r.label,
+        incomeAccountId: r.incomeAccountId,
+        depositAccountId: r.depositAccountId,
+        paymentDate,
+        amountMinor: -r.amountMinor,
+      });
+    }
+  }
+  return out.sort((a, b) => (a.paymentDate < b.paymentDate ? -1 : 1));
+}
+
 /** A loan payment that has not been made yet. */
 export interface ProjectedLoanPayment {
   readonly kind: 'loan';
@@ -313,6 +367,7 @@ export type ProjectedOutflow =
   | (ProjectedBill & { readonly kind?: 'card' })
   | ProjectedInstallment
   | ProjectedRecurring
+  | ProjectedRecurringIncome
   | ProjectedLoanPayment;
 
 export interface CashRunwayPoint<T> {

@@ -28,6 +28,7 @@ import {
   type LoanScheduleRow,
   type LoanWithSchedule,
   type RecurringExpense,
+  type RecurringIncome,
   schedulePrincipal,
   assertCadence,
   assertCardCycleRule,
@@ -751,6 +752,59 @@ class SqlUow implements LedgerUow {
     });
   }
 
+  async listRecurringIncome(filter?: { activeOn?: IsoDate }): Promise<readonly RecurringIncome[]> {
+    const rows = (
+      await this.db.all<RecurringIncomeRowRaw>('SELECT * FROM recurring_income ORDER BY label, id')
+    ).map(mapRecurringIncome);
+    if (!filter?.activeOn) return rows;
+    return rows.filter((r) => isActiveOn(r, filter.activeOn!));
+  }
+
+  async upsertRecurringIncome(r: RecurringIncome): Promise<void> {
+    assertCadence(r.cadence);
+    const income = await this.getAccount(r.incomeAccountId);
+    if (!income) throw new Error(`holiday: no such account: ${r.incomeAccountId}`);
+    if (income.type !== 'income') {
+      throw new Error(
+        `holiday: ${income.code} is a ${income.type} account — recurring income credits an income account`,
+      );
+    }
+    const deposit = await this.getAccount(r.depositAccountId);
+    if (!deposit) throw new Error(`holiday: no such account: ${r.depositAccountId}`);
+    if (deposit.type !== 'asset') {
+      throw new Error(
+        `holiday: ${deposit.code} is a ${deposit.type} account — recurring income deposits to an asset`,
+      );
+    }
+    await this.db.run(
+      `INSERT INTO recurring_income (id, label, income_account_id, deposit_account_id, amount_minor, commodity,
+                              cadence_kind, day_of_month, month, active_from, active_to)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         label = excluded.label, income_account_id = excluded.income_account_id,
+         deposit_account_id = excluded.deposit_account_id, amount_minor = excluded.amount_minor,
+         commodity = excluded.commodity, cadence_kind = excluded.cadence_kind,
+         day_of_month = excluded.day_of_month, month = excluded.month,
+         active_from = excluded.active_from, active_to = excluded.active_to`,
+      r.id,
+      r.label,
+      r.incomeAccountId,
+      r.depositAccountId,
+      r.amountMinor,
+      r.commodity,
+      r.cadence.kind,
+      r.cadence.dayOfMonth,
+      r.cadence.kind === 'yearly' ? r.cadence.month : null,
+      r.activeFrom,
+      r.activeTo,
+    );
+    await this.#appendAudit('recurring_income_upsert', r.id, {
+      label: r.label,
+      amountMinor: r.amountMinor.toString(),
+      cadence: r.cadence,
+    });
+  }
+
   async listLoans(): Promise<readonly LoanWithSchedule[]> {
     const loans = await this.db.all<LoanRowRaw>('SELECT * FROM loan ORDER BY account_id');
     // Sequential, not Promise.all: on SQLite the driver is one connection and
@@ -1364,6 +1418,37 @@ function mapRecurring(r: RecurringRowRaw): RecurringExpense {
     label: r.label,
     expenseAccountId: r.expense_account_id as AccountId,
     fundingAccountId: r.funding_account_id as AccountId,
+    amountMinor: toBigInt(r.amount_minor),
+    commodity: r.commodity as CommodityCode,
+    cadence:
+      r.cadence_kind === 'yearly'
+        ? { kind: 'yearly', month: toInt(r.month!), dayOfMonth: toInt(r.day_of_month) }
+        : { kind: 'monthly', dayOfMonth: toInt(r.day_of_month) },
+    activeFrom: r.active_from as IsoDate,
+    activeTo: r.active_to as IsoDate | null,
+  };
+}
+
+interface RecurringIncomeRowRaw {
+  id: string;
+  label: string;
+  income_account_id: string;
+  deposit_account_id: string;
+  amount_minor: bigint;
+  commodity: string;
+  cadence_kind: string;
+  day_of_month: bigint;
+  month: bigint | null;
+  active_from: string;
+  active_to: string | null;
+}
+
+function mapRecurringIncome(r: RecurringIncomeRowRaw): RecurringIncome {
+  return {
+    id: r.id,
+    label: r.label,
+    incomeAccountId: r.income_account_id as AccountId,
+    depositAccountId: r.deposit_account_id as AccountId,
     amountMinor: toBigInt(r.amount_minor),
     commodity: r.commodity as CommodityCode,
     cadence:

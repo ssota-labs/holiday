@@ -675,6 +675,106 @@ recurring
     note(`월 합계: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
   });
 
+const income = program.command('income').description('정기수입 — salary, retainers, rent received');
+
+income
+  .command('add <label>')
+  .description('register a recurring income')
+  .requiredOption('--income <code>', 'Income account it credits')
+  .requiredOption('--deposit <code>', 'asset account cash lands in (prefer --cash)')
+  .requiredOption('--amount <amount>')
+  .option('--day <n>', 'day of month. -1 = last day (말일)', Number, 1)
+  .option('--yearly <month>', 'make it yearly, in this month (1-12)', Number)
+  .option('--from <date>', 'active from', today())
+  .option('--to <date>', 'active until (omit for open-ended)')
+  .action(
+    async (
+      label: string,
+      o: { income: string; deposit: string; amount: string; day: number; yearly?: number; from: string; to?: string },
+    ) => {
+      const ws = requireWorkspace();
+      const config = readConfig(ws);
+      const store = await openLedger(ws);
+
+      const amount = amounts.parse(o.amount, config.functionalCurrency);
+      const cadence = assertCadence(
+        o.yearly === undefined
+          ? { kind: 'monthly', dayOfMonth: o.day }
+          : { kind: 'yearly', month: o.yearly, dayOfMonth: o.day },
+      );
+
+      const id = nextUlid();
+      const depositCash = await store.unitOfWork(async (uow) => {
+        const incomeAcct = await uow.getAccount(o.income);
+        if (!incomeAcct) throw new UsageError(`no such account: ${o.income}`);
+        const deposit = await uow.getAccount(o.deposit);
+        if (!deposit) throw new UsageError(`no such account: ${o.deposit}`);
+
+        await uow.upsertRecurringIncome({
+          id,
+          label,
+          incomeAccountId: incomeAcct.id,
+          depositAccountId: deposit.id,
+          amountMinor: amount.minor,
+          commodity: amount.commodity,
+          cadence,
+          activeFrom: assertIsoDate(o.from),
+          activeTo: o.to ? assertIsoDate(o.to) : null,
+        });
+        return deposit.cash;
+      });
+      await store.close();
+
+      out({ id, label, amountMinor: amount.minor.toString(), cadence });
+      if (depositCash) {
+        note(
+          `${label}: ${amounts.format(amount)} ${config.functionalCurrency}, ${describeCadence(cadence)}, ` +
+            `${o.deposit}에 입금 — 현금흐름에 반영됩니다.`,
+        );
+      } else {
+        note(
+          `${label}: ${amounts.format(amount)} ${config.functionalCurrency}, ${describeCadence(cadence)}, ` +
+            `${o.deposit}에 입금. ⚠ 입금 계정이 --cash가 아니라 현금흐름 투영에는 잡히지 않습니다.`,
+        );
+      }
+    },
+  );
+
+income
+  .command('list')
+  .description('active recurring incomes')
+  .action(async () => {
+    const ws = requireWorkspace();
+    const config = readConfig(ws);
+    const store = await openLedger(ws);
+    const now = assertIsoDate(today());
+    const result = await store.read(async (r) => {
+      const items = await r.listRecurringIncome({ activeOn: now });
+      const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
+      return items.map((i) => ({
+        item: i,
+        deposit: accounts.get(i.depositAccountId)?.code ?? '?',
+        cash: accounts.get(i.depositAccountId)?.cash ?? false,
+      }));
+    });
+    await store.close();
+
+    if (jsonMode()) {
+      return out(result.map(({ item }) => ({ ...item, amountMinor: item.amountMinor.toString() })));
+    }
+    let monthly = 0n;
+    for (const { item, deposit, cash } of result) {
+      if (item.cadence.kind === 'monthly') monthly += item.amountMinor;
+      note(
+        `${item.label.padEnd(20)} ${amounts.format({ minor: item.amountMinor, commodity: item.commodity }).padStart(10)} ` +
+          `${describeCadence(item.cadence).padEnd(14)} → ${deposit}${cash ? '' : '  ⚠ not --cash'}`,
+      );
+    }
+    if (result.length === 0) return note('no active recurring incomes.');
+    note('');
+    note(`월 합계: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
+  });
+
 program
   .command('assert <account> <amount>')
   .description('장부가 이 날짜에 정확히 이랬다고 단언한다 — 명세서를 보고')

@@ -38,6 +38,31 @@ export interface RecurringExpense {
   readonly activeTo: IsoDate | null;
 }
 
+/**
+ * 정기수입 — salary, retainers, rent received.
+ *
+ * Same forecast shape as 정기지출, opposite direction. Salary is *expected* on
+ * the 25th; when it lands, that is an ordinary posting. Keeping the cadence out
+ * of the journal means a raise or a job change does not rewrite history.
+ *
+ * Simpler than expenses on one axis: there is no card cycle. Cash arrives in a
+ * deposit account on the occurrence date. The runway only counts deposits into
+ * `--cash` accounts — anything else would inflate "will the cash survive" with
+ * money that is not spendable.
+ */
+export interface RecurringIncome {
+  readonly id: string;
+  readonly label: string;
+  readonly incomeAccountId: AccountId;
+  /** Asset account the cash lands in — must be `--cash` for the runway to see it. */
+  readonly depositAccountId: AccountId;
+  readonly amountMinor: bigint;
+  readonly commodity: CommodityCode;
+  readonly cadence: Cadence;
+  readonly activeFrom: IsoDate;
+  readonly activeTo: IsoDate | null;
+}
+
 export class CadenceError extends Error {
   constructor(message: string) {
     super(message);
@@ -96,7 +121,10 @@ export function occurrencesBetween(cadence: Cadence, from: IsoDate, to: IsoDate)
   return out;
 }
 
-export function isActiveOn(r: RecurringExpense, date: IsoDate): boolean {
+export function isActiveOn(
+  r: { readonly activeFrom: IsoDate; readonly activeTo: IsoDate | null },
+  date: IsoDate,
+): boolean {
   if (date < r.activeFrom) return false;
   return r.activeTo === null || date <= r.activeTo;
 }

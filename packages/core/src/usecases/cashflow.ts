@@ -8,11 +8,12 @@ import {
   projectLoans,
   type ProjectionPosting,
   projectRecurring,
+  projectRecurringIncome,
 } from '../domain/index.js';
 import type { LedgerRead } from '../ports/ledger-store.js';
 import { addMonthsIso } from './dates.js';
 
-/** A projected outflow, or a caller's hypothetical folded into the same runway. */
+/** A projected cash movement, or a caller's hypothetical folded into the same runway. */
 type RunwayItem =
   | ProjectedOutflow
   | { readonly kind: 'assumption'; readonly paymentDate: IsoDate; readonly amountMinor: bigint; readonly label: string };
@@ -43,7 +44,7 @@ type RunwayItem =
  * next to the runway rather than beneath a fold.
  */
 export interface CashflowGap {
-  readonly kind: 'installment-off-cycle' | 'asset-not-marked-cash';
+  readonly kind: 'installment-off-cycle' | 'asset-not-marked-cash' | 'income-not-to-cash';
   /** Account code or plan label — whatever the user would recognise. */
   readonly subject: string;
   readonly detail: string;
@@ -135,6 +136,7 @@ export async function projectCashflow(
     rows: i.rows,
   }));
   const recurring = await r.listRecurring({ activeOn: asOf });
+  const recurringIncomes = await r.listRecurringIncome({ activeOn: asOf });
   const loans = (await r.listLoans()).map((l) => ({
     accountId: l.loan.accountId,
     fundingAccountId: l.loan.fundingAccountId,
@@ -145,6 +147,12 @@ export async function projectCashflow(
 
   const fundingByCard = new Map(cards.map((c) => [c.accountId, c.fundingAccountId]));
   const cardRules = new Map(cards.map((c) => [c.accountId, { rule: c.rule, fundingAccountId: c.fundingAccountId }]));
+
+  // Incomes that do not land in a --cash account cannot answer "will the cash
+  // survive" — projecting them would invent spendable money. Surface the gap
+  // instead of silently omitting or silently including.
+  const incomesToCash = recurringIncomes.filter((i) => cashIds.has(i.depositAccountId));
+  const incomesOffCash = recurringIncomes.filter((i) => !cashIds.has(i.depositAccountId));
 
   // Assumptions ride in the same runway as real outflows — the user asked to see
   // them "얹어서", not in a separate column. They are tagged so a reader can tell
@@ -157,6 +165,7 @@ export async function projectCashflow(
     ...projectCardBills({ cards, postings, today: asOf, until }),
     ...projectInstallments({ installments, fundingByCard, today: asOf, until }),
     ...projectRecurring({ recurring, cardRules, today: asOf, until }),
+    ...projectRecurringIncome({ incomes: incomesToCash, today: asOf, until }),
     ...projectLoans({ loans, today: asOf, until }),
     ...assumed,
   ]);
@@ -171,6 +180,14 @@ export async function projectCashflow(
           detail: 'is on a card with no billing cycle, so its rows are NOT in this projection',
         }),
       ),
+    ...incomesOffCash.map((i): CashflowGap => {
+      const deposit = byId.get(i.depositAccountId);
+      return {
+        kind: 'income-not-to-cash',
+        subject: i.label,
+        detail: `deposits to ${deposit?.code ?? i.depositAccountId}, which is not --cash, so it is NOT in this projection`,
+      };
+    }),
     // An asset account nobody marked as cash is either deliberate or an oversight,
     // and only the user knows which. Saying nothing makes the oversight invisible.
     ...accounts
@@ -204,6 +221,7 @@ export function describeOutflow(b: RunwayItem): string {
   if (b.kind === 'assumption') return `가정: ${b.label}`;
   if (b.kind === 'loan') return `${b.label ?? '대출'} (${b.seq}/${b.termMonths})`;
   if (b.kind === 'installment') return `${b.label ?? '할부'} (${b.seq}/${b.months})`;
+  if (b.kind === 'income') return b.label;
   if (b.kind === 'recurring') {
     // Show the charge date when a card sits in between, since "why is this here"
     // is otherwise unanswerable: the money is leaving weeks after the charge.
