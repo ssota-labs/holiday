@@ -226,6 +226,7 @@ export interface LedgerRead {
    * when, and how many rows — so the same export is never worked twice.
    */
   listIngestBatches(): Promise<readonly IngestBatch[]>;
+  listRules(): Promise<readonly Rule[]>;
   findIngestItemsByDedupeKey(key: string): Promise<readonly IngestItem[]>;
   listIngestItems(filter?: { status?: IngestItemStatus }): Promise<readonly IngestItem[]>;
 }
@@ -265,6 +266,23 @@ export interface IngestBatch {
   readonly sourceName: string | null;
   readonly submittedAt: string;
   readonly itemCount: number;
+}
+
+/**
+ * A classification rule: payee pattern → category account code.
+ *
+ * Config, not journal — editing rules never touches a posted transaction; it
+ * changes what the NEXT import decides. Matching is by `priority` DESC then
+ * `createdAt` DESC, first hit wins. `category` is the account CODE (human-edited,
+ * human-read); an unresolvable code is a no-match plus a warning, never a guess.
+ */
+export interface Rule {
+  readonly id: string;
+  readonly pattern: string;
+  readonly match: 'contains' | 'regex';
+  readonly category: string;
+  readonly priority: number;
+  readonly createdAt: string;
 }
 
 export type IngestItemStatus = 'pending' | 'accepted' | 'rejected';
@@ -323,6 +341,8 @@ export interface LedgerUow extends LedgerRead {
   upsertPeriod(p: Period): Promise<void>;
   writeSnapshot(s: SnapshotWithBalances): Promise<void>;
   recordIngestBatch(b: IngestBatch): Promise<void>;
+  addRule(r: Rule): Promise<void>;
+  removeRule(id: string): Promise<void>;
   recordIngestItem(i: IngestItem): Promise<void>;
   setIngestItemStatus(id: string, status: IngestItemStatus, meta: { reason?: string; txnId?: TxnId }): Promise<void>;
   recordCommandResult(r: CommandResult): Promise<void>;

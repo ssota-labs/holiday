@@ -4,7 +4,12 @@
     {
       "name": "docs",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@holiday-cfo/docs", "run", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@holiday-cfo/docs",
+        "run",
+        "dev"
+      ],
       "port": 3000
     }
   ]

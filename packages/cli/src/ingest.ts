@@ -40,7 +40,34 @@ export const INGEST_SUBMISSION = z.object({
               weight: z.string().optional(),
             }),
           )
-          .min(2, { message: 'a transaction needs at least two legs' }),
+          .min(2, { message: 'a transaction needs at least two legs' })
+          .optional(),
+        /**
+         * The statement-shaped alternative to `legs`: just the money side, no
+         * category. The CLI completes the double entry — a rule picks the
+         * category, or the row parks in Uncategorized as a draft for a human.
+         *
+         * This is the division of labour the classifier design rests on: the
+         * parser extracts FACTS (date, amount, payee, which account moved), the
+         * rule table CLASSIFIES, the human arbitrates the leftovers. A parser
+         * that also guesses categories bakes its guesses into the same JSON as
+         * its facts, where nobody can tell them apart.
+         *
+         * `amount` is the same decimal string a leg uses, signed from the
+         * account's own perspective like the statement: negative = money left
+         * it. Functional currency only — a foreign-currency row needs a weight,
+         * so it must use `legs` with `@@`.
+         */
+        money: z
+          .object({
+            account: z.string(),
+            amount: z.string().regex(/^-?\d+(\.\d+)?$/, { message: 'signed decimal, same format as legs' }),
+            commodity: z.string(),
+          })
+          .optional(),
+      })
+      .refine((i) => !!i.legs !== !!i.money, {
+        message: 'each item needs exactly one of `legs` (full double entry) or `money` (statement row)',
       }),
     )
     .min(1, { message: 'nothing to ingest' }),

@@ -91,6 +91,18 @@ export const catalog = defineCatalog(schema, {
         'or before they act on any other number on the page.',
     },
 
+    CategorizeQueue: {
+      props: z.object({
+        title: z.string().default('분류 대기'),
+        limit: z.number().int().min(1).max(50).default(20),
+      }),
+      description:
+        'Drafts waiting for a category, with one-click picks — the 가계부-app moment. ' +
+        'Interactive ONLY on the locally-running dash (it talks to the local CLI bridge); ' +
+        'on a deployed snapshot it degrades to a one-line notice. Show it near the top ' +
+        'whenever imports are in play.',
+    },
+
     Note: {
       props: z.object({
         body: z.string().describe('plain text. No figures — quote a block instead of retyping it.'),
@@ -102,14 +114,14 @@ export const catalog = defineCatalog(schema, {
         'number next to a live one is how a dashboard starts lying.',
     },
   },
-  // No actions. A dashboard answers a question; it does not move money.
+  // Still no catalog actions — but the boundary got its first deliberate gate.
   //
-  // json-render lets a catalog expose actions the model may wire to buttons, and
-  // the temptation is obvious: an "approve this draft" button right there next to
-  // the review queue. Not yet, and not without thinking hard — every write in this
-  // system goes through Txn.create() and a unit of work, and an action dispatched
-  // from a rendered spec is a write path that has never been near the domain gate.
-  // Read-only is a boundary worth keeping until there is a reason to cross it.
+  // CategorizeQueue is interactive: the USER clicks, the block calls the local
+  // CLI bridge, and the CLI runs the same review-accept path as ever. What has
+  // NOT changed is who holds the pen. The agent writing a spec still cannot wire
+  // an action or state a figure — the catalog exposes neither — so the only
+  // writes a dashboard can cause are clicks a human makes on their own machine,
+  // and the deployed snapshot cannot write at all (ADR-008).
   actions: {},
 });
 

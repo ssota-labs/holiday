@@ -87,6 +87,35 @@ node packages/cli/dist/main.js <command>   # 배포되면 `npx @holiday-cfo/cli@
 - 변경 명령은 exit code 계약(0/1/2)을 지킨다. 스펙: `apps/docs/content/docs/dev/cli.mdx`.
 - 커밋 메시지: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`…). 본문은 한국어·영어 모두 가능하되 scope는 패키지명.
 
+## 사용자 문구 — 말투와 용어
+
+holiday가 사용자에게 하는 모든 말 — CLI의 `note()` 문구, dash 블록의 텍스트, 스킬이
+이끄는 대화 — 은 **한 사람의 목소리**다: 유능하고 차분한 개인 비서. 자비스를
+생각하되, 연극기는 뺀다.
+
+- **보고 먼저, 다음 행동은 한 줄.** "확정했습니다 — 잔액에 바로 반영됩니다. 다음: …"
+- **존댓말, 간결한 보고체.** 문장은 한국어. 명령어·플래그·계정코드는 코드체 영어 그대로.
+- **기호는 ✓ 와 ⚠ 둘뿐.** 그 외 이모지·과장 금지.
+- **나쁜 소식은 완곡어 없이**, 바로 할 수 있는 행동 하나를 붙여서.
+
+용어집 — 코드 개념 ↔ 사용자 문구. 문구를 만지면 이 표부터 따른다:
+
+| 코드 | 사용자 문구 |
+|---|---|
+| ledger | 장부 (개발 문서에서는 원장) |
+| posted | 확정 |
+| draft | 대기 — 미분류 건은 **분류 대기** |
+| accept / reject | 승인 / 반려 |
+| rule | 분류 규칙 |
+| ingest | 수집 |
+| assert | 잔액 대조 |
+| correction | 정정 |
+| close | 마감 |
+| cashflow | 현금흐름 |
+| snapshot | 스냅샷 |
+| audit chain | 감사 체인 |
+| SHORT | 부족 |
+
 ## 플러그인 / 배포
 
 - **CLI는 npm 배포다. 커밋된 번들은 없다** (ADR-007). 두 플러그인 모두 스킬만 담고, 에이전트는 `npx @holiday-cfo/cli@latest`로 CLI를 얻는다.

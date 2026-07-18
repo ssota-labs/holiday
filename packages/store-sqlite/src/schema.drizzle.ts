@@ -538,3 +538,28 @@ export const snapshotBalance = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.snapshotId, t.accountId, t.commodity] })],
 );
+
+/**
+ * Classification rules: payee pattern → category account.
+ *
+ * Rules live in the ledger DB — they travel with the money they classify — but
+ * they are CONFIG, not journal: adding, editing, or deleting a rule never touches
+ * a posted transaction. A rule changes what the NEXT import decides, exactly like
+ * a card cycle changes the next projection (fact/forecast, same side).
+ *
+ * `category` stores the account CODE, not id: rules are read and edited by
+ * humans, and codes are what humans recognise. A rename can orphan a rule; the
+ * applier treats an unresolvable code as no-match and warns rather than guessing.
+ */
+export const rule = sqliteTable(
+  'rule',
+  {
+    id: text('id').primaryKey(),
+    pattern: text('pattern').notNull(),
+    match: text('match').notNull().default('contains'),
+    category: text('category').notNull(),
+    priority: integer('priority').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [check('rule_match_kind', sql`${t.match} IN ('contains', 'regex')`)],
+);

@@ -43,6 +43,21 @@ for (const name of readdirSync(pkgsDir)) {
   if (pkg.version !== want) problems.push(`  ${pkg.name}: package.json says ${pkg.version}, tag says ${want}`);
 }
 
+// The plugin manifests version-gate DELIVERY, not npm: `claude plugin update`
+// compares plugin.json versions and treats equal as up-to-date. v0.2.0 shipped
+// with both manifests still saying 0.1.0, so every installed plugin silently
+// refused the new skills until users uninstalled and reinstalled. The tag now
+// gates these files too — the same mistake fails the release instead of the
+// user's update.
+for (const rel of [
+  '../plugins/claude-code/.claude-plugin/plugin.json',
+  '../plugins/codex/.codex-plugin/plugin.json',
+]) {
+  const pkg = JSON.parse(readFileSync(new URL(rel, import.meta.url), 'utf8'));
+  checked.push(rel.replace('../', ''));
+  if (pkg.version !== want) problems.push(`  ${rel.replace('../', '')}: says ${pkg.version}, tag says ${want}`);
+}
+
 if (problems.length > 0) {
   console.error(`✗ ${tag} does not match ${problems.length} package version(s):\n${problems.join('\n')}`);
   console.error('\nBump every public package to the tagged version before tagging.');

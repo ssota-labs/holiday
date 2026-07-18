@@ -22,7 +22,12 @@
 2. `pnpm --filter holiday-plugin test`로 스킬↔CLI 정합을 확인한다 (양쪽 SKILL.md를 검증한다).
 3. **커밋된 번들은 없다.** CLI는 npm 배포이고 에이전트는 `npx @holiday-cfo/cli@latest`로 얻는다
    (ADR-007). CLI를 바꾸면 스펙 문서와 버전만 맞추면 된다.
-4. `plugins/*/.*-plugin/plugin.json`의 version/description을 스펙 문서
+4. 사용자 문구(`note()`·dash 블록·스킬 대화)를 만지면 `AGENTS.md`의 **말투·용어집**을
+   따른다 — 한 목소리, 한 용어.
+5. 릴리스 버전은 **플러그인 매니페스트까지** 한 몸이다 — `plugins/*/.*-plugin/plugin.json`의
+   `version`이 태그와 다르면 릴리스 게이트(`scripts/check-release-version.mjs`)가 실패한다.
+   `claude plugin update`는 이 버전으로 최신 여부를 판단하므로, 안 올리면 스킬이 배포돼도
+   설치된 플러그인엔 영원히 안 닿는다 (v0.2.0에서 실제로 겪음). description은 스펙 문서
    (`apps/docs`의 `<SpecVersion>`)와 어긋나지 않게 둔다.
 
 마켓플레이스 메타: `.claude-plugin/marketplace.json` (`source: ./plugins/claude-code`).

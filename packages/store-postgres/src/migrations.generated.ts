@@ -109,5 +109,12 @@ export const MIGRATIONS: readonly InlinedMigration[] = [
       "CREATE TRIGGER audit_log_immutable_update\nBEFORE UPDATE ON audit_log\nFOR EACH ROW EXECUTE FUNCTION holiday_audit_log_append_only();",
       "CREATE TRIGGER audit_log_immutable_delete\nBEFORE DELETE ON audit_log\nFOR EACH ROW EXECUTE FUNCTION holiday_audit_log_append_only();"
     ]
+  },
+  {
+    "name": "20260718033614_rules",
+    "hash": "9e2ce203c063840741571c4a9b8b5983e97c49990c33e0737f61eb193e78cc6e",
+    "statements": [
+      "CREATE TABLE \"rule\" (\n\t\"id\" text PRIMARY KEY,\n\t\"pattern\" text NOT NULL,\n\t\"match\" text DEFAULT 'contains' NOT NULL,\n\t\"category\" text NOT NULL,\n\t\"priority\" integer DEFAULT 0 NOT NULL,\n\t\"created_at\" text NOT NULL,\n\tCONSTRAINT \"rule_match_kind\" CHECK (\"match\" IN ('contains', 'regex'))\n);"
+    ]
   }
 ];

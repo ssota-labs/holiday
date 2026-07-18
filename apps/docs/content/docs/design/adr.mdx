@@ -187,4 +187,29 @@ CLI는 `@holiday-cfo/cli`로 npm에 배포한다. 두 플러그인은 스킬만 
 블록 어휘가 한 버전으로 함께 움직인다.
 </Decision>
 
+<Decision
+  id="ADR-008"
+  title="로컬 dash는 조종석, 배포 dash는 사진"
+  status="accepted"
+  date="2026-07-18"
+  commit="HEAD"
+  rejected={[
+    { option: '대시보드 완전 read-only 유지', because: '분류 대기(draft)를 비우는 UX가 없으면 사용자는 CLI 텍스트로 수천 건을 다뤄야 한다. 가계부 앱처럼 클릭으로 고르는 화면이 필요하다는 요구가 명시적으로 있었다.' },
+    { option: 'json-render 카탈로그 actions 로 쓰기 노출', because: '에이전트가 spec 에 액션을 배선할 수 있게 된다. 이 시스템의 불변 원칙은 "에이전트는 숫자도 쓰기도 못 넣는다"이고, 카탈로그는 그 강제 지점이다. 쓰기는 블록 내부 구현(fetch)으로 감춰서 에이전트 표면엔 아무것도 추가하지 않는다.' },
+    { option: '브라우저에서 ledger.db 직접 접근', because: '대시보드가 원장을 여는 순간 CLI 의 불변식 링이 전부 우회된다. 쓰기는 반드시 CLI 를 거친다 — 라우트는 transport 일 뿐.' },
+  ]}
+>
+대시보드에 상호작용(분류 대기 큐)이 들어가면서 경계를 명시한다:
+
+- **로컬 dash (`pnpm dev`)** — 조종석. 템플릿의 `/api/holiday/*` 라우트가 CLI 를
+  셸로 호출한다. 클릭 = `holiday review accept --category` 한 번. 검증·감사 체인
+  전부 CLI 소유 그대로.
+- **배포 dash (Codex Sites, 정적 호스트)** — 사진. 서버가 없으니 라우트도 없고,
+  블록의 첫 fetch 가 실패하면 한 줄 안내로 접힌다. **실패 모드 자체가 보안 경계다.**
+
+에이전트 표면은 그대로다: 카탈로그에 액션도 금액 prop 도 없다. 대시보드가 일으킬
+수 있는 쓰기는 사용자가 자기 기계에서 누르는 클릭뿐이다.
+</Decision>
+
+
 
