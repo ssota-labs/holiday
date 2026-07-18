@@ -218,6 +218,7 @@ lean on — read one when a workflow points at it or the user asks *why*:
 | `references/automation.md` | Scheduling a workflow on this host (Claude Code / Cursor / Codex). |
 | `references/concepts/ledger-model.md` | Explaining *why* a number is what it is — units vs weight, the no-tolerance rule, foreign currency. |
 | `references/concepts/accounts.md` | Creating an account, naming it, or several cards under one issuer. |
+| `references/concepts/transfers.md` | Moving money between the user's own accounts — the everyday case, and matching transfers when importing multiple accounts' history. |
 | `references/concepts/schedules.md` | Setting up a card billing cycle, a 할부, or a 정기지출 — and the traps in each. |
 | `references/concepts/recipes.md` | The exact shape of a screenshot ingest, FX purchase, refund, or correction. |
 

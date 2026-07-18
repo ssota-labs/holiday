@@ -38,3 +38,8 @@ is an agent task and not a CLI flag.
   against the statement so a mis-parsed sign shows up immediately.
 
 Never invent an amount or a date to make a row balance. If a row is ambiguous, ask.
+
+**Transfers between the user's own accounts are the trap here** — one transfer
+shows up as a withdrawal in one file and a deposit in another, and merging them is
+its own problem (the row never says which account it went to). Import the accounts
+you have, then match transfers per `../concepts/transfers.md`.

@@ -111,6 +111,7 @@ Read the one that matches the task, not upfront.
 | `references/automation.md` | Scheduling a workflow (Codex Automations / `codex exec` + cron). |
 | `references/concepts/ledger-model.md` | Explaining *why* a number is what it is — units vs weight, the no-tolerance rule, foreign currency. |
 | `references/concepts/accounts.md` | Creating or naming an account. |
+| `references/concepts/transfers.md` | Moving money between the user's own accounts — the everyday case, and matching transfers when importing multiple accounts' history. |
 | `references/concepts/schedules.md` | Setting up a card cycle, 할부, or 정기지출. |
 | `references/concepts/recipes.md` | Recording from a screenshot, FX purchases, refunds, corrections, 마감. |
 
