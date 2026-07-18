@@ -28,9 +28,6 @@ CLI가 맡는 일:
 /plugin marketplace add ssota-labs/holiday-cfo
 /plugin install holiday-cfo@holiday-cfo
 이거를 기반으로 holiday-cfo 플러그인을 세팅하고, 가계부를 만들어줘.
-이 폴더는 private git 저장소로 두라고 알려줘.
-원장은 KRW로 init하고, 주요 통장·신용카드를 하나씩 물어보면서 등록해줘.
-카드는 마감일·결제일까지. 끝나면 지금 현금흐름을 보여줘.
 ```
 
 **Codex** — 터미널에서 플러그인을 깐 뒤, 채팅에 나머지 말을 넣는다.
@@ -42,9 +39,6 @@ codex plugin install holiday-cfo
 
 ```
 holiday-cfo 플러그인을 기준으로 가계부를 만들어줘.
-이 폴더는 private git 저장소로 두라고 알려줘.
-원장은 KRW로 init하고, 주요 통장·신용카드를 하나씩 물어보면서 등록해줘.
-카드는 마감일·결제일까지. 끝나면 지금 현금흐름을 보여줘.
 ```
 
 **Node 24+**가 필요하다. 플러그인은 스킬만 싣고, 원장 CLI는 처음 쓸 때 `npx @holiday-cfo/cli@latest`로 받는다.
