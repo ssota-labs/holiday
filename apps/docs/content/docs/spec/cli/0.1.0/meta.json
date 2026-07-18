@@ -19,5 +19,6 @@
     "checkpoint"
   ],
   "collapsible": true,
-  "defaultOpen": false
+  "defaultOpen": false,
+  "pagesIndex": "index"
 }

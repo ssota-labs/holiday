@@ -9,16 +9,32 @@
 @source '../components/**/*.tsx';
 
 /*
- * Sidebar scroll — keep Radix ScrollArea's Viewport as the scroller.
- * Do NOT force overflow:visible on the viewport or overflow-y:auto on the
- * root: that breaks nested Collapsible height animation (accordion appears
- * stuck open/closed while aria-expanded drifts).
- *
- * Wheel scrolling: ensure the viewport can receive overflow and overscroll
- * is contained. Fade mask stays on the viewport (fumadocs default).
+ * Sidebar scroll: leave Radix ScrollArea viewport as the scroller.
+ * Do not force overflow:visible on the viewport — that breaks Collapsible.
  */
 #nd-sidebar [data-radix-scroll-area-viewport],
 #nd-sidebar-mobile [data-radix-scroll-area-viewport] {
   overscroll-behavior: contain;
   scrollbar-width: thin;
+}
+
+/*
+ * Sidebar accordion reliability.
+ *
+ * fumadocs CollapsibleContent uses data-[state=closed]:animate-fd-collapsible-up.
+ * Radix Presence waits for animationend before applying `hidden`. In some
+ * embeds (Cursor browser preview) that event never fires, so aria-expanded
+ * flips to false / chevron rotates but children stay visible.
+ *
+ * Skip the height animation in the sidebar and hide closed panels immediately.
+ */
+#nd-sidebar [data-state='closed'].overflow-hidden,
+#nd-sidebar-mobile [data-state='closed'].overflow-hidden {
+  animation: none !important;
+  display: none !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }

@@ -4,5 +4,6 @@
     "prd-0.1-foundation"
   ],
   "collapsible": true,
-  "defaultOpen": true
+  "defaultOpen": true,
+  "pagesIndex": "index"
 }
