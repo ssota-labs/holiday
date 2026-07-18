@@ -1250,7 +1250,13 @@ ingest
         });
         out.push({ itemId, txnId: txn.value.id, status: itemStatus, category, warnings: [...ruleWarnings, ...warnings] });
       }
-      return { batchId, items: out };
+      // Counts ride in the JSON, not only in the stderr notes: with --json the
+      // notes are suppressed (stderr is reserved for the error envelope there),
+      // and the agent driving this CLI usually passes --json — so the "drafts
+      // remain, open the categorize screen" signal must survive in the payload
+      // it actually reads.
+      const pendingCount = out.filter((i) => i.status === 'pending').length;
+      return { batchId, postedCount: out.length - pendingCount, pendingCount, items: out };
     });
 
     const response = JSON.stringify(result);
@@ -1270,8 +1276,8 @@ ingest
     // Count what actually happened — a --post batch can still leave drafts (the
     // unclassified rows), and reporting the whole batch as POSTED would hide the
     // exact items that need a human.
-    const posted = result.items.filter((i) => i.status === 'accepted').length;
-    const pending = result.items.length - posted;
+    const posted = result.postedCount;
+    const pending = result.pendingCount;
     if (posted > 0) note(`${posted}건 POSTED — 잔액에 바로 반영됩니다.`);
     if (pending > 0) {
       note(`${pending}건은 분류 미매칭이라 DRAFT로 남았습니다 (잔액 제외).`);
