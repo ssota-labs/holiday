@@ -36,7 +36,7 @@ grows. The cadences that match the workflows:
 | Monthly | 1st of the month | `holiday: run the monthly close for last month` |
 
 Adjust the wording to how the user speaks. The point is that the fired prompt
-lands back in this skill and triggers the right workflow — see `workflows.md`.
+lands back in this skill and triggers the right workflow — see `workflows/` (daily.md, weekly.md, monthly.md).
 
 ## The shape of the offer
 

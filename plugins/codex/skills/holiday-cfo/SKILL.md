@@ -59,20 +59,20 @@ committed, and flags the day the balance goes negative. Read the ⚠ line out lo
 **What-if, without writing anything:** `holiday cashflow --spend "2026-09-01 5000000
 새 노트북" --receive "2026-12-25 3000000 보너스"` folds hypotheticals into the runway
 and touches nothing. `--spend` leaves, `--receive` arrives, both repeat. See the
-Simulate workflow in `references/workflows.md`.
+Simulate workflow in `references/workflows/simulate.md`.
 
 ## Workflows
 
-The real uses are routines, not one-off commands — full detail in
-`references/workflows.md`, scheduling in `references/automation.md`:
+The real uses are routines, not one-off commands. Read only the one you need — each
+is a self-contained file under `references/workflows/`. Scheduling is in
+`references/automation.md`.
 
-- **Setup** — accounts, opening balances, import a CSV/Excel history (you read the
-  file and script the entries), then offer to schedule the rest.
-- **Daily** — record yesterday, show tomorrow's cash flow.
-- **Weekly** (Sunday) — assets & liabilities, next week's cash flow, this week reviewed.
-- **Monthly** (1st) — assert balances, then `holiday close`.
-- **Simulate** — `cashflow --spend/--receive` on a big decision.
-- **Ask** — answer from the ledger; compute, don't give market advice.
+- **Setup** — `references/workflows/setup.md` — accounts, opening balances, CSV/Excel import.
+- **Daily** — `references/workflows/daily.md` — record yesterday, show tomorrow's cash flow.
+- **Weekly** (Sun) — `references/workflows/weekly.md` — assets & liabilities, next week, this week.
+- **Monthly** (1st) — `references/workflows/monthly.md` — assert, then `holiday close`.
+- **Simulate** — `references/workflows/simulate.md` — `cashflow --spend/--receive`.
+- **Ask** — `references/workflows/ask.md` — answer from the ledger; no market advice.
 
 ## Recording from a screenshot
 
@@ -80,7 +80,7 @@ Read it and record it directly with `holiday txn add` — the review queue is fo
 you genuinely want a human to check a batch first, not a default. You are the parser
 (no OCR), so read the amount carefully; when it is unclear, ask rather than guess. A
 mistake is one correcting entry, not a crisis. The draft/review flow, when you do
-want it, is in `references/recipes.md`.
+want it, is in `references/concepts/recipes.md`.
 
 ## Showing it as a dashboard
 
@@ -108,12 +108,11 @@ Read the one that matches the task, not upfront.
 
 | File | Read it when |
 |---|---|
-| `references/workflows.md` | Running a routine — setup, daily, weekly, monthly, simulate, CSV/Excel import. The main map. |
 | `references/automation.md` | Scheduling a workflow (Codex Automations / `codex exec` + cron). |
-| `references/ledger-model.md` | Explaining *why* a number is what it is — units vs weight, the no-tolerance rule, foreign currency. |
-| `references/accounts.md` | Creating or naming an account. |
-| `references/schedules.md` | Setting up a card cycle, 할부, or 정기지출. |
-| `references/recipes.md` | Recording from a screenshot, FX purchases, refunds, corrections, 마감. |
+| `references/concepts/ledger-model.md` | Explaining *why* a number is what it is — units vs weight, the no-tolerance rule, foreign currency. |
+| `references/concepts/accounts.md` | Creating or naming an account. |
+| `references/concepts/schedules.md` | Setting up a card cycle, 할부, or 정기지출. |
+| `references/concepts/recipes.md` | Recording from a screenshot, FX purchases, refunds, corrections, 마감. |
 
 ## What this cannot do yet
 

@@ -54,17 +54,18 @@ directory must be a **private** repository.
 
 ## Workflows
 
-The real uses of this tool are routines, not one-off commands. Full detail in
-`references/workflows.md`; schedule them on this host via `references/automation.md`.
+The real uses of this tool are routines, not one-off commands. Read only the one
+you need — each is a self-contained file. Schedule them via
+`references/automation.md`.
 
-| Workflow | When | What |
+| Workflow | When | Read |
 |---|---|---|
-| **Setup** | first session | accounts, opening balances, import a CSV/Excel history (you read the file and script the entries), then offer to schedule the rest |
-| **Daily** | each morning | record yesterday, show tomorrow's cash flow |
-| **Weekly** | Sunday | assets & liabilities, next week's cash flow, this week reviewed |
-| **Monthly** | 1st | assert balances, then `holiday close` |
-| **Simulate** | a big decision | `cashflow --spend/--receive` — what-if, folded in, nothing written |
-| **Ask** | anytime | answer from the ledger; compute, don't give market advice |
+| **Setup** | first session | `references/workflows/setup.md` — accounts, opening balances, CSV/Excel import, then offer to schedule the rest |
+| **Daily** | each morning | `references/workflows/daily.md` — record yesterday, show tomorrow's cash flow |
+| **Weekly** | Sunday | `references/workflows/weekly.md` — assets & liabilities, next week's cash flow, this week reviewed |
+| **Monthly** | 1st | `references/workflows/monthly.md` — assert balances, then `holiday close` |
+| **Simulate** | a big decision | `references/workflows/simulate.md` — `cashflow --spend/--receive`, nothing written |
+| **Ask** | anytime | `references/workflows/ask.md` — answer from the ledger; compute, don't give market advice |
 
 **Record directly with `holiday txn add`.** The review queue is for when you are
 genuinely unsure, not a default — the user asked not to approve every coffee, and a
@@ -102,7 +103,7 @@ holiday txn add --date 2026-07-17 --payee "이마트" \
 
 A card purchase credits the **card**, not cash — no money moves yet. Paying the
 card bill is a separate transaction, later. That gap is the whole point of the
-tool; see `references/ledger-model.md`.
+tool; see `references/concepts/ledger-model.md`.
 
 ## Foreign currency
 
@@ -169,8 +170,8 @@ holiday cashflow --until 2027-06-30 \
 ```
 
 `--spend` is money leaving, `--receive` is arriving — no sign to guess — and both
-repeat. Each appears as `가정: <label>`; the ledger is untouched. See the Simulate
-workflow in `references/workflows.md`.
+repeat. Each appears as `가정: <label>`; the ledger is untouched. See the Simulate workflow in
+`references/workflows/simulate.md`.
 
 ## Showing it as a dashboard
 
@@ -209,14 +210,16 @@ willing to share — it is a snapshot of their money.
 
 Do not read these upfront. Read the one that matches the task.
 
+The workflows above are in `references/workflows/`. These are the concepts they
+lean on — read one when a workflow points at it or the user asks *why*:
+
 | File | Read it when |
 |---|---|
-| `references/workflows.md` | Running a routine — setup, daily, weekly, monthly, simulate, and importing a CSV/Excel history. The main map. |
 | `references/automation.md` | Scheduling a workflow on this host (Claude Code / Cursor / Codex). |
-| `references/ledger-model.md` | The user asks *why* a number is what it is; you need to explain units vs weight, the no-tolerance rule, or foreign currency. |
-| `references/accounts.md` | Creating accounts, or unsure how to name or categorise one. |
-| `references/schedules.md` | Setting up a card billing cycle, a 할부, or a 정기지출 — and the traps in each. |
-| `references/recipes.md` | Recording from a screenshot, FX purchases, refunds, corrections. |
+| `references/concepts/ledger-model.md` | Explaining *why* a number is what it is — units vs weight, the no-tolerance rule, foreign currency. |
+| `references/concepts/accounts.md` | Creating an account, naming it, or several cards under one issuer. |
+| `references/concepts/schedules.md` | Setting up a card billing cycle, a 할부, or a 정기지출 — and the traps in each. |
+| `references/concepts/recipes.md` | The exact shape of a screenshot ingest, FX purchase, refund, or correction. |
 
 ## What this cannot do yet
 

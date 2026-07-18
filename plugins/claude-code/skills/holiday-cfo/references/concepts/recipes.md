@@ -117,9 +117,14 @@ Do not adjust another leg to make it fit. The residual is telling you something.
 
 ## A mistake
 
-The journal is append-only. `holiday txn add` a correcting entry dated today —
-never edit history. If they want it gone entirely, that is a reversal (the exact
-opposite entry) plus a re-entry.
+The journal is append-only, so you never edit a past entry — you `holiday txn add`
+a correcting one. A wrong amount: post the difference. A transaction that should not
+exist: post its exact opposite (a reversal), then the right one if there is one.
+
+Before a month is closed its entries are still live; after `holiday close` they are
+locked, and a correction dated today is the only way in. This is exactly why
+recording directly (rather than gating on review) is safe — a mistake is one more
+entry, not a lost afternoon.
 
 ## Setting up from scratch
 
