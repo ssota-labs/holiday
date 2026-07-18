@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build && pnpm run check:rules",
+    "build": "next build && pnpm run check:rules && pnpm run check:planning",
     "start": "next start",
+    "test": "node --test --experimental-strip-types scripts/*.test.ts",
     "typecheck": "tsc --noEmit",
     "postinstall": "fumadocs-mdx",
-    "check:rules": "node --experimental-strip-types scripts/check-rule-links.ts"
+    "check:rules": "node --experimental-strip-types scripts/check-rule-links.ts",
+    "check:planning": "node --experimental-strip-types scripts/check-planning.ts"
   },
   "dependencies": {
     "@xyflow/react": "^12.10.0",

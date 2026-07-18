@@ -39,6 +39,20 @@ export const docs = defineDocs({
       status: z.enum(['draft', 'active', 'done']).optional(),
       /** Story IDs included in a PRD. */
       stories: z.array(z.string()).optional(),
+      /** Stable cross-document identifier (PRD-*, US-*, SPEC-*, PLAN-*). */
+      id: z.string().optional(),
+      /** Lifecycle for specs and implementation plans. */
+      stage: z
+        .enum(['draft', 'accepted', 'ready', 'active', 'done', 'superseded'])
+        .optional(),
+      /** Determines which planning references a plan must carry. */
+      changeType: z.enum(['product', 'bugfix', 'maintenance']).optional(),
+      /** PRD ID implemented by a plan. */
+      prd: z.string().optional(),
+      /** Spec IDs implemented by a plan. */
+      specs: z.array(z.string()).optional(),
+      /** Repository paths an implementation plan permits changing. */
+      codeAreas: z.array(z.string()).optional(),
     }),
   },
   meta: { schema: metaSchema },
