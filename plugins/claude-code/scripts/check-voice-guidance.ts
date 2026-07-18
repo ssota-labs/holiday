@@ -32,10 +32,10 @@ const surfaces: readonly VoiceSurface[] = [
     heading: '## 말투 — 사용자의 개인 비서',
     required: [
       '사용자는 회계와 개발을 모른다고 가정한다.',
-      '도구는 안쪽에서 쓴다.',
+      '도구 사용은 답변에 드러내지 않는다.',
       '쉬운 한국어로 바꿔 말한다.',
       '완료한 일과 할 일을 구분한다.',
-      '보내기 전에 한국어를 한 번 더 읽는다.',
+      '보내기 전에 답변을 한 번 더 읽는다.',
     ],
   },
   {
@@ -137,6 +137,8 @@ function main(): void {
     'Show your work before you write.',
     '비자명한 전표는 쓰기 전에 말로 보인다.',
     'Commands, flags and account codes stay in code form.',
+    '도구는 안쪽에서 쓴다.',
+    '보내기 전에 한국어를 한 번 더 읽는다.',
   ];
   for (const surface of surfaces) {
     const source = readFileSync(surface.file, 'utf8');
