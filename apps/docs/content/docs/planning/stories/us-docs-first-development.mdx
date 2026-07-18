@@ -1,0 +1,26 @@
+---
+title: US-docs-first-development
+description: 구현 전에 요구·계약·실행 계획을 검토 가능한 문서로 확정하고 싶다
+type: conceptual
+summary: 코드보다 기획이 먼저 기본 브랜치에 존재한다.
+id: US-docs-first-development
+---
+
+**As a** 저장소 관리자  
+**I want** 구현 전에 요구·계약·실행 계획을 검토 가능한 문서로 확정하고 싶다  
+**So that** 코드와 문서의 순서가 뒤집히지 않고 변경 이유와 검증 방법이 남는다
+
+### 수락 기준
+
+1. 제품 변경은 PRD·스펙·구현계획을 연결한다.
+2. 버그 수정은 기존 요구·계약과 구현계획을 연결한다.
+3. 유지보수는 최소한 구현계획을 연결한다.
+4. 구현 PR이 참조하는 계획은 PR의 base 브랜치에 `ready` 상태로 존재한다.
+5. 같은 PR에서 새 계획과 코드를 함께 추가하면 검증이 실패한다.
+6. 깨진 문서 참조와 중복 ID는 저장소 테스트가 실패한다.
+
+### 추적
+
+- 스펙: [개발 선행 게이트](/docs/spec/development/docs-first-workflow)
+- 구현계획: [PLAN-docs-first-development](/docs/planning/plans/plan-docs-first-development)
+- PRD: [PRD-docs-first-development](/docs/planning/prds/prd-docs-first-development)
