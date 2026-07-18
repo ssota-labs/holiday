@@ -70,7 +70,7 @@ import {
   scheduleInterest,
 } from '@holiday-cfo/core';
 
-import { bakeDatasets, scaffold } from './dash.js';
+import { bakeDatasets, scaffold, scaffoldLedgerDocs } from './dash.js';
 import { INGEST_SUBMISSION, type IngestItemInput } from './ingest.js';
 import { type DeriveWeight, UsageError, parseLeg } from './legs.js';
 import { createWorkspace, openLedger, readConfig, requireWorkspace } from './workspace.js';
@@ -119,8 +119,16 @@ program
       for (const c of registry.all()) await uow.upsertCommodity(c);
     });
     await store.close();
-    out({ workspace: ws, functionalCurrency: currency, closeGrain: o.closeGrain });
+    // The project's AGENTS.md / CLAUDE.md — the skill's references never land in
+    // the user's folder, so without these a plugin-less session in this folder
+    // knows neither the voice nor the rules. Re-running init on an old ledger
+    // adds them; existing files are never overwritten.
+    const docs = scaffoldLedgerDocs(process.cwd(), VERSION);
+    out({ workspace: ws, functionalCurrency: currency, closeGrain: o.closeGrain, docs });
     note(`장부를 만들었습니다: ${ws}`);
+    if (docs.created.length > 0) {
+      note(`에이전트 지침을 만들었습니다: ${docs.created.join(', ')} — 이 폴더에서 일하는 에이전트의 말투와 규칙입니다.`);
+    }
     note(`ledger.db는 커밋해 두세요. 이 저장소는 반드시 비공개(private)여야 합니다 — 당신의 돈입니다.`);
   });
 

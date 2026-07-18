@@ -9,6 +9,6 @@ Fired on the 1st by the scheduler (`../automation.md`), or on demand.
    the point — a month with a wrong balance is not closed, it is frozen.
 3. **Close.** `holiday close <month>`. Posts FX revaluation for foreign monetary
    accounts, snapshots balances, and locks the journal for that month. After close,
-   an entry can only be changed by a correction dated today — see
-   `../concepts/recipes.md`.
+   an entry can only be changed by a correction dated today (recipes are in the
+   ledger `AGENTS.md`).
 4. **Report.** Net worth change, biggest movements, how the month compared.

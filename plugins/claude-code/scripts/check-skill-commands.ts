@@ -42,6 +42,15 @@ const BIN = resolve(PLUGIN, '..', '..', 'packages', 'cli', 'dist', 'main.js');
  */
 const CODEX_SKILL_MD = resolve(PLUGIN, '..', 'codex', 'skills', 'holiday-cfo', 'SKILL.md');
 
+/**
+ * The ledger project's AGENTS.md template is a THIRD claim surface. `holiday
+ * init` scaffolds it into every user's folder, where it outlives any plugin
+ * update — a stale command there misleads sessions for as long as the ledger
+ * exists. It absorbed references/concepts/, so it now carries most of the
+ * command claims the concepts used to.
+ */
+const LEDGER_DOCS_MD = resolve(PLUGIN, '..', '..', 'packages', 'cli', 'templates', 'ledger', 'AGENTS.md');
+
 /** `holiday <cmd>` mentions in the skill, in prose or in a fenced block. */
 // Hyphens are part of subcommand names (`apply-rules`) — without them the
 // regex truncated `review apply-rules` to `review apply` and reported a ghost.
@@ -112,7 +121,7 @@ function commandTree(): { leaves: Set<string>; groups: Map<string, Set<string>> 
 }
 
 function main(): void {
-  const files = [...walk(SKILL), CODEX_SKILL_MD];
+  const files = [...walk(SKILL), CODEX_SKILL_MD, LEDGER_DOCS_MD];
   const claimed = new Map<string, string>();
 
   for (const f of files) {

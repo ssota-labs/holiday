@@ -4,12 +4,15 @@ Record directly, fix later — this is the default across all workflows (see the
 skill body). The goal here is a ledger that reflects reality now, then as much
 history as is worth entering.
 
-1. **Create it.** `holiday init --currency KRW` (ask the currency).
-2. **Accounts — offer the standard chart.** Propose `../concepts/chart.md` ("이
-   표준 차트로 시작할까요?") and create what the user accepts, then their actual
-   banks/cards/debts on top. Mark spendable accounts `--cash`. Set card billing
-   cycles with `holiday card add`, 할부 and 정기지출, loans. Naming rules in
-   `../concepts/accounts.md`, schedules in `../concepts/schedules.md`.
+1. **Create it.** `holiday init --currency KRW` (ask the currency). This also
+   writes the project's `AGENTS.md`/`CLAUDE.md` — the concepts, the standard
+   chart, the voice. Everything below leans on that file; read it now if your
+   host has not auto-loaded it.
+2. **Accounts — offer the standard chart.** Propose the chart from the ledger
+   `AGENTS.md` (§표준 차트: "이 표준 차트로 시작할까요?") and create what the
+   user accepts, then their actual banks/cards/debts on top. Mark spendable
+   accounts `--cash`. Set card billing cycles with `holiday card add`, 할부 and
+   정기지출, loans — naming rules and the schedule traps are in the same file.
 3. **Classification rules, before importing — do not skip this.** And seed them
    from the DATA, not from imagination: parse the raw file first (without
    importing), count payees by frequency, and bring the user the top of that
@@ -116,6 +119,8 @@ automatically.
 **Transfers between the user's own accounts are the trap here** — one transfer
 shows up as a withdrawal in one file and a deposit in another, and merging them is
 its own problem (the row never says which account it went to). Import the accounts
-you have, then match transfers per `../concepts/transfers.md` — the pairing logic
-is already written (`../../scripts/match-transfers.mjs`); you only write the
-per-bank parser.
+you have, then match transfers per the ledger `AGENTS.md` (§이체) — three tiers:
+auto (self-named, equal amount, ±1 day), flagged (collisions, wallet
+round-trips), orphans (park in a placeholder, NEVER confirm as Expenses). The
+pairing logic is already written (`../../scripts/match-transfers.mjs`); you only
+write the per-bank parser.

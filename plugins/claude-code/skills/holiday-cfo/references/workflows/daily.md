@@ -5,9 +5,9 @@ Fired each morning by the scheduler (`../automation.md`), or run on demand.
 1. **Ask for yesterday.** "어제 쓴 거 있어요?" Take screenshots, a bank export, or
    just what they tell you.
 2. **Record it,** straight in with `holiday txn add` — no review gate. If something
-   is wrong, fix it after (see `../concepts/recipes.md`).
-   A move between the user's own accounts is a transfer, not spending — two asset
-   legs, net worth unchanged. See `../concepts/transfers.md`.
+   is wrong, fix it after with a correcting entry (recipes are in the ledger
+   `AGENTS.md`). A move between the user's own accounts is a transfer, not
+   spending — two asset legs, net worth unchanged.
 3. **If anything landed as an unmatched draft**, open the dash preview for them
    (start the dev server; don't just suggest it) so the 분류 대기 card is one
    click away — or add the obvious rule and `review apply-rules --accept`.

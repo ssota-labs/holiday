@@ -69,7 +69,10 @@ holiday verify                # is the ledger sound and the audit chain intact
 
 If a command reports `no .holiday/ found`, the user has no ledger here yet.
 `holiday init --currency KRW` creates one — but ask first, and tell them the
-directory must be a **private** repository.
+directory must be a **private** repository. `init` also writes the project's
+`AGENTS.md`/`CLAUDE.md` — the voice, the glossary, and every concept an agent in
+this folder needs, with or without this plugin. If an older ledger lacks them,
+re-run `holiday init` (existing files are never overwritten).
 
 ## Workflows
 
@@ -101,7 +104,7 @@ Only reach for the review queue when you genuinely want a human to check a batch
 before it counts. It holds entries as drafts until accepted:
 
 ```bash
-holiday ingest submit --idem-key K1 --data '{ "items": [ ... ] }'   # schema in recipes.md
+holiday ingest submit --idem-key K1 --data '{ "items": [ ... ] }'   # schema in the ledger's AGENTS.md
 holiday review list
 holiday review accept <id>
 ```
@@ -122,7 +125,8 @@ holiday txn add --date 2026-07-17 --payee "이마트" \
 
 A card purchase credits the **card**, not cash — no money moves yet. Paying the
 card bill is a separate transaction, later. That gap is the whole point of the
-tool; see `references/concepts/ledger-model.md`.
+tool; the full model (units vs weight, signs, corrections) is in the ledger
+folder's `AGENTS.md`.
 
 ## Foreign currency
 
@@ -233,17 +237,15 @@ willing to share — it is a snapshot of their money.
 
 Do not read these upfront. Read the one that matches the task.
 
-The workflows above are in `references/workflows/`. These are the concepts they
-lean on — read one when a workflow points at it or the user asks *why*:
+The workflows above are in `references/workflows/`. The **concepts** they lean
+on — the ledger model, account naming, the standard chart, schedules, transfers,
+recipes — live in the ledger folder's own `AGENTS.md`, which `holiday init`
+writes and your host auto-loads. If it is missing (an older ledger), re-run
+`holiday init` to add it. The only reference left here:
 
 | File | Read it when |
 |---|---|
 | `references/automation.md` | Scheduling a workflow on this host (Claude Code / Cursor / Codex). |
-| `references/concepts/ledger-model.md` | Explaining *why* a number is what it is — units vs weight, the no-tolerance rule, foreign currency. |
-| `references/concepts/accounts.md` | Creating an account, naming it, or several cards under one issuer. |
-| `references/concepts/transfers.md` | Moving money between the user's own accounts — the everyday case, and matching transfers when importing multiple accounts' history. |
-| `references/concepts/schedules.md` | Setting up a card billing cycle, a 할부, or a 정기지출 — and the traps in each. |
-| `references/concepts/recipes.md` | The exact shape of a screenshot ingest, FX purchase, refund, or correction. |
 
 ## What this cannot do yet
 
@@ -251,7 +253,9 @@ Say so plainly rather than improvising:
 
 - **No OCR.** You are the parser. `holiday ingest submit` takes what you read;
   it never looks at the image except to hash it.
-- **No auto-accept.** Every draft needs a human. There is no rule engine yet.
+- **No auto-accept for the unmatched.** A rule match posts directly, but a row no
+  rule catches stays in 분류 대기 for a human — amounts and categories are never
+  guessed.
 - **할부수수료 is not computed.** Read the per-row fees off the statement and pass
   `--fees`; issuer formulas differ and a plausible wrong number would corrupt the
   cash flow projection.

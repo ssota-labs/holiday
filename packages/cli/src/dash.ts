@@ -154,6 +154,37 @@ export function scaffold(dest: string, version: string): ScaffoldResult {
   return { created, skipped };
 }
 
+/**
+ * `holiday init` — write the ledger project's AGENTS.md / CLAUDE.md.
+ *
+ * The skill's references live in the plugin cache, not in the user's project —
+ * so a session opened in the ledger folder WITHOUT the plugin (another host, a
+ * plain coding agent) knows nothing: not the voice, not the money-item rule,
+ * not that Uncategorized is a queue. These two files make the folder
+ * self-describing; every agent host auto-loads them.
+ *
+ * Never clobbered: the user may have edited them. An old ledger picks them up
+ * by re-running `holiday init` (createWorkspace is re-runnable).
+ */
+export function scaffoldLedgerDocs(dest: string, version: string): ScaffoldResult {
+  const src = join(templatesDir(), 'ledger');
+  if (!existsSync(src)) {
+    throw new Error(`holiday: the ledger docs template is missing from this install (looked in ${src})`);
+  }
+  const created: string[] = [];
+  const skipped: string[] = [];
+  for (const entry of readdirSync(src)) {
+    const to = join(dest, entry);
+    if (existsSync(to)) {
+      skipped.push(entry);
+      continue;
+    }
+    writeFileSync(to, readFileSync(join(src, entry), 'utf8').replaceAll('__HOLIDAY_VERSION__', version));
+    created.push(entry);
+  }
+  return { created, skipped };
+}
+
 function walkFiles(path: string): string[] {
   const st = statSync(path);
   if (st.isFile()) return [path];
