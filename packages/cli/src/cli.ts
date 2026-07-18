@@ -1,10 +1,18 @@
 // Loaded dynamically by main.ts, AFTER env.ts has patched process.emitWarning.
 // Do not make this the bin entry point — see the comment in main.ts.
 import { existsSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 
 import { Command } from 'commander';
 import { z } from 'zod';
+
+// Read the CLI version from package.json rather than hard-coding it. It is not
+// cosmetic: `holiday dash init` pins the blocks packages to THIS version, so a
+// stale literal here would scaffold a dashboard against an OLD catalog. Resolved
+// at runtime relative to the built file (dist/main.js → ../package.json), which
+// holds in the npm tarball too (package.json sits at its root).
+const VERSION = (createRequire(import.meta.url)('../package.json') as { version: string }).version;
 
 import {
   type Account,
@@ -86,7 +94,7 @@ const registry = CommodityRegistry.from(WELL_KNOWN_COMMODITIES);
 const amounts = new AmountFactory(registry);
 
 const program = new Command();
-program.name('holiday').description('A double-entry CFO ledger for one person.').version('0.1.0');
+program.name('holiday').description('A double-entry CFO ledger for one person.').version(VERSION);
 
 program
   .command('init')
@@ -1756,7 +1764,7 @@ dash
     const dest = resolve(process.cwd(), o.dir);
     // The blocks are pinned to THIS CLI's version — see scaffold(). A dashboard
     // and the vocabulary it is written in are one release.
-    const { created, skipped } = scaffold(dest, program.version() ?? '0.1.0');
+    const { created, skipped } = scaffold(dest, VERSION);
 
     // Bake immediately. A scaffold whose first `pnpm dev` shows an empty page
     // teaches the agent that the dashboard is broken, and it starts inventing
