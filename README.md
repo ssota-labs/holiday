@@ -1,46 +1,35 @@
 # holiday
 
-1인용 복식부기 원장. 가계부·부채·자산·현금흐름을 에이전트와 함께 관리한다.
+채팅으로 가계부를 적는 1인용 복식부기 원장이다. 에이전트가 말을 듣고, CLI가 장부를 지키며, 데이터는 로컬 SQLite에 남는다.
 
-말로 하거나 캡쳐를 넘기면 에이전트가 `holiday` CLI를 호출하고, CLI가 장부 규칙·통화·스케줄을 지킨다. 수기 정리만으로는 장부가 맞는지 검증하기 어렵다. 그 검증을 CLI가 맡는다.
-
-> **경고:** v0.1이다. 원장 포맷은 아직 약속이 아니다. 마이그레이션은 append-only지만 스키마는 굳지 않았다. 자기 돈으로 쓰기 전에 [아직 없는 것](#아직-없는-것)을 읽어라.
-
-**바로 시작 → [설치](#설치).** Claude Code나 Codex 채팅에 두 줄 붙이면 끝이다. 그다음은 "가계부 시작하자"처럼 말만 하면 된다.
+지금은 **v0.1**이다. 스키마와 명령이 아직 굳지 않았다. 깨질 변경이 올 수 있다. 바로 쓰려면 [설치](#설치)로 가라.
 
 ## 개요
 
-`holiday`는 에이전트용 가계부 CLI다.
+`holiday`는 사람이 직접 스프레드시트를 만지는 도구가 아니다. Claude Code나 Codex 같은 에이전트에게 "어제 커피 썼어", "다음 달 카드값 버티나"라고 말하면, 에이전트가 `holiday` CLI를 호출한다.
 
-- **에이전트** — 말을 이해하고, 캡쳐·CSV를 읽고, 명령을 친다.
-- **CLI** — 복식부기 균형, 통화, 카드·할부 스케줄을 책임진다.
-- **원장** — 폴더 안 `.holiday/ledger.db`(SQLite)에 남는다.
+CLI가 맡는 일:
 
-잔액 숫자 하나보다 **어느 날 현금이 모자라는지**를 본다.
+- 복식부기 균형 (`SUM(weight) === 0`, 허용오차 없음)
+- 통화·계정 적합성
+- 카드·할부·정기지출·대출 스케줄을 현금흐름으로 합치기
+
+에이전트는 영수증을 읽고, 계정을 고르고, 명령을 친다. 숫자를 지어내거나 불균형을 "얼추" 맞추는 권한은 없다.
+
+원장 파일은 작업 폴더의 `.holiday/ledger.db`다. 돈 기록이니 **비공개(private) git 저장소**에 두라.
 
 ## 설치
 
-이미 **Claude Code**나 **Codex**를 쓰고 있다면, 아래 두 줄을 그대로 붙이면 된다. ("마켓플레이스"는 플러그인을 받아오는 창구다. 개념은 몰라도 된다.)
+### Claude Code
 
-**Claude Code** — 채팅에 붙여넣기:
+채팅에 붙여넣지 말고, 사람이 직접 입력한다.
 
 ```
 /plugin marketplace add ssota-labs/holiday-cfo
 /plugin install holiday-cfo@holiday-cfo
 ```
 
-**Codex** — 터미널에서:
-
-```bash
-codex plugin marketplace add ssota-labs/holiday-cfo
-codex plugin install holiday-cfo
-```
-
-원장을 다루는 CLI는 처음 쓸 때 `npx @holiday-cfo/cli`로 받는다. **Node 24+**만 있으면 된다 ([nodejs.org](https://nodejs.org)).
-
-> **왜 프롬프트 한 줄로 자동 설치가 안 되나?** Claude Code는 보안상 채팅으로 플러그인을 설치하지 못하게 막는다. 붙여넣은 `/plugin ...`은 실행되지 않고 텍스트로 남는다. 위 두 줄은 사람이 직접 입력해야 한다.
-
-**폴더에 박아두고 자동 설치.** 가계부 폴더의 `.claude/settings.json`에 아래를 넣으면, 그 폴더에서 Claude Code를 열 때 설치가 뜬다.
+가계부 폴더에 `.claude/settings.json`을 두면, 그 폴더를 열 때 플러그인 설치를 제안한다.
 
 ```json
 {
@@ -53,161 +42,183 @@ codex plugin install holiday-cfo
 }
 ```
 
-## 사용 방법
-
-설치 후 아래를 채팅에 붙이면 세팅이 끝난다. 에이전트가 `init`부터 계좌 등록까지 한다.
+### Codex
 
 ```
-가계부를 시작하고 싶어. 이 폴더를 비공개(private) git 저장소로 두라고 알려주고,
-holiday 원장을 만든 다음, 내 주요 통장과 신용카드를 하나씩 물어보면서 등록해줘.
-카드는 마감일·결제일도 같이. 다 되면 지금 현금흐름을 보여줘.
+codex plugin marketplace add ssota-labs/holiday-cfo
+codex plugin install holiday-cfo
 ```
 
-이후엔 명령어를 외울 필요가 없다.
+### CLI
 
-- **"어제 이마트에서 42,000원 썼어"** → 기록
-- **"은행 앱 거래내역 캡쳐한 거 있는데 넣어줘"** → 이미지를 읽어 입력
-- **"거래내역 CSV 파일 있어"** → 파일을 읽어 통째로 입력
-- **"이번 달 카드값 내면 현금 괜찮아?"** → 할부·정기지출까지 계산
-- **"3천만원짜리 전세 들어가면 6월에 현금 어때?"** → 원장은 건드리지 않고 시뮬레이션
-
-원장은 만든 폴더의 `.holiday/`에 저장된다. **비공개(private) 저장소에 두어라** — 당신 돈이다.
-
-<details>
-<summary>플러그인 없이 CLI만 직접 쓰기</summary>
-
-터미널에서 `npx @holiday-cfo/cli`로 쓸 수 있다. `holiday`는 그 CLI다.
+플러그인은 스킬만 싣는다. 원장을 다루는 바이너리는 npm에 있다. **Node 24+**가 필요하다.
 
 ```bash
-holiday init --currency KRW
-holiday account add Assets:Bank:KB:Checking --commodity KRW --cash
-holiday account add Liabilities:Card:Shinhan --commodity KRW
-holiday card add Liabilities:Card:Shinhan --funding Assets:Bank:KB:Checking \
-  --close-day 14 --payment-day 1 --label "신한"
-
-holiday txn add --date 2026-07-17 --payee "이마트" \
-  --leg "Expenses:Food:Groceries 42000 KRW" \
-  --leg "Liabilities:Card:Shinhan -42000 KRW"
-
-holiday cashflow
+npx @holiday-cfo/cli@latest --help
 ```
 
-</details>
+아래 문서에서 `holiday <명령>`이라고 쓰면, 에이전트·터미널 모두 `npx @holiday-cfo/cli@latest <명령>`으로 읽으면 된다.
+
+## 사용 방법
+
+설치한 뒤 가계부로 쓸 폴더에서 에이전트에게 이렇게 말하면 된다.
+
+```
+이 폴더에 가계부를 만들자. private git으로 두라고 알려줘.
+KRW 원장으로 init하고, 통장·카드 계정을 잡아줘.
+```
+
+에이전트가 `holiday init`부터 계정 등록까지 이어 간다. 그다음부터는 일상 말로 충분하다.
+
+```
+어제 스타벅스에서 카드로 6500원 썼어.
+신한카드 청구주기 알려줄게 — 마감 14일, 결제 1일.
+다음 분기 현금이 빠지는 날이 언제야?
+이 카드 명세 캡쳐야. 읽어 줘.
+```
+
+터미널만 쓸 때도 같은 CLI다.
+
+```bash
+npx @holiday-cfo/cli@latest init --currency KRW
+npx @holiday-cfo/cli@latest account add Assets:Bank:KB:Checking --cash
+npx @holiday-cfo/cli@latest cashflow --until 2026-10-31
+npx @holiday-cfo/cli@latest verify
+```
+
+도움말은 `holiday --help`, `holiday <명령> --help`다. 정책·명령 스펙은 [`apps/docs`](apps/docs)에 있다.
 
 ## 어떻게 동작하는가
 
-일상 사용은 이런 흐름이다.
+사람 ↔ 에이전트 ↔ CLI ↔ 원장의 흐름:
 
 ```mermaid
 flowchart LR
-  You[나] -->|말·캡쳐·CSV| Agent[에이전트]
-  Agent -->|holiday 명령| CLI[holiday CLI]
-  CLI -->|읽고 씀| Ledger[".holiday/ledger.db"]
-  CLI -->|결과| Agent
-  Agent -->|답| You
+  person[사람] -->|말·캡쳐| agent[에이전트]
+  agent -->|npx holiday …| cli[CLI]
+  cli -->|읽기·쓰기| db[(SQLite<br/>.holiday/ledger.db)]
+  cli -->|JSON / 표| agent
+  agent -->|답| person
 ```
 
-역할은 나뉜다. 에이전트는 이해하고 입력을 돕고, CLI는 장부가 깨지지 않게 막는다.
+역할은 이렇게 나뉜다.
 
 ```mermaid
 flowchart TB
-  subgraph chat [채팅]
-    Agent[에이전트<br/>이해·입력 도움]
+  subgraph agent_side [에이전트]
+    understand[말·이미지 이해]
+    choose[계정·명령 선택]
+    ask[애매하면 물어봄]
   end
-  subgraph cli [CLI가 책임]
-    Inv[복식부기 균형]
-    Cur[통화·금액]
-    Sch[카드·할부 스케줄 예측]
+  subgraph cli_side [CLI]
+    bal[복식부기 균형]
+    ccy[통화·계정 검사]
+    sched[스케줄 → 현금흐름]
+    audit[감사 체인·verify]
   end
-  Agent --> cli
-  cli --> DB[(SQLite 원장)]
+  understand --> choose
+  choose -->|shell out| bal
+  bal --> ccy
+  ccy --> sched
+  sched --> audit
+  ask -.->|사람 확인| understand
 ```
 
-플러그인은 스킬만 담는다. CLI 본문은 npm에 있고, 에이전트가 `npx @holiday-cfo/cli`로 받는다.
+에이전트가 금액을 잘못 읽으면 CLI는 막지 못한다. 균형만 맞으면 틀린 숫자도 들어간다. 그래서 스킬은 쓰기 전에 전표를 말로 보여 주고, 흐린 숫자는 추측하지 말라고 못 박는다.
+
+스케줄(카드 청구, 할부, 정기지출, 대출)은 원장 밖에 산다. 예측을 전기하지 않는다. 금리가 바뀌거나 구독을 끊어도 과거 분개가 오염되지 않게 하려는 선택이다.
 
 ## 왜 만들었나
 
-가계부 앱은 대개 단식부기 + 카테고리에서 멈춘다. 그러면 두 가지가 어렵다.
+잔액 앱은 "지금 얼마"만 말한다. 한국 카드 생활에서는 그게 부족하다. 어제 긁은 돈이 언제 통장에서 빠지는지는 청구주기가 정한다. 할부는 회차로 나뉘고, 정기지출이 카드에 붙으면 발생일이 아니라 결제일을 탄다. 이 날짜들을 한 타임라인에 올려야 "다음 달 버티나"에 답할 수 있다.
 
-**신용카드.** 7/17에 긁은 커피는 그날 현금이 나가지 않는다. 8/14에 마감되고 9/1에 통장에서 빠진다. "잔액"은 이 간극을 모른다.
+다통화도 같은 이유로 처음부터 넣었다. 원화 통장과 달러 잔고를 같이 두면, 환율을 되곱해 균형을 맞추는 순간 반올림 구멍이 생긴다. `holiday`는 전기마다 사실 금액(`units`)과 측정 금액(`weight`, 기능통화)을 따로 두고, `SUM(weight_minor) === 0`만 지킨다. 단위당 환율(`@`)로 총액을 유도하지 않는다.
+
+`cashflow`가 그 답을 날짜 순으로 보여 준다. 잔고가 음수로 가는 날에는 `⚠ SHORT`가 붙는다.
 
 ```
 $ holiday cashflow --until 2026-10-31
 cash on hand (2026-07-17):  3000000 KRW
 
-2026-07-25   -      800000   →      2200000
-             월세                            800000
-2026-08-25   -     2267052   →      1000000
-             월세                            800000
-             KB 주담대 (1/360)              1467052
-2026-10-01   -      117000   →       -17000   ⚠ SHORT
-             냉장고 (2/12)                   100000
-             넷플릭스 (2026-08-17 결제분)      17000
+2026-07-25   -      800000   →       2200000
+             월세                                   800000
+2026-10-01   -      117000   →        -17000   ⚠ SHORT
+             냉장고 (2/12)                           100000
+             넷플릭스 (2026-08-17 결제분)                 17000
 
 ⚠ Short by 17000 KRW on 2026-10-01.
 ```
 
-`⚠ SHORT`가 답이다. 잔액은 숫자 하나를 주고, 현금흐름은 **어느 날 터지는지**를 준다.
-
-**다통화.** ₩1,000,000을 보내 $750.00을 받으면 내재환율이 1333.3333…으로 안 끝난다. 환율을 저장해 되곱하면 ₩999,998이 나오고, 허용오차를 두게 된다. 그 허용오차가 잡고 싶은 크기(누락된 ₩50 수수료)를 가린다.
-
-`holiday`는 전기마다 두 정수를 둔다 — `units`(사실, 자기 통화)와 `weight`(측정, KRW). 불변식은 `SUM(weight) = 0`이고, **정확히** 0이다. 허용오차 파라미터는 없다.
+잔액 숫자 하나가 아니라, **어느 날에 깨지는지**가 나온다.
 
 ## 저장소 구성
 
 ```mermaid
 flowchart TB
-  plugins[plugins<br/>스킬만] --> npx[npx CLI]
-  npx --> cli[packages/cli]
-  cli --> core[packages/core<br/>도메인·유스케이스]
-  cli --> sql[packages/store-sql<br/>LedgerStore 하나]
-  sql --> sqlite[store-sqlite]
-  sql --> pg[store-postgres]
-  docs[apps/docs<br/>정책·ADR·스펙] -.-> core
+  plugins[plugins/claude-code · codex<br/>스킬만]
+  cli[packages/cli<br/>composition root]
+  core[packages/core<br/>도메인·포트·유스케이스]
+  storesql[packages/store-sql<br/>LedgerStore 구현]
+  sqlite[packages/store-sqlite]
+  pg[packages/store-postgres]
+  testkit[packages/store-testkit]
+  blocks[packages/blocks · ui]
+  docs[apps/docs]
+
+  plugins -->|npx| cli
+  cli --> core
+  cli --> sqlite
+  sqlite --> storesql
+  pg --> storesql
+  storesql --> core
+  testkit --> core
+  cli --> blocks
+  docs -.->|정책·ADR·CLI 스펙| core
 ```
 
 | 경로 | 역할 |
 |---|---|
-| `packages/core/` | 도메인·포트·유스케이스. 바깥 어댑터를 import하지 않는다 |
-| `packages/store-sql/` | `LedgerStore` 구현 — 방언과 무관한 하나 |
-| `packages/store-sqlite/` | SQLite 드라이버·스키마·PRAGMA |
-| `packages/store-postgres/` | Postgres 드라이버·스키마 |
-| `packages/store-testkit/` | 적합성 스위트 — 포트 계약의 실행 가능한 검사 |
-| `packages/cli/` | composition root, dash 템플릿 (npm, bin: `holiday`) |
-| `packages/ui/` | shadcn primitive |
-| `packages/blocks/` | 대시보드 어휘 (도메인 블록 + json-render 카탈로그) |
-| `apps/docs/` | 정책·ADR·CLI 스펙 (Fumadocs) |
-| `plugins/claude-code/` | Claude Code 플러그인 (스킬만) |
-| `plugins/codex/` | Codex 플러그인 (스킬만) |
-
-문서: [apps/docs](https://github.com/ssota-labs/holiday-cfo/tree/main/apps/docs). 각 페이지에 `.md` 쌍둥이가 있다. 이 도구를 운전하는 쪽이 에이전트라서다.
+| `packages/core` | 도메인, 포트, 유스케이스. 바깥 어댑터를 import하지 않는다 |
+| `packages/store-sql` | `LedgerStore` 구현 하나. SQL 방언과 무관 |
+| `packages/store-sqlite` | `node:sqlite` 드라이버·스키마·PRAGMA |
+| `packages/store-postgres` | Postgres 드라이버·스키마·plpgsql (테스트는 in-process pglite) |
+| `packages/store-testkit` | 포트 적합성 스위트 |
+| `packages/cli` | 진입점, dash 템플릿. npm `@holiday-cfo/cli` |
+| `packages/blocks`, `packages/ui` | 대시보드 블록·shadcn primitive |
+| `apps/docs` | 정책, ADR, CLI 스펙 (Fumadocs) |
+| `plugins/claude-code`, `plugins/codex` | 호스트별 스킬. `references/`는 심링크 한 소스 |
 
 ## 설계 원칙
 
-| | |
-|---|---|
-| **환율이 아니라 상대금액으로 균형** | 환율은 표시용. 되곱하지 않으니 허용오차가 필요 없다 |
-| **금액은 i64 minor unit** | `number`는 2^53까지만 정확하다 |
-| **스케줄은 원장 밖** | 카드·할부·정기지출·대출은 예측이다. 전기하면 금리 변경이 과거를 오염시킨다 |
-| **SQLite가 system of record** | 감사는 `audit_log` 해시 체인. `git log`가 아니다 |
-| **Notion/Airtable은 원장이 될 수 없다** | 원자성·유니크 제약이 없다. `init()`이 티어 계약을 못 지키면 throw한다 |
+짧게만 적는다. 근거와 거부한 대안은 [`apps/docs`](apps/docs)의 정책·ADR에 있다.
 
-정책 규칙은 강제 테스트에 링크돼 있고, CI가 링크를 검사한다. 자세한 결정은 [ADR](https://github.com/ssota-labs/holiday-cfo/tree/main/apps/docs)에 있다.
+| 원칙 | 한 줄 |
+|---|---|
+| 의존 방향 | `core`는 바깥을 import하지 않는다. factory는 `cli`만 안다 |
+| 균형은 정확 | `SUM(weight_minor) === 0`. fuzz/epsilon 없음 |
+| 금액은 i64 | minor unit `bigint`. JS `number`로 왕복하지 않는다 |
+| 상대금액으로 균형 | `@@`는 총액(weight). `@` 환율 유도는 거부 |
+| 스케줄 ≠ 원장 | 카드·할부·정기지출·대출은 예측. 전기하지 않는다 |
+| engine 티어 | 원자적 다중행·UNIQUE·read-after-write를 못 하면 engine이 될 수 없다 |
+| 마이그레이션 | 적용분은 수정 금지. append만. 해시가 바뀌면 옛 원장이 안 열린다 |
+| CLI 배포 | 커밋된 번들 없음. 에이전트는 `npx @holiday-cfo/cli@latest` |
 
 ## 아직 없는 것
 
-없는 것을 적어 두는 편이 즉흥으로 메우는 것보다 낫다.
+없다고 말하는 편이, 빈칸을 그럴듯하게 메우는 것보다 낫다.
 
-- **OCR이 없다.** 에이전트가 파서다. `ingest submit`은 에이전트가 읽은 것을 받고, 이미지는 해시 말고는 보지 않는다. 제출은 **드래프트**로 들어가, 사람이 `review accept`하기 전까지 잔액에서 빠진다.
-- **자동 승인이 없다.** 모든 드래프트에 사람이 필요하다. 룰 엔진은 없다.
-- **유이자 할부수수료를 계산하지 않는다.** 명세서에서 읽은 값은 받는다(`--fees`). 카드사 공식은 제각각이라, 그럴듯하게 틀린 숫자가 예측을 조용히 오염시킨다.
-- **환율을 자동으로 가져오지 않는다.** `fx add`가 사용자가 준 값을 받는다. 없는 환율은 추측하지 않고 throw한다.
-- **대시보드는 스냅샷이지 라이브가 아니다.** `dash data`가 마지막으로 구운 것을 렌더한다. Codex Sites는 원격 정적 호스팅이라 `ledger.db`를 열 수 없다 — 라이브가 필요하면 Supabase 어댑터에 물려야 한다.
-- **18자리 ERC-20 토큰은 표현 불가.** i64라 ETH는 8자리로 절사한다. 개인 순자산엔 충분하고, 온체인 대사엔 틀리다.
+- **OCR 없음.** 이미지를 숫자로 바꾸는 건 에이전트 모델이다. CLI는 파싱된 값만 받는다.
+- **자동 승인 없음.** 드래프트·애매한 전표는 사람이 확인한다. 규칙 엔진으로 통과시키지 않는다.
+- **할부수수료 공식 없음.** 명세서에 찍힌 회차별 수수료만 `--fees`로 받는다. 카드사 식을 추정하지 않는다.
+- **환율 자동 수집 없음.** `holiday fx add`에 사람이 넣은 시세만 쓴다. API를 치지 않고, 없는 시세를 짐작하지도 않는다.
+- **대시보드는 스냅샷.** `holiday dash data`가 마지막으로 구운 JSON을 그린다. 원장을 실시간으로 열지 않는다. 바꾼 뒤에는 다시 굽는다.
+- **18자리 ERC-20은 표현 불가.** 금액이 i64라 ETH는 8자리로 자른다. 개인 순자산 추적에는 대체로 충분하고, 온체인 대사에는 맞지 않는다.
+
+README의 이 목록을 즉흥으로 메우지 마라. 없으면 없다고 하거나 이슈·스펙으로 올려라.
 
 ## 기여
 
-코드를 고칠 때는 [AGENTS.md](AGENTS.md)를 본다. 채팅에서 원장을 운전할 때는 플러그인 스킬(`plugins/claude-code/skills/holiday-cfo/` 또는 `plugins/codex/`)을 본다.
+로컬에서:
 
 ```bash
 pnpm install
@@ -217,14 +228,17 @@ pnpm typecheck
 pnpm lint
 ```
 
-CLI 실행 (빌드 후):
+패키지 단위 예:
 
 ```bash
-node packages/cli/dist/main.js <command>
+pnpm --filter @holiday-cfo/core test
+pnpm --filter @holiday-cfo/store-sqlite test
+pnpm --filter holiday-plugin test
+pnpm --filter docs run check:rules
 ```
 
-데모는 scratch 디렉터리에서. `holiday init`이 `.holiday/ledger.db`를 만든다. 사용자 원장을 테스트 fixture로 커밋하지 마라.
+코드를 고칠 때는 [AGENTS.md](AGENTS.md)를 본다. 채팅에서 원장을 운전할 때는 `plugins/claude-code/skills/holiday-cfo/`(또는 `plugins/codex/`) 스킬을 본다. 커밋 메시지는 Conventional Commits (`feat:`, `fix:`, `docs:` …).
 
 ## 라이선스
 
-MIT
+[MIT](LICENSE.md) · Copyright (c) 2026 ssota-labs
