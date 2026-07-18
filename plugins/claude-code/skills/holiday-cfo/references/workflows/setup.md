@@ -92,6 +92,27 @@ the whole reason this is an agent task and not a CLI flag.
 
 Never invent an amount or a date to make a row balance. If a row is ambiguous, ask.
 
+**Loan repayments in the history are the other trap.** A bank row like
+"대출원리금 500,000 출금" shows only the cash side; the principal/interest split
+lives in the lender's statement, and this ledger never invents an interest figure
+(observed values only — the same rule as 할부수수료). Do NOT anchor the loan at
+today's balance and then also replay past repayments — that double-reduces the
+debt. Instead, reconstruct by balance delta:
+
+1. Replay every repayment with the FULL amount against the liability
+   (`Liabilities:Loans:X`), no split.
+2. When the history ends, compare the replayed liability balance to the real
+   balance from the lender's app. The difference IS the total interest paid over
+   the period — a difference of two observations, so it is itself observed.
+3. Recognise it in one correcting entry (`Liabilities:Loans:X` ↔
+   `Expenses:Interest`), then `holiday assert` the liability at the real balance.
+
+Balance exact, total interest exact; only the per-payment timing of interest is
+lumped. If the user can export the lender's schedule, upgrade to a full
+reconstruction (per-payment splits — what `holiday loan pay` does going forward).
+Going forward, register the loan with `holiday loan add` so future payments split
+automatically.
+
 **Transfers between the user's own accounts are the trap here** — one transfer
 shows up as a withdrawal in one file and a deposit in another, and merging them is
 its own problem (the row never says which account it went to). Import the accounts
