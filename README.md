@@ -22,7 +22,7 @@ CLI가 맡는 일:
 
 ### Claude Code
 
-채팅에 붙여넣지 말고, 사람이 직접 입력한다.
+에이전트 답에 적힌 `/plugin …`은 실행되지 않는다. 아래 두 줄은 채팅에 직접 넣는다.
 
 ```
 /plugin marketplace add ssota-labs/holiday-cfo
