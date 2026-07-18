@@ -1267,13 +1267,18 @@ ingest
     await store.close();
 
     out(result);
-    if (o.post) {
-      note(`${result.items.length}건을 POSTED로 기록했습니다. 잔액에 바로 반영됩니다.`);
-    } else {
-      note(`${result.items.length}건을 DRAFT로 기록했습니다. 잔액·리포트에서 제외됩니다.`);
+    // Count what actually happened — a --post batch can still leave drafts (the
+    // unclassified rows), and reporting the whole batch as POSTED would hide the
+    // exact items that need a human.
+    const posted = result.items.filter((i) => i.status === 'accepted').length;
+    const pending = result.items.length - posted;
+    if (posted > 0) note(`${posted}건 POSTED — 잔액에 바로 반영됩니다.`);
+    if (pending > 0) {
+      note(`${pending}건은 분류 미매칭이라 DRAFT로 남았습니다 (잔액 제외).`);
+      note(`분류하기: 대시보드를 띄워 클릭으로 고르거나(\`holiday dash init\` 후 \`pnpm dev\` — 분류 대기 카드),`);
+      note(`          \`holiday rule add <패턴> <카테고리>\` 후 \`holiday review apply-rules --accept\`.`);
     }
     for (const i of result.items) for (const w of i.warnings) note(`  ⚠ ${w}`);
-    if (!o.post) note(`검토: \`holiday review list\` → \`holiday review accept <id>\``);
   });
 
 ingest

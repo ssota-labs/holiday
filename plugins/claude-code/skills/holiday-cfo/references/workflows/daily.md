@@ -8,6 +8,9 @@ Fired each morning by the scheduler (`../automation.md`), or run on demand.
    is wrong, fix it after (see `../concepts/recipes.md`).
    A move between the user's own accounts is a transfer, not spending — two asset
    legs, net worth unchanged. See `../concepts/transfers.md`.
-3. **Look ahead.** `holiday cashflow` — read the ⚠ line if there is one. That is
+3. **If anything landed as an unmatched draft**, open the dash preview for them
+   (start the dev server; don't just suggest it) so the 분류 대기 card is one
+   click away — or add the obvious rule and `review apply-rules --accept`.
+4. **Look ahead.** `holiday cashflow` — read the ⚠ line if there is one. That is
    the answer to "am I okay for tomorrow".
-4. **Re-bake the dashboard** if they keep one: `holiday dash data`.
+5. **Re-bake the dashboard** if they keep one: `holiday dash data`.

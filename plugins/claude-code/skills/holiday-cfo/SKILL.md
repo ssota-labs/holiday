@@ -175,7 +175,11 @@ repeat. Each appears as `가정: <label>`; the ledger is untouched. See the Simu
 
 ## Showing it as a dashboard
 
-When the user wants to *see* it, not read numbers, scaffold a dashboard:
+Two triggers, not one. When the user wants to *see* it, not read numbers — and
+**whenever an import leaves unmatched drafts**: in that case don't wait to be
+asked; scaffold if needed, start the dev server yourself, and point them at the
+분류 대기 card. A pending queue they have to discover by asking is a queue that
+never drains.
 
 ```bash
 holiday dash init          # writes ./dash — a vinext app, run anywhere

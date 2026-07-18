@@ -84,6 +84,10 @@ want it, is in `references/concepts/recipes.md`.
 
 ## Showing it as a dashboard
 
+Two triggers: the user asks to SEE it — and **an import left unmatched drafts**.
+On the second, don't wait to be asked: scaffold if needed, start the dev server,
+point them at the 분류 대기 card (one click per decision, ⌥-click saves a rule).
+
 ```bash
 holiday dash init          # writes ./dash — a vinext app
 cd dash && pnpm install && pnpm dev

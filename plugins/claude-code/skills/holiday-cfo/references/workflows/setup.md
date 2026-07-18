@@ -61,6 +61,13 @@ is an agent task and not a CLI flag.
   seconds. `--post` commits directly (no review queue).
 - Then `holiday verify` and `holiday balance`, and `assert` the closing balance
   against the statement so a mis-parsed sign shows up immediately.
+- **If unmatched drafts remain, put the categorize screen in front of the user —
+  don't make them ask.** Scaffold the dash if it doesn't exist
+  (`holiday dash init`), START the dev server yourself (your host can run and preview it — do
+  that, rather than pasting instructions), and point them at the 분류 대기 card:
+  one click per decision, ⌥-click to also save the rule. Rules they teach it
+  there shrink the next import's queue. Batch alternative when a pattern is
+  obvious: `holiday rule add` → `holiday review apply-rules --accept`.
 
 Never invent an amount or a date to make a row balance. If a row is ambiguous, ask.
 
