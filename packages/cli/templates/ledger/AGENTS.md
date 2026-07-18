@@ -114,11 +114,13 @@ Assets:Deposit:<종류>         # 보증금·청약·예적금 — --cash 아님
 Assets:Broker:<증권사>        # multi-commodity: --commodity 생략
 Assets:Property:<이름>        # --non-monetary
 Assets:Receivable:<대상>      # 빌려준 돈
+Assets:Receivable:Tax         # 중간예납·선납 세금 (환급·정산 대기). --cash 아님
 
 Liabilities:Card:<카드사>:<카드>               # + holiday card add 로 청구주기
 Liabilities:Card:<카드사>:<카드>:Installment   # 할부 잔액 (installment add 가 만듦)
 Liabilities:Loans:<기관>:<상품>                # + holiday loan add 로 상환 스케줄
 Liabilities:Payable:<대상>
+Liabilities:Payable:Tax       # 고지됐으나 아직 안 낸 세금
 
 Income:Salary / Bonus / Business / Interest / Dividend / Refund / Allowance
 Income:Uncategorized          # 분류 전 보관
@@ -126,7 +128,8 @@ Income:FX:Unrealized          # 마감 FX 재평가용 (close 전 필수)
 
 Expenses:Food:{Groceries,Dining,Cafe,Delivery}
 Expenses:Housing:{Rent,Utilities}
-Expenses:Telecom / Subscription / Insurance / Education / Leisure / Gift / Tax
+Expenses:Telecom / Subscription / Insurance / Education / Leisure / Gift
+Expenses:Tax:{Income,Withholding,VAT,Property,Other}  # 납부·확정된 세금 비용
 Expenses:Transport:{Public,Taxi,Car}
 Expenses:Health:{Medical,Fitness}
 Expenses:Shopping:{Clothing,Electronics,Household}
@@ -137,6 +140,13 @@ Expenses:Uncategorized        # 분류 전 보관
 Equity:Opening                # 개시잔액의 상대 계정
 ```
 
+**세금은 전용 모듈이 없다 — 계정과 전표로 끝난다.** `holiday balance --account Expenses:Tax`
+(또는 하위)가 **지금까지 비용으로 잡은 세금 합**이다. 종류가 필요하면 하위만 나누고,
+합계는 부모 prefix로 본다.
+
+선납·환급 대기는 비용이 아니라 `Assets:Receivable:Tax`다. 통장에서 나갈 때 자산으로
+잡고, 확정·종결 때 `Expenses:Tax`로 옮긴다. 그래서 “통장에서 나간 금액”과
+“비용으로 인식한 세금”이 어긋날 수 있다 — 둘 다 맞고, 질문이 다르다.
 **두 Uncategorized 계정은 카테고리가 아니라 대기열이다.** 수집이 규칙에 안 걸린
 건을 대기(draft)로 파킹하는 곳 — 건강한 장부는 이곳을 비운다
 (`holiday rule add` → `holiday review apply-rules --accept`, 또는 대시보드에서
@@ -247,6 +257,25 @@ holiday txn add --date 2026-08-01 --narration "신한 8월 결제" \
 # 수입 (실수령액; 공제 분해를 원하면 공제는 비용 leg, 총액을 Income:Salary로)
 holiday txn add --date 2026-07-01 --narration "7월 급여" \
   --leg "Assets:Bank:KB:Checking 3000000 KRW" --leg "Income:Salary -3000000 KRW"
+
+# 급여 + 원천징수 분해 (총액 400만, 원천 40만, 실수령 360만)
+holiday txn add --date 2026-07-25 --narration "7월 급여" \
+  --leg "Assets:Bank:KB:Checking 3600000 KRW" \
+  --leg "Expenses:Tax:Withholding 400000 KRW" \
+  --leg "Income:Salary -4000000 KRW"
+
+# 세금 바로 납부 (이력 = Expenses:Tax 잔액)
+holiday txn add --date 2024-05-31 --narration "종합소득세 중간예납" \
+  --leg "Expenses:Tax:Income 1200000 KRW" \
+  --leg "Assets:Bank:KB:Checking -1200000 KRW"
+
+# 선납 세금 — 나갈 때는 자산, 확정 때 비용
+holiday txn add --date 2024-05-31 --narration "중간예납 (선납)" \
+  --leg "Assets:Receivable:Tax 1200000 KRW" \
+  --leg "Assets:Bank:KB:Checking -1200000 KRW"
+holiday txn add --date 2025-05-31 --narration "중간예납 → 본세 충당" \
+  --leg "Expenses:Tax:Income 1200000 KRW" \
+  --leg "Assets:Receivable:Tax -1200000 KRW"
 
 # 환불 — 원 전표의 역방향 (결제와 다른 것이고, 상대 leg이 구분한다)
 holiday txn add --date 2026-07-20 --payee "이마트" --narration "반품" \
