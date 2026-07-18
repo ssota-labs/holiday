@@ -1,15 +1,15 @@
 {
-  "name": "ssota-labs",
-  "description": "Plugins from ssota-labs",
+  "name": "holiday-cfo",
+  "description": "holiday-cfo — a double-entry CFO ledger for one person.",
   "owner": {
     "name": "ssota-labs",
     "url": "https://github.com/ssota-labs"
   },
   "plugins": [
     {
-      "name": "holiday",
+      "name": "holiday-cfo",
       "source": "./plugins/claude-code",
-      "description": "A double-entry CFO ledger for one person: \uac00\uacc4\ubd80, \ubd80\ucc44, \uc790\uc0b0, \ud604\uae08\ud750\ub984."
+      "description": "A double-entry CFO ledger for one person: 가계부, 부채, 자산, 현금흐름."
     }
   ]
 }

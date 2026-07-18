@@ -53,24 +53,50 @@ cash on hand (2026-07-17):  3000000 KRW
 
 ```
 /plugin marketplace add ssota-labs/holiday-cfo
-/plugin install holiday@ssota-labs
+/plugin install holiday-cfo@holiday-cfo
 ```
 
 **Codex** — 터미널에서:
 
 ```bash
 codex plugin marketplace add ssota-labs/holiday-cfo
-codex plugin install holiday
+codex plugin install holiday-cfo
 ```
 
-이게 전부다. 나머지(원장을 다루는 CLI)는 처음 쓸 때 `npx @holiday-cfo/cli`로 자동으로
-받아진다. **Node 24+** 만 깔려 있으면 된다 ([nodejs.org](https://nodejs.org)에서 설치).
+나머지(원장을 다루는 CLI)는 처음 쓸 때 `npx @holiday-cfo/cli`로 자동으로 받아진다.
+**Node 24+** 만 깔려 있으면 된다 ([nodejs.org](https://nodejs.org)에서 설치).
+
+> **왜 프롬프트 하나로 자동 설치가 안 되나?** Claude Code는 보안상 채팅으로 플러그인을
+> 설치하지 못하게 막는다 — 붙여넣은 `/plugin ...`은 실행되지 않고 그냥 텍스트가 된다.
+> 그래서 위 두 줄은 사람이 직접 입력해야 한다.
+
+**매번 치기 싫으면 — 폴더에 박아두고 자동 설치.** 가계부 폴더의 `.claude/settings.json`에
+아래를 넣으면, 그 폴더에서 Claude Code를 열 때 설치가 자동으로 뜬다 (명령어 0개):
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "holiday-cfo": {
+      "source": { "source": "github", "repo": "ssota-labs/holiday-cfo" }
+    }
+  },
+  "enabledPlugins": { "holiday-cfo": "holiday-cfo" }
+}
+```
 
 ## 시작
 
-설치했으면 명령어를 외울 필요가 없다. 그냥 말하면 된다:
+설치했으면, 아래 한 덩어리를 채팅에 그대로 붙여넣으면 세팅이 끝난다. (설치와 달리
+이건 프롬프트라 에이전트가 알아서 다 한다 — `init`부터 계좌 등록까지.)
 
-- **"가계부 시작하고 싶어"** → 원장을 만들고 통장·카드 세팅을 같이 잡아준다
+```
+가계부를 시작하고 싶어. 이 폴더를 비공개(private) git 저장소로 두라고 알려주고,
+holiday 원장을 만든 다음, 내 주요 통장과 신용카드를 하나씩 물어보면서 등록해줘.
+카드는 마감일·결제일도 같이. 다 되면 지금 현금흐름을 보여줘.
+```
+
+이후엔 명령어를 외울 필요가 없다. 그냥 말하면 된다:
+
 - **"어제 이마트에서 42,000원 썼어"** → 기록
 - **"은행 앱 거래내역 캡쳐한 거 있는데 넣어줘"** → 이미지를 읽어서 입력
 - **"거래내역 CSV 파일 있어"** → 파일을 읽어서 통째로 입력

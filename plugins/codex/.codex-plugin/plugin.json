@@ -1,15 +1,24 @@
 {
-  "name": "holiday",
+  "name": "holiday-cfo",
   "version": "0.1.0",
   "description": "Drive the holiday CLI from a Codex session: record a personal double-entry ledger (가계부, 부채, 할부, 정기지출), project cash flow, and scaffold a shareable dashboard.",
-  "author": { "name": "ssota-labs", "url": "https://github.com/ssota-labs" },
+  "author": {
+    "name": "ssota-labs",
+    "url": "https://github.com/ssota-labs"
+  },
   "homepage": "https://github.com/ssota-labs/holiday-cfo",
   "repository": "https://github.com/ssota-labs/holiday-cfo",
   "license": "MIT",
-  "keywords": ["finance", "ledger", "double-entry", "cashflow", "가계부"],
+  "keywords": [
+    "finance",
+    "ledger",
+    "double-entry",
+    "cashflow",
+    "가계부"
+  ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "holiday",
+    "displayName": "holiday-cfo",
     "shortDescription": "A double-entry CFO ledger for one person, driven from chat.",
     "category": "Development"
   }
