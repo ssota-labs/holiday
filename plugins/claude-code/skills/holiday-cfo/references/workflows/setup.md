@@ -10,10 +10,12 @@ history as is worth entering.
    banks/cards/debts on top. Mark spendable accounts `--cash`. Set card billing
    cycles with `holiday card add`, 할부 and 정기지출, loans. Naming rules in
    `../concepts/accounts.md`, schedules in `../concepts/schedules.md`.
-3. **Classification rules, before importing.** Seed obvious ones from the chart —
-   `holiday rule add "스타벅스" Expenses:Food:Cafe` — so the import classifies
-   itself. Whatever no rule matches lands in Uncategorized as a DRAFT for the
-   user to pick later; every rule you add up front shrinks that pile.
+3. **Classification rules, before importing — do not skip this.** Seed the obvious
+   ones from the chart — `holiday rule add "스타벅스" Expenses:Food:Cafe`,
+   통신사·구독·편의점 등 10~20개면 대부분이 잡힌다. Rules only fire on `money`
+   items (see the import section), so this step and the item format below are one
+   mechanism: skip either half and every row lands unclassified. Whatever no rule
+   matches parks in Uncategorized as a DRAFT for the user to pick later.
 4. **Opening balances.** For each asset/liability that already has a balance, post
    it against `Equity:Opening` dated the start point:
    `holiday txn add --date 2026-01-01 --leg "Assets:Bank:Shinhan 4310000 KRW" --leg "Equity:Opening -4310000 KRW"`.
@@ -28,16 +30,30 @@ history as is worth entering.
 
 There is no `import` command, on purpose. Every bank's export is shaped
 differently, and a rigid parser would fight that. You are a better importer than a
-fixed schema: **read the file, work out what its columns mean, and write a small
-script that calls `holiday txn add` once per row.** That is the whole reason this
-is an agent task and not a CLI flag.
+fixed schema: **read the file, work out what its columns mean, and write a script
+that builds `money` items for one `ingest submit` batch.** You extract the facts;
+the rule table classifies; the human arbitrates the leftovers. That division is
+the whole reason this is an agent task and not a CLI flag.
 
 - Read the file. Figure out which column is the date, which is the amount, which is
   the description, and the sign convention (is a debit negative, or in a separate
   column?).
-- Map each row to a double entry. The money leg is the bank or card; the other leg
-  is a category (`Expenses:...`) or income. Ask the user how to categorise the ones
-  you cannot infer, or bucket them into `Expenses:Uncategorized` and tell them.
+- **Emit `money` items — facts only. Do NOT build the category leg yourself.**
+
+  ```json
+  { "date": "2016-03-17", "payee": "체크카드 버거킹고대중앙광장",
+    "money": { "account": "Assets:Bank:KB:Start", "amount": "-5300", "commodity": "KRW" } }
+  ```
+
+  The CLI completes the double entry: a rule picks the category (and the row
+  posts under `--post`); no rule → it parks in Uncategorized as a DRAFT for the
+  categorize screen. **The moment you write the category leg yourself, you have
+  switched the classifier off** — a full-`legs` item is treated as decided, rules
+  never run, and no queue appears. This exact mistake once posted 10,191 rows
+  straight into Uncategorized with zero drafts. Full `legs` are for rows that
+  genuinely carry their own category (FX with `@@`, or a category the file
+  itself states) — never for "I don't know", and never `...:Uncategorized` by
+  hand (the CLI now drafts those anyway, with a warning).
 - **Before parsing anything, run `holiday ingest list`.** It shows every import
   that ever ran — which source files, when, how many rows. The ledger is the
   provenance record, not your memory of the session; a file already listed is

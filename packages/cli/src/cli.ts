@@ -1173,6 +1173,20 @@ ingest
             { account: categoryCode, amount: counter, commodity: m.commodity },
           );
         }
+        // An explicit Uncategorized leg is a declaration of "undecided", whoever
+        // wrote it. A real import did exactly this — the parser hand-built
+        // `legs` with Expenses:Uncategorized, which skipped rule matching AND
+        // posted 10,191 rows as decided, so the classification pipeline never
+        // ran and no queue ever appeared. Uncategorized is a queue, not a
+        // category — so it drafts, in either item form.
+        if (item.legs?.some((l) => l.account.endsWith(':Uncategorized'))) {
+          decided = false;
+          category = item.legs.find((l) => l.account.endsWith(':Uncategorized'))!.account;
+          ruleWarnings.push(
+            'legs에 Uncategorized를 직접 쓰면 분류 규칙이 아예 돌지 않습니다. ' +
+              '카테고리를 모르는 행은 `money` 형식으로 내세요 — 규칙이 분류하고, 미매칭만 분류 대기로 남습니다.',
+          );
+        }
         const postings = effLegs.map((l) =>
           parseLeg(
             `${l.account} ${l.amount} ${l.commodity}${l.weight ? ` @@ ${l.weight}` : ''}`,
