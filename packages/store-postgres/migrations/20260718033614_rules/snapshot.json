@@ -1,0 +1,3682 @@
+{
+  "version": "8",
+  "dialect": "postgres",
+  "id": "f4389ce0-63fc-4d21-8fe8-128fe9b4688c",
+  "prevIds": [
+    "c67e577f-8647-4314-97a8-c8e67b47a3e8"
+  ],
+  "ddl": [
+    {
+      "isRlsEnabled": false,
+      "name": "account",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "audit_log",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "balance_assertion",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "book",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "card",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "command_log",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "commodity",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "fx_rate",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "ingest_batch",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "ingest_item",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "installment",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "installment_row",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "loan",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "loan_schedule_row",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "period",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "posting",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "recurring",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "rule",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "snapshot",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "snapshot_balance",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "txn",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "type",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parent_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "monetary",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "cash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "placeholder",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "opened_on",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "closed_on",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "seq",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "event",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "subject",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'{}'",
+      "generated": null,
+      "identity": null,
+      "name": "detail",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "prev_hash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "hash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "as_of",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "expected_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "note",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "schema_version",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "functional_currency",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'month'",
+      "generated": null,
+      "identity": null,
+      "name": "close_grain",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'Asia/Seoul'",
+      "generated": null,
+      "identity": null,
+      "name": "timezone",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "dedupe_key_version",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "7",
+      "generated": null,
+      "identity": null,
+      "name": "fx_max_staleness_days",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "funding_account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "cycle_close_day",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "payment_month_offset",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "payment_day",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "label",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "idem_key",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "command_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "request_sha256",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "command_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "response_json",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "command_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "command_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "commodity"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "exponent",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "commodity"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "kind",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "commodity"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "commodity"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "as_of",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "base",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "quote",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "rate",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fetched_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_batch"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_sha256",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_batch"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_batch"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "submitted_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_batch"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "item_count",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_batch"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "batch_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "dedupe_key",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "dedupe_authority",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "external_ref",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "merchant",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "txn_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'pending'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reason",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parsed_json",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "card_account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "liability_account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "txn_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "purchased_on",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "months",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "total_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "interest_free",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "label",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "installment_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment_row"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "seq",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment_row"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "payment_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment_row"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "principal_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment_row"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "fee_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "installment_row"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "funding_account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "interest_account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "principal_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "annual_rate_text",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "method",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "term_months",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "first_payment_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "payment_day",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "label",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "loan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "seq",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "due_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "opening_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "principal_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "interest_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "closing_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "period"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "grain",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "period"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "start",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "period"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "end",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "period"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'open'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "period"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "txn_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "seq",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "units_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "weight_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "weight_source",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fx_rate_text",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fx_rate_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lot_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'normal'",
+      "generated": null,
+      "identity": null,
+      "name": "kind",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "memo",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "label",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "expense_account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "funding_account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "amount_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "cadence_kind",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "day_of_month",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "month",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "active_from",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "active_to",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "rule"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "pattern",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "rule"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'contains'",
+      "generated": null,
+      "identity": null,
+      "name": "match",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "rule"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "category",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "rule"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "priority",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "rule"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "rule"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "period_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "kind",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "as_of",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "snapshot_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "units_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "weight_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "period_units_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "period_weight_minor",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "booking_commodity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "payee",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "narration",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "system_kind",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "corrects_txn_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "fx_estimated",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'[]'",
+      "generated": null,
+      "identity": null,
+      "name": "tags_json",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'{}'",
+      "generated": null,
+      "identity": null,
+      "name": "meta_json",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "sealed",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reason",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "code",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "account_by_code",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "account_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "as_of",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "commodity",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "balance_assertion_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "as_of",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "balance_assertion_by_date",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "as_of",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "base",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "quote",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "source",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "fx_rate_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "fx_rate"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "dedupe_key",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "ingest_item_by_dedupe",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "batch_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "ingest_item_by_batch",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "card_account_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "installment_by_card",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "payment_date",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "installment_row_by_date",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "installment_row"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "due_date",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "loan_schedule_by_date",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "grain",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "start",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "period_grain_start",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "period"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "account_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "posting_by_account",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "funding_account_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "recurring_by_funding",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "period_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "kind",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "snapshot_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "snapshot"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "date",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "txn_by_date",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "txn_by_status",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "commodity"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "account_commodity_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "balance_assertion_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "commodity"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "balance_assertion_commodity_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "balance_assertion"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "functional_currency"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "book_functional_currency_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "card_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "funding_account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "card_funding_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "base"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "fx_rate_base_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "fx_rate"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "quote"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "fx_rate_quote_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "fx_rate"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "batch_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "ingest_batch",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "ingest_item_batch_id_ingest_batch_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "txn_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "txn",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "ingest_item_txn_id_txn_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "card_account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "installment_card_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "liability_account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "installment_liability_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "txn_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "txn",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "installment_txn_id_txn_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "commodity"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "installment_commodity_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "installment_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "installment",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "installment_row_installment_id_installment_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "installment_row"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "loan_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "funding_account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "loan_funding_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "interest_account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "loan_interest_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "commodity"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "loan_commodity_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "loan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "loan",
+      "columnsTo": [
+        "account_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "loan_schedule_row_loan_id_loan_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "txn_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "txn",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "posting_txn_id_txn_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "posting_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "commodity"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "posting_commodity_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "expense_account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "recurring_expense_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "funding_account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "recurring_funding_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "commodity"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "recurring_commodity_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "period_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "period",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "snapshot_period_id_period_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "snapshot"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "snapshot_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "snapshot",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "snapshot_balance_snapshot_id_snapshot_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "account_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "snapshot_balance_account_id_account_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "commodity"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "snapshot_balance_commodity_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "booking_commodity"
+      ],
+      "schemaTo": "public",
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "txn_booking_commodity_commodity_code_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "columns": [
+        "installment_id",
+        "seq"
+      ],
+      "nameExplicit": false,
+      "name": "installment_row_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "installment_row"
+    },
+    {
+      "columns": [
+        "loan_id",
+        "seq"
+      ],
+      "nameExplicit": false,
+      "name": "loan_schedule_row_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "columns": [
+        "txn_id",
+        "seq"
+      ],
+      "nameExplicit": false,
+      "name": "posting_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "columns": [
+        "snapshot_id",
+        "account_id",
+        "commodity"
+      ],
+      "nameExplicit": false,
+      "name": "snapshot_balance_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "snapshot_balance"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "account_pkey",
+      "schema": "public",
+      "table": "account",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "seq"
+      ],
+      "nameExplicit": false,
+      "name": "audit_log_pkey",
+      "schema": "public",
+      "table": "audit_log",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "balance_assertion_pkey",
+      "schema": "public",
+      "table": "balance_assertion",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "book_pkey",
+      "schema": "public",
+      "table": "book",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "account_id"
+      ],
+      "nameExplicit": false,
+      "name": "card_pkey",
+      "schema": "public",
+      "table": "card",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "idem_key"
+      ],
+      "nameExplicit": false,
+      "name": "command_log_pkey",
+      "schema": "public",
+      "table": "command_log",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "code"
+      ],
+      "nameExplicit": false,
+      "name": "commodity_pkey",
+      "schema": "public",
+      "table": "commodity",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "fx_rate_pkey",
+      "schema": "public",
+      "table": "fx_rate",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "ingest_batch_pkey",
+      "schema": "public",
+      "table": "ingest_batch",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "ingest_item_pkey",
+      "schema": "public",
+      "table": "ingest_item",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "installment_pkey",
+      "schema": "public",
+      "table": "installment",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "account_id"
+      ],
+      "nameExplicit": false,
+      "name": "loan_pkey",
+      "schema": "public",
+      "table": "loan",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "period_pkey",
+      "schema": "public",
+      "table": "period",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "recurring_pkey",
+      "schema": "public",
+      "table": "recurring",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "rule_pkey",
+      "schema": "public",
+      "table": "rule",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "snapshot_pkey",
+      "schema": "public",
+      "table": "snapshot",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "txn_pkey",
+      "schema": "public",
+      "table": "txn",
+      "entityType": "pks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "code"
+      ],
+      "nullsNotDistinct": false,
+      "name": "account_code_key",
+      "schema": "public",
+      "table": "account",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "hash"
+      ],
+      "nullsNotDistinct": false,
+      "name": "audit_log_hash_key",
+      "schema": "public",
+      "table": "audit_log",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "source_sha256"
+      ],
+      "nullsNotDistinct": false,
+      "name": "ingest_batch_source_sha256_key",
+      "schema": "public",
+      "table": "ingest_batch",
+      "entityType": "uniques"
+    },
+    {
+      "value": "\"type\" IN ('asset','liability','equity','income','expense')",
+      "name": "account_type_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "value": "\"monetary\" IN (0,1)",
+      "name": "account_monetary_bool",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "value": "\"cash\" IN (0,1)",
+      "name": "account_cash_bool",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "value": "\"placeholder\" IN (0,1)",
+      "name": "account_placeholder_bool",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "value": "\"id\" = 'book'",
+      "name": "book_singleton",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "value": "\"close_grain\" IN ('day','week','month','quarter','year')",
+      "name": "book_close_grain_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "book"
+    },
+    {
+      "value": "\"cycle_close_day\" BETWEEN 1 AND 31",
+      "name": "card_close_day_range",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "value": "\"payment_month_offset\" BETWEEN 0 AND 3",
+      "name": "card_offset_range",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "value": "\"payment_day\" = -1 OR \"payment_day\" BETWEEN 1 AND 31",
+      "name": "card_payment_day_range",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "card"
+    },
+    {
+      "value": "\"exponent\" BETWEEN 0 AND 9",
+      "name": "commodity_exponent_range",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "commodity"
+    },
+    {
+      "value": "\"kind\" IN ('fiat','crypto','security','unit')",
+      "name": "commodity_kind_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "commodity"
+    },
+    {
+      "value": "\"item_count\" >= 0",
+      "name": "ingest_batch_count_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "ingest_batch"
+    },
+    {
+      "value": "\"status\" IN ('pending','accepted','rejected')",
+      "name": "ingest_item_status_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "value": "\"dedupe_authority\" IN ('image','external_ref','natural')",
+      "name": "ingest_item_authority_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "ingest_item"
+    },
+    {
+      "value": "\"months\" >= 1",
+      "name": "installment_months_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "value": "\"total_minor\" > 0",
+      "name": "installment_total_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "value": "\"card_account_id\" <> \"liability_account_id\"",
+      "name": "installment_accounts_differ",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "value": "\"interest_free\" IN (0,1)",
+      "name": "installment_interest_free_bool",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "installment"
+    },
+    {
+      "value": "\"seq\" >= 1",
+      "name": "installment_row_seq_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "installment_row"
+    },
+    {
+      "value": "\"principal_minor\" > 0",
+      "name": "loan_principal_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "value": "\"term_months\" >= 1",
+      "name": "loan_term_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "value": "\"method\" IN ('annuity','equal_principal','bullet','interest_only')",
+      "name": "loan_method_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "value": "\"payment_day\" = -1 OR \"payment_day\" BETWEEN 1 AND 31",
+      "name": "loan_payment_day_range",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "value": "\"account_id\" <> \"funding_account_id\"",
+      "name": "loan_accounts_differ",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "loan"
+    },
+    {
+      "value": "\"seq\" >= 1",
+      "name": "loan_schedule_seq_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "loan_schedule_row"
+    },
+    {
+      "value": "\"grain\" IN ('day','week','month','quarter','year')",
+      "name": "period_grain_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "period"
+    },
+    {
+      "value": "\"status\" IN ('open','closed','locked')",
+      "name": "period_status_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "period"
+    },
+    {
+      "value": "\"weight_source\" IN ('identity','actual','rate','plug')",
+      "name": "posting_weight_source_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "value": "\"kind\" IN ('normal','fx_revaluation','rounding')",
+      "name": "posting_kind_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "posting"
+    },
+    {
+      "value": "\"amount_minor\" > 0",
+      "name": "recurring_amount_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "value": "\"cadence_kind\" IN ('monthly','yearly')",
+      "name": "recurring_cadence_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "value": "\"day_of_month\" = -1 OR \"day_of_month\" BETWEEN 1 AND 31",
+      "name": "recurring_day_range",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "value": "\"month\" IS NULL OR \"month\" BETWEEN 1 AND 12",
+      "name": "recurring_month_range",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "value": "\"cadence_kind\" <> 'yearly' OR \"month\" IS NOT NULL",
+      "name": "recurring_yearly_needs_month",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "recurring"
+    },
+    {
+      "value": "\"match\" IN ('contains', 'regex')",
+      "name": "rule_match_kind",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "rule"
+    },
+    {
+      "value": "\"kind\" IN ('close','checkpoint')",
+      "name": "snapshot_kind_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "snapshot"
+    },
+    {
+      "value": "\"status\" IN ('draft','posted','void','rejected')",
+      "name": "txn_status_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "value": "\"system_kind\" IS NULL OR \"system_kind\" IN ('fx_revaluation','closing_entry','opening_balance')",
+      "name": "txn_system_kind_enum",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "value": "\"fx_estimated\" IN (0,1)",
+      "name": "txn_fx_estimated_bool",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "txn"
+    },
+    {
+      "value": "\"sealed\" IN (0,1)",
+      "name": "txn_sealed_bool",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "txn"
+    }
+  ],
+  "renames": []
+}

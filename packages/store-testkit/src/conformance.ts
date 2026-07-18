@@ -326,6 +326,34 @@ export function runLedgerStoreConformance(name: string, factory: () => Promise<L
         ).rejects.toThrow();
       });
     });
+
+    describe('classification rules', () => {
+      it('lists rules in matching order and deletes them for real', async () => {
+        // The listing order IS the matching order (priority DESC, then newest):
+        // if two rules both match "스타벅스 강남점", the one the store lists first
+        // is the one that decides the category. An engine that ordered
+        // differently would classify the same payee differently — silently.
+        const mk = (id: string, pattern: string, priority: number, createdAt: string) => ({
+          id,
+          pattern,
+          match: 'contains' as const,
+          category: 'Expenses:Food:Cafe',
+          priority,
+          createdAt,
+        });
+        await store.unitOfWork(async (uow) => {
+          await uow.addRule(mk('01RULEA0000000000000000000', '스타벅스', 0, '2026-07-01T00:00:00.000Z'));
+          await uow.addRule(mk('01RULEB0000000000000000000', '스타벅스 강남', 10, '2026-07-02T00:00:00.000Z'));
+          await uow.addRule(mk('01RULEC0000000000000000000', '커피', 0, '2026-07-03T00:00:00.000Z'));
+        });
+        const rules = await store.read((r) => r.listRules());
+        expect(rules.map((r) => r.pattern)).toEqual(['스타벅스 강남', '커피', '스타벅스']);
+
+        await store.unitOfWork((uow) => uow.removeRule('01RULEC0000000000000000000'));
+        const after = await store.read((r) => r.listRules());
+        expect(after.map((r) => r.pattern)).toEqual(['스타벅스 강남', '스타벅스']);
+      });
+    });
   });
 }
 

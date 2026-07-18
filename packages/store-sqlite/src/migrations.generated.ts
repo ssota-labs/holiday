@@ -93,5 +93,12 @@ export const MIGRATIONS: readonly InlinedMigration[] = [
       "CREATE INDEX `balance_assertion_by_date` ON `balance_assertion` (`as_of`);",
       "CREATE UNIQUE INDEX `snapshot_unique` ON `snapshot` (`period_id`,`kind`);"
     ]
+  },
+  {
+    "name": "20260718033610_rules",
+    "hash": "fd082c080e93bd6855c3a915c61220d2093ad545468f244ac353eb74560bb508",
+    "statements": [
+      "CREATE TABLE `rule` (\n\t`id` text PRIMARY KEY,\n\t`pattern` text NOT NULL,\n\t`match` text DEFAULT 'contains' NOT NULL,\n\t`category` text NOT NULL,\n\t`priority` integer DEFAULT 0 NOT NULL,\n\t`created_at` text NOT NULL,\n\tCONSTRAINT \"rule_match_kind\" CHECK(\"match\" IN ('contains', 'regex'))\n);"
+    ]
   }
 ];

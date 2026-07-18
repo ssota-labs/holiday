@@ -1230,6 +1230,74 @@ ingest
     }
   });
 
+const rule = program.command('rule').description('분류 규칙 — payee 패턴이 카테고리 계정을 고른다');
+
+rule
+  .command('add <pattern> <category>')
+  .description('add a rule: payees matching <pattern> classify as <category>')
+  .option('--regex', 'treat <pattern> as a regular expression (default: contains)', false)
+  .option('--priority <n>', 'higher wins when several rules match', (v: string) => Number(v), 0)
+  .action(async (pattern: string, category: string, o: { regex: boolean; priority: number }) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+
+    if (o.regex) {
+      try {
+        new RegExp(pattern);
+      } catch (e) {
+        throw new UsageError(`not a valid regular expression: ${(e as Error).message}`);
+      }
+    }
+
+    const id = nextUlid();
+    await store.unitOfWork(async (uow) => {
+      // The category must EXIST. A rule with a typo'd account would silently
+      // no-match forever — the exact quiet failure rules exist to prevent.
+      const acct = (await uow.listAccounts()).find((a) => (a.code as string) === category);
+      if (!acct) {
+        throw new UsageError(`no such account: ${category}. Create it first — rules never invent accounts.`);
+      }
+      if (acct.placeholder) throw new UsageError(`${category} is a placeholder and cannot be posted to.`);
+      await uow.addRule({
+        id,
+        pattern,
+        match: o.regex ? 'regex' : 'contains',
+        category,
+        priority: o.priority,
+        createdAt: nowIso(),
+      });
+    });
+    await store.close();
+    out({ id, pattern, match: o.regex ? 'regex' : 'contains', category, priority: o.priority });
+    note(`규칙 추가됨. 다음 임포트부터 적용됩니다 — 이미 있는 draft 는 \`holiday review apply-rules\`.`);
+  });
+
+rule
+  .command('list')
+  .description('rules in matching order — first hit wins')
+  .action(async () => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const rules = await store.read((r) => r.listRules());
+    await store.close();
+    if (jsonMode()) return out(rules);
+    if (rules.length === 0) return note('규칙이 없습니다. `holiday rule add "스타벅스" Expenses:Food:Cafe`');
+    for (const r of rules) {
+      note(`${r.id}  [${String(r.priority).padStart(3)}] ${r.match === 'regex' ? '/' + r.pattern + '/' : JSON.stringify(r.pattern)}  →  ${r.category}`);
+    }
+  });
+
+rule
+  .command('rm <id>')
+  .description('delete a rule. Config, not journal — nothing posted changes.')
+  .action(async (id: string) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    await store.unitOfWork((uow) => uow.removeRule(id));
+    await store.close();
+    out({ removed: id });
+  });
+
 const review = program.command('review').description('드래프트 검토 — 승인 전엔 장부가 아니다');
 
 review
