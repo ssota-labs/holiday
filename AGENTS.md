@@ -31,6 +31,28 @@ plugins/claude-code/     Claude Code 플러그인 (스킬만; CLI는 npx)
 plugins/codex/           Codex 플러그인 (스킬만; SKILL.md만 별도, references는 심링크)
 ```
 
+## 개발 전 기획 게이트
+
+`apps/docs`가 기획의 단일 진실이다. 구현 코드를 먼저 고치고 문서를 역기록하지 마라.
+절차와 문서별 책임은 `apps/docs/content/docs/planning/workflow.mdx`, 기계 계약은
+`apps/docs/content/docs/spec/development/docs-first-workflow.mdx`를 따른다.
+
+1. 작업을 시작하면 기존 PRD·스펙·구현계획이 요청을 충분히 설명하는지 먼저 확인한다.
+2. 새 기능·사용자 동작 변경(`product`)은 PRD + 스펙 + 구현계획이 필요하다.
+3. 기존 계약에 맞추는 버그 수정(`bugfix`)은 기존 PRD·스펙 링크 + 구현계획이 필요하다.
+4. 리팩터링·빌드·의존성(`maintenance`)은 구현계획이 필요하다. 관찰 가능한 계약도
+   바뀌면 스펙을 추가한다.
+5. 필요한 문서가 없으면 **구현 파일을 수정하지 않는다.** 기획 문서만 담은 PR을 먼저
+   만들고 계획을 `stage: ready`로 둔다.
+6. 구현 브랜치의 base에는 준비된 계획이 이미 있어야 한다. 구현 PR 본문에 저장소 기준
+   `Plan: apps/docs/content/docs/planning/plans/plan-….mdx`를 적는다.
+7. 구현 중 범위나 계약이 달라지면 기획 PR로 문서를 먼저 갱신한다. 같은 내용을 새 ID로
+   복제하지 않는다.
+8. 구현과 검증이 끝나면 계획을 `done`으로 갱신한다.
+
+docs-only 변경은 선행 계획이 없어도 된다. 그 밖의 일반 우회 표식은 없다. 로컬에서
+`pnpm --filter @holiday-cfo/docs check:planning`으로 문서 그래프를 검증한다.
+
 ## 명령
 
 ```bash
@@ -76,7 +98,7 @@ node packages/cli/dist/main.js <command>   # 배포되면 `npx @holiday-cfo/cli@
 9. **`LedgerStore` 구현은 `store-sql`에 하나.** 엔진 패키지는 드라이버·스키마·마이그레이션만.
 
 정책 카탈로그와 강제 테스트: `apps/docs/content/docs/domain/policy.mdx`.
-결정은 `apps/docs/content/docs/dev/adr.mdx` — 거부한 대안이 본문이다.
+결정은 `apps/docs/content/docs/design/adr.mdx` — 거부한 대안이 본문이다.
 
 ## 코딩 규칙
 
@@ -84,7 +106,7 @@ node packages/cli/dist/main.js <command>   # 배포되면 `npx @holiday-cfo/cli@
 - ESM (`"type": "module"`, NodeNext).
 - 도메인 규칙은 테스트에 링크한다. 정책 문서를 고치면 `check-rule-links`가 통과해야 한다.
 - CLI 에러는 stderr에 JSON 봉투 하나: `{"error":{"code":"...","message":"..."}}`.
-- 변경 명령은 exit code 계약(0/1/2)을 지킨다. 스펙: `apps/docs/content/docs/dev/cli.mdx`.
+- 변경 명령은 exit code 계약(0/1/2)을 지킨다. 스펙: `apps/docs/content/docs/spec/cli/index.mdx`.
 - 커밋 메시지: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`…). 본문은 한국어·영어 모두 가능하되 scope는 패키지명.
 
 ## 사용자 문구 — 말투와 용어
