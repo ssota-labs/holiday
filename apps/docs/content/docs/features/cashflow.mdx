@@ -37,7 +37,7 @@ related: ['/docs/features/cards', '/docs/features/loans', '/docs/domain/policy']
     { id: 'loan', type: 'doc', position: { x: 0, y: 270 }, data: { label: 'loan', description: '상환 스케줄', kind: 'forecast', handles: { target: false } } },
     { id: 'ledger', type: 'doc', position: { x: 0, y: 360 }, data: { label: 'posting', description: '원장 — 이미 쓴 돈', kind: 'fact', handles: { target: false } } },
     { id: 'runway', type: 'doc', position: { x: 300, y: 170 }, data: { label: 'cashRunway', description: '날짜별로 묶어 잔고를 걸어감', kind: 'derived' } },
-    { id: 'answer', type: 'doc', position: { x: 560, y: 170 }, data: { label: '⚠ SHORT', description: '버티나 못 버티나', kind: 'derived', handles: { source: false } } },
+    { id: 'answer', type: 'doc', position: { x: 560, y: 170 }, data: { label: '⚠ 부족', description: '버티나 못 버티나', kind: 'derived', handles: { source: false } } },
   ]}
   edges={[
     { id: 'l1', source: 'card', target: 'runway' },
@@ -72,7 +72,7 @@ cash on hand (2026-07-17):  350000000 KRW
 
 8/25에 월세와 주담대가 **같은 날 합류**한다. 실제 통장이 하는 일 그대로다.
 
-`⚠ SHORT`가 답이다. 잔액은 숫자 하나를 주지만 현금흐름은 **어느 날 터지는지**를 준다.
+`⚠ 부족`이 답이다. 잔액은 숫자 하나를 주지만 현금흐름은 **어느 날 터지는지**를 준다.
 
 ## What-if는 원장을 건드리지 않는다
 

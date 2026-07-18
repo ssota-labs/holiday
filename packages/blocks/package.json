@@ -1,6 +1,6 @@
 {
   "name": "@holiday-cfo/blocks",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "license": "MIT",
   "description": "The dashboard vocabulary an agent may use: 가계부 nouns, not shadcn primitives, and no prop that holds money.",

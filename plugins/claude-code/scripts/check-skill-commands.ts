@@ -43,7 +43,9 @@ const BIN = resolve(PLUGIN, '..', '..', 'packages', 'cli', 'dist', 'main.js');
 const CODEX_SKILL_MD = resolve(PLUGIN, '..', 'codex', 'skills', 'holiday-cfo', 'SKILL.md');
 
 /** `holiday <cmd>` mentions in the skill, in prose or in a fenced block. */
-const CMD_RE = /\bholiday ([a-z]+(?: [a-z]+)?)\b/g;
+// Hyphens are part of subcommand names (`apply-rules`) — without them the
+// regex truncated `review apply-rules` to `review apply` and reported a ghost.
+const CMD_RE = /\bholiday ([a-z][a-z-]*(?: [a-z][a-z-]*)?)\b/g;
 
 /** Not commands — flags, and words that follow "holiday" in a sentence. */
 const IGNORE = new Set(['is', 'a', 'the', 'cfo', 'ledger', 'init', 'account add']);

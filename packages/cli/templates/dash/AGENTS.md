@@ -28,6 +28,7 @@ rather than showing a blank card.
 - `CashRunway` — will the cash survive what is already committed. The most useful block.
 - `BalanceTable` — balances, filtered by an `account` prefix.
 - `LedgerHealth` — is the ledger trustworthy right now. Show it before anything else on the page is believed.
+- `CategorizeQueue` — drafts waiting for a category, one-click picks (⌥클릭 = 규칙으로도 저장). Only live on the local dash; a deployed snapshot shows a notice instead. Put it near the top while imports are in play.
 - `Note` — a sentence of context. No figures in it: a retyped number will not update when the ledger does, and a stale number beside a live one is how a dashboard starts lying.
 
 ## The shape of spec.json

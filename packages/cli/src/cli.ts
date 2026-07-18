@@ -22,6 +22,8 @@ import {
   type CommodityCode,
   type Grain,
   type IsoDate,
+  type LedgerUow,
+  type Rule,
   Txn,
   buildInstallmentSchedule,
   projectCashflow,
@@ -118,8 +120,8 @@ program
     });
     await store.close();
     out({ workspace: ws, functionalCurrency: currency, closeGrain: o.closeGrain });
-    note(`Ledger created at ${ws}`);
-    note(`Commit ledger.db. Keep this repository PRIVATE — it is your money.`);
+    note(`장부를 만들었습니다: ${ws}`);
+    note(`ledger.db는 커밋해 두세요. 이 저장소는 반드시 비공개(private)여야 합니다 — 당신의 돈입니다.`);
   });
 
 const account = program.command('account').description('manage accounts');
@@ -157,7 +159,7 @@ account
     out({ id: acct.id, code: acct.code, type: acct.type, commodity: acct.commodity, cash: acct.cash });
     if (acct.type === 'asset' && !o.cash) {
       // Silence here is how an account full of money vanishes from the projection.
-      note(`${code} is not marked --cash, so it is NOT counted in \`holiday cashflow\`.`);
+      note(`${code}는 --cash 표시가 없어 현금흐름 계산에 들어가지 않습니다.`);
     }
   },
 );
@@ -300,7 +302,7 @@ card
         paymentDay: o.paymentDay,
       });
       out({ card: code, funding: o.funding, example: { purchasedToday: today(), ...dates } });
-      note(`A purchase today (${today()}) closes ${dates.closeDate} and takes cash on ${dates.paymentDate}.`);
+      note(`오늘(${today()}) 결제분은 ${dates.closeDate}에 마감되어 ${dates.paymentDate}에 출금됩니다.`);
     },
   );
 
@@ -330,7 +332,7 @@ card
       const when = c.rule.paymentMonthOffset === 0 ? '당월' : c.rule.paymentMonthOffset === 1 ? '익월' : `${c.rule.paymentMonthOffset}개월 후`;
       note(`${(c.label ?? code).padEnd(20)} ${close} 마감 → ${when} ${pay} 결제   ← ${funding}`);
       // The rule in the abstract is unverifiable by a human; a worked date is not.
-      note(`${''.padEnd(20)} a purchase today (${now}) takes cash on ${example.paymentDate}`);
+      note(`${''.padEnd(20)} 오늘(${now}) 결제분은 ${example.paymentDate} 출금`);
     }
   });
 
@@ -402,7 +404,7 @@ installment
             openedOn: purchasedOn,
             closedOn: null,
           });
-          note(`created ${liabilityCode} (installment balances are kept apart from ordinary card charges)`);
+          note(`${liabilityCode} 계정을 만들었습니다 (할부 잔액은 일반 카드 사용액과 분리해 둡니다).`);
         }
 
         // Observed fees only. We will not compute 할부수수료 — see POLICY-006.
@@ -473,7 +475,7 @@ installment
       if (feeTotal > 0n) {
         note(`할부수수료 합계 ${amounts.format({ minor: feeTotal, commodity: totalAmount.commodity })} — 명세서에서 읽은 값 그대로. 계산하지 않음.`);
       }
-      note(`실제 명세서와 다르면 \`holiday installment revise ${result.id}\`로 덮어쓰세요.`);
+      note(`실제 명세서와 다르면 \`holiday installment revise ${result.id}\`로 맞춰 주세요.`);
     },
   );
 
@@ -662,7 +664,7 @@ recurring
     }
     if (result.length === 0) return note('no active recurring expenses.');
     note('');
-    note(`monthly total: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
+    note(`월 합계: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
   });
 
 program
@@ -714,7 +716,7 @@ program
     note(`   장부:   ${money(result.actual).padStart(18)}`);
     note(`   차이:   ${money(result.deltaMinor).padStart(18)}`);
     // This is the ONLY check that compares the ledger to the outside world.
-    note(`   놓친 거래, 오독한 금액, 또는 중복입니다. 마감은 이게 맞을 때까지 막힙니다.`);
+    note(`   놓친 거래, 잘못 읽은 금액, 또는 중복입니다. 맞을 때까지 마감이 막힙니다.`);
     throw new LedgerError('assertion_failed', `${result.code} disagrees with the ledger by ${result.deltaMinor}`);
   });
 
@@ -821,7 +823,7 @@ program
     if (o.dryRun) {
       await store.close();
       out({ month, wouldRevalue: plan.lines.length, assertions: plan.assertionCount, dryRun: true });
-      note(`${month} 마감 가능. 단언 ${plan.assertionCount}건 통과.`);
+      note(`${month}은 마감할 수 있습니다. 잔액 대조 ${plan.assertionCount}건 통과.`);
       for (const l of plan.lines) note(`  재평가 ${l.accountCode.padEnd(30)} ${money(l.deltaMinor).padStart(14)} KRW`);
       if (plan.lines.length === 0) note('  재평가할 외화 계정 없음.');
       return;
@@ -897,11 +899,11 @@ program
     await store.close();
 
     out({ month, closed: true, revaluationTxnId: result.txnId, snapshotAccounts: result.accounts });
-    note(`${month} 마감. 스냅샷 ${result.accounts}개 계정.`);
+    note(`${month}을 마감했습니다. 계정 ${result.accounts}개를 스냅샷으로 남겼습니다.`);
     for (const l of plan.lines) note(`  재평가 ${l.accountCode.padEnd(30)} ${money(l.deltaMinor).padStart(14)} KRW`);
     if (plan.assertionCount === 0) {
       // Not a hard gate — a new ledger has none — but worth saying.
-      note(`  ⚠ 이 기간에 잔고 단언이 없었습니다. 명세서와 대조되지 않은 달은 얼린 것이지 마감한 게 아닙니다.`);
+      note(`  ⚠ 이 기간에는 잔액 대조가 없었습니다. 명세서와 대조하지 않은 달은 얼린 것이지 마감한 것이 아닙니다.`);
     }
   });
 
@@ -928,7 +930,7 @@ fx
     out({ base: b, quote: qc, rate: rateText, asOf, source: o.source, written });
     note(`1 ${b} = ${rateText} ${qc} (${asOf}, ${o.source})`);
     // The property that makes rates safe to correct.
-    note(`이미 기표된 weight는 바뀌지 않습니다. 환율은 앞으로의 유도와 재평가에만 쓰입니다.`);
+    note(`이미 확정된 금액은 바뀌지 않습니다. 환율은 앞으로의 계산과 재평가에만 쓰입니다.`);
   });
 
 fx
@@ -986,8 +988,18 @@ ingest
   .description('record parsed transactions. Drafts for review by default; --post commits them directly. Never does OCR — you are the parser.')
   // NOT --json: that is the global machine-output flag, and commander resolves
   // one of them while silently ignoring the other. Made this mistake twice.
-  .requiredOption('--data <submission>', 'see the schema in src/ingest.ts. Legs, not a flat amount.')
-  .option('--image <path>', 'the screenshot, so the same file cannot be ingested twice')
+  .option('--data <submission>', 'submission JSON inline. See the schema in src/ingest.ts. Legs, not a flat amount.')
+  // argv has a hard size limit (~1MB on macOS), which is exactly why the first
+  // real-world import got chunked into nine batches — and chunking broke the
+  // one-source-file-one-batch mapping that provenance depends on. A file has no
+  // such limit: one bank export = one submission = one batch row.
+  .option('--data-file <path>', 'read the submission JSON from a file — required for large imports')
+  // Generalized from --image: ANY source file (bank HTML/CSV export, screenshot)
+  // gets hashed into the batch record. Identical bytes are the same export, so a
+  // re-import of the same file is BLOCKED by the ledger itself — provenance the
+  // next session can rely on instead of hoping nobody imports twice.
+  .option('--source <path>', 'the source file this submission was parsed from (hashed; re-import of identical bytes is refused)')
+  .option('--image <path>', 'alias of --source, kept for screenshots')
   .option('--idem-key <key>', 'retry-safe. Same key + same request replays the stored result.')
   // The whole batch is one unit of work, so this is the fast path for a large
   // history import: thousands of rows post in one process (one node start, one
@@ -996,29 +1008,38 @@ ingest
   // bulk import the statement balance (`assert`) is the real check, not per-row
   // human review.
   .option('--post', 'commit directly as posted, skipping the review queue', false)
-  .action(async (o: { data: string; image?: string; idemKey?: string; post: boolean }) => {
+  .action(async (o: { data?: string; dataFile?: string; source?: string; image?: string; idemKey?: string; post: boolean }) => {
     const ws = requireWorkspace();
     const config = readConfig(ws);
+
+    if (!o.data === !o.dataFile) {
+      throw new UsageError('pass exactly one of --data (inline JSON) or --data-file (path to JSON).');
+    }
+    const rawData = o.dataFile ? await (await import('node:fs/promises')).readFile(o.dataFile, 'utf8') : o.data!;
+
     const store = await openLedger(ws);
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(o.data);
+      parsed = JSON.parse(rawData);
     } catch (e) {
-      throw new UsageError(`--data is not valid JSON: ${(e as Error).message}`);
+      throw new UsageError(`the submission is not valid JSON: ${(e as Error).message}`);
     }
     const submission = INGEST_SUBMISSION.parse(parsed);
 
-    // Hash the image ourselves when we can see it. This is the one duplicate
-    // check that can block without ever being wrong: identical bytes are the
-    // same screenshot.
+    // Hash the source file ourselves when we can see it. This is the one
+    // duplicate check that can block without ever being wrong: identical bytes
+    // are the same export. It is also the provenance record — the batch row keeps
+    // the hash and the file name, so a later session can see exactly which
+    // exports are already in (`holiday ingest list`) instead of re-deriving it.
+    const sourcePath = o.source ?? o.image ?? null;
     let sourceSha = submission.sourceSha256 ?? null;
-    if (o.image) {
+    if (sourcePath) {
       const { readFile } = await import('node:fs/promises');
-      sourceSha = await sha256Bytes(new Uint8Array(await readFile(o.image)));
+      sourceSha = await sha256Bytes(new Uint8Array(await readFile(sourcePath)));
     }
 
-    const requestSha = await sha256(o.data);
+    const requestSha = await sha256(rawData);
     const replay = o.idemKey ? await store.read((r) => r.getCommandResult(o.idemKey!)) : null;
     if (replay) {
       // An agent shelling out to a CLI WILL retry on timeout. Double-posting is
@@ -1039,9 +1060,10 @@ ingest
         const seen = await uow.findIngestBatchBySha(sourceSha);
         if (seen) {
           throw new LedgerError(
-            'duplicate_image',
-            `this exact image was already ingested on ${seen.submittedAt} (${seen.itemCount} item(s)). ` +
-              `Dropping the same file twice is always a mistake.`,
+            'duplicate_source',
+            `this exact file was already ingested on ${seen.submittedAt}` +
+              `${seen.sourceName ? ` as "${seen.sourceName}"` : ''} (${seen.itemCount} item(s)). ` +
+              `Importing the same export twice is always a mistake — run \`holiday ingest list\` to see what is in.`,
           );
         }
       }
@@ -1073,20 +1095,85 @@ ingest
       await uow.recordIngestBatch({
         id: batchId,
         sourceSha256: sourceSha ?? `no-image:${batchId}`,
-        sourceName: submission.sourceName ?? (o.image ? o.image.split('/').at(-1)! : null),
+        sourceName: submission.sourceName ?? (sourcePath ? sourcePath.split('/').at(-1)! : null),
         submittedAt: nowIso(),
         itemCount: submission.items.length,
       });
 
       const out: {
+        category: string | null;
         itemId: string;
         txnId: string;
         status: string;
         warnings: string[];
       }[] = [];
 
+      // Rules load once per submission. Matching order comes from the store —
+      // priority DESC then newest — so the same payee classifies the same way
+      // every time.
+      const rules = await uow.listRules();
+      const ensureParking = async (code: string): Promise<void> => {
+        if (byCode.has(code)) return;
+        // Structural accounts, like Equity:Opening: created on first need.
+        // Multi-commodity on purpose — a parking lot takes anything.
+        const c = assertAccountCode(code);
+        const acct: Account = {
+          id: nextUlid() as AccountId,
+          code: c,
+          type: accountTypeOf(c),
+          parentId: null,
+          commodity: null,
+          monetary: true,
+          cash: false,
+          placeholder: false,
+          openedOn: assertIsoDate(today()),
+          closedOn: null,
+        };
+        await uow.upsertAccount(acct);
+        byCode.set(code, acct);
+        byId.set(acct.id, acct);
+      };
+
       for (const item of submission.items) {
-        const postings = item.legs.map((l) =>
+        const ruleWarnings: string[] = [];
+        // `legs` items are fully decided by the parser. `money` items are decided
+        // by a rule — or not decided at all, in which case they park in
+        // Uncategorized and stay DRAFT even under --post: --post means "post what
+        // is decided", and an unclassified row is precisely an undecided one.
+        let decided = true;
+        let category: string | null = null;
+        const effLegs: { account: string; amount: string; commodity: string; weight?: string | undefined }[] = item.legs
+          ? [...item.legs]
+          : [];
+        if (effLegs.length === 0) {
+          const m = item.money!;
+          if (m.commodity !== (config.functionalCurrency as string)) {
+            throw new UsageError(
+              `money items are functional-currency only — a ${m.commodity} row needs a weight, so submit it as \`legs\` with @@.`,
+            );
+          }
+          const rule = matchRule(rules, item.payee ?? null);
+          let categoryCode: string;
+          if (rule && byCode.has(rule.category)) {
+            categoryCode = rule.category;
+          } else {
+            if (rule) {
+              ruleWarnings.push(
+                `rule ${rule.id} points at missing account ${rule.category} — treated as unmatched`,
+              );
+            }
+            categoryCode = m.amount.startsWith('-') ? 'Expenses:Uncategorized' : 'Income:Uncategorized';
+            await ensureParking(categoryCode);
+            decided = false;
+          }
+          category = categoryCode;
+          const counter = m.amount.startsWith('-') ? m.amount.slice(1) : `-${m.amount}`;
+          effLegs.push(
+            { account: m.account, amount: m.amount, commodity: m.commodity },
+            { account: categoryCode, amount: counter, commodity: m.commodity },
+          );
+        }
+        const postings = effLegs.map((l) =>
           parseLeg(
             `${l.account} ${l.amount} ${l.commodity}${l.weight ? ` @@ ${l.weight}` : ''}`,
             amounts,
@@ -1142,8 +1229,9 @@ ingest
 
         // --post commits straight to posted; the ingest item is 'accepted' up
         // front, mirroring exactly what `review accept` would do one row at a time.
-        const txnStatus = o.post ? 'posted' : 'draft';
-        const itemStatus = o.post ? 'accepted' : 'pending';
+        // Undecided (unclassified) items stay drafts regardless.
+        const txnStatus = o.post && decided ? 'posted' : 'draft';
+        const itemStatus = o.post && decided ? 'accepted' : 'pending';
         await uow.appendTxn(txn.value, { status: txnStatus });
         const itemId = nextUlid();
         await uow.recordIngestItem({
@@ -1160,9 +1248,15 @@ ingest
           parsedJson: JSON.stringify(item),
           createdAt: nowIso(),
         });
-        out.push({ itemId, txnId: txn.value.id, status: itemStatus, warnings });
+        out.push({ itemId, txnId: txn.value.id, status: itemStatus, category, warnings: [...ruleWarnings, ...warnings] });
       }
-      return { batchId, items: out };
+      // Counts ride in the JSON, not only in the stderr notes: with --json the
+      // notes are suppressed (stderr is reserved for the error envelope there),
+      // and the agent driving this CLI usually passes --json — so the "drafts
+      // remain, open the categorize screen" signal must survive in the payload
+      // it actually reads.
+      const pendingCount = out.filter((i) => i.status === 'pending').length;
+      return { batchId, postedCount: out.length - pendingCount, pendingCount, items: out };
     });
 
     const response = JSON.stringify(result);
@@ -1179,9 +1273,223 @@ ingest
     await store.close();
 
     out(result);
-    note(`${result.items.length}건을 DRAFT로 기록했습니다. 잔액·리포트에서 제외됩니다.`);
+    // Count what actually happened — a --post batch can still leave drafts (the
+    // unclassified rows), and reporting the whole batch as POSTED would hide the
+    // exact items that need a human.
+    const posted = result.postedCount;
+    const pending = result.pendingCount;
+    if (posted > 0) note(`${posted}건을 확정했습니다 — 잔액에 바로 반영됩니다.`);
+    if (pending > 0) {
+      note(`${pending}건은 분류 규칙이 없어 분류 대기로 남았습니다 (잔액 제외).`);
+      note(`다음: 대시보드의 분류 대기 카드에서 클릭으로 고르시거나(\`holiday dash init\` 후 \`pnpm dev\`),`);
+      note(`      \`holiday rule add <패턴> <카테고리>\` 뒤 \`holiday review apply-rules --accept\`로 한꺼번에 승인할 수 있습니다.`);
+    }
     for (const i of result.items) for (const w of i.warnings) note(`  ⚠ ${w}`);
-    note(`검토: \`holiday review list\` → \`holiday review accept <id>\``);
+  });
+
+ingest
+  .command('list')
+  .description('every import that ever ran — which source files, when, how many rows')
+  .action(async () => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const batches = await store.read((r) => r.listIngestBatches());
+    await store.close();
+
+    if (jsonMode()) return out(batches);
+    if (batches.length === 0) {
+      note('수집 이력이 없습니다.');
+      return;
+    }
+    // The provenance record. A fresh session reads this BEFORE importing, so the
+    // same export is never parsed and posted twice.
+    for (const b of batches) {
+      const src = b.sourceName ?? (b.sourceSha256.startsWith('no-image:') ? '(source not recorded)' : b.sourceSha256.slice(0, 12));
+      note(`${b.submittedAt}  ${String(b.itemCount).padStart(6)}건  ${src}`);
+    }
+  });
+
+const rule = program.command('rule').description('분류 규칙 — payee 패턴이 카테고리 계정을 고른다');
+
+rule
+  .command('add <pattern> <category>')
+  .description('add a rule: payees matching <pattern> classify as <category>')
+  .option('--regex', 'treat <pattern> as a regular expression (default: contains)', false)
+  .option('--priority <n>', 'higher wins when several rules match', (v: string) => Number(v), 0)
+  .action(async (pattern: string, category: string, o: { regex: boolean; priority: number }) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+
+    if (o.regex) {
+      try {
+        new RegExp(pattern);
+      } catch (e) {
+        throw new UsageError(`not a valid regular expression: ${(e as Error).message}`);
+      }
+    }
+
+    const id = nextUlid();
+    await store.unitOfWork(async (uow) => {
+      // The category must EXIST. A rule with a typo'd account would silently
+      // no-match forever — the exact quiet failure rules exist to prevent.
+      const acct = (await uow.listAccounts()).find((a) => (a.code as string) === category);
+      if (!acct) {
+        throw new UsageError(`no such account: ${category}. Create it first — rules never invent accounts.`);
+      }
+      if (acct.placeholder) throw new UsageError(`${category} is a placeholder and cannot be posted to.`);
+      await uow.addRule({
+        id,
+        pattern,
+        match: o.regex ? 'regex' : 'contains',
+        category,
+        priority: o.priority,
+        createdAt: nowIso(),
+      });
+    });
+    await store.close();
+    out({ id, pattern, match: o.regex ? 'regex' : 'contains', category, priority: o.priority });
+    note(`분류 규칙을 추가했습니다. 다음 수집부터 적용됩니다 — 이미 대기 중인 건은 \`holiday review apply-rules\`로.`);
+  });
+
+rule
+  .command('list')
+  .description('rules in matching order — first hit wins')
+  .action(async () => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const rules = await store.read((r) => r.listRules());
+    await store.close();
+    if (jsonMode()) return out(rules);
+    if (rules.length === 0) return note('분류 규칙이 없습니다. 예: `holiday rule add "스타벅스" Expenses:Food:Cafe`');
+    for (const r of rules) {
+      note(`${r.id}  [${String(r.priority).padStart(3)}] ${r.match === 'regex' ? '/' + r.pattern + '/' : JSON.stringify(r.pattern)}  →  ${r.category}`);
+    }
+  });
+
+rule
+  .command('rm <id>')
+  .description('delete a rule. Config, not journal — nothing posted changes.')
+  .action(async (id: string) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    await store.unitOfWork((uow) => uow.removeRule(id));
+    await store.close();
+    out({ removed: id });
+  });
+
+program
+  .command('recategorize')
+  .description('move POSTED amounts to another category, as correction entries — history stays')
+  .requiredOption('--to <code>', 'the category to move to')
+  .option('--payee <substring>', 'only transactions whose payee contains this')
+  .option('--from <code>', 'only legs on this category (default: both Uncategorized accounts)')
+  .option('--date <date>', 'correction date', today())
+  .option('--dry-run', 'report what would move, write nothing', false)
+  .action(async (o: { to: string; payee?: string; from?: string; date: string; dryRun: boolean }) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const when = assertIsoDate(o.date);
+
+    const result = await store.unitOfWork(async (uow) => {
+      const accounts = await uow.listAccounts();
+      const byCode2 = new Map(accounts.map((a) => [a.code as string, a]));
+      const target = byCode2.get(o.to);
+      if (!target) throw new UsageError(`no such account: ${o.to}`);
+      if (target.placeholder) throw new UsageError(`${o.to} is a placeholder and cannot be posted to.`);
+      const fromIds = new Set(
+        (o.from
+          ? [o.from]
+          : ['Expenses:Uncategorized', 'Income:Uncategorized']
+        )
+          .map((c) => byCode2.get(c)?.id)
+          .filter((id): id is AccountId => !!id),
+      );
+      if (fromIds.size === 0) throw new UsageError(`no such account: ${o.from}`);
+      if (fromIds.has(target.id)) throw new UsageError('--from and --to are the same account.');
+
+      const all = await uow.listTxns({ statuses: ['posted'] });
+      // Run-twice safety: a transaction that already has a correction pointing at
+      // it is skipped. Without this, re-running the same recategorize would move
+      // the money twice — the classic correction-batch footgun.
+      const alreadyCorrected = new Set(all.map((t) => t.txn.correctsTxnId).filter(Boolean));
+
+      const hay = o.payee?.toLowerCase();
+      const moved: { txnId: string; payee: string | null; minor: string }[] = [];
+      let correctionCount = 0;
+      for (const t of all) {
+        if (hay && !(t.txn.payee ?? '').toLowerCase().includes(hay)) continue;
+        if (alreadyCorrected.has(t.txn.id)) continue;
+        // A correction is never itself recategorized. Without this, the batch's
+        // own output matches the filter on the next run (same payee, a leg on the
+        // from-account) and produces a correction OF the correction — which
+        // exactly reverses it. Found by running it twice, not by review.
+        if (t.txn.correctsTxnId) continue;
+        const legs = t.txn.postings.filter((pLeg) => fromIds.has(pLeg.accountId));
+        if (legs.length === 0) continue;
+        for (const pLeg of legs) {
+          if (target.commodity && pLeg.units.commodity !== target.commodity) {
+            throw new UsageError(
+              `${o.to} is ${target.commodity}-only but txn ${t.txn.id} has a ${pLeg.units.commodity} leg.`,
+            );
+          }
+        }
+        if (!o.dryRun) {
+          const created = Txn.create({
+            id: nextUlid() as TxnId,
+            date: when,
+            bookingCommodity: t.txn.bookingCommodity,
+            payee: t.txn.payee,
+            narration: `recategorize: ${legs.map((l) => byId2Code(accounts, l.accountId)).join(',')} → ${o.to}`,
+            systemKind: null,
+            correctsTxnId: t.txn.id,
+            sourceItemId: null,
+            tags: [],
+            meta: { recategorize: true },
+            postings: legs.flatMap((pLeg, i) => [
+              {
+                seq: i * 2,
+                accountId: pLeg.accountId,
+                units: amountsOf(pLeg).negated,
+                weightMinor: -pLeg.weightMinor,
+                // Mirror the original leg's provenance: identity stays identity,
+                // an FX weight stays the observed weight it was.
+                weightSource: pLeg.weightSource,
+                fxRateText: null,
+                fxRateId: null,
+                lotId: null,
+                kind: 'normal' as const,
+                memo: null,
+              },
+              {
+                seq: i * 2 + 1,
+                accountId: target.id,
+                units: amountsOf(pLeg).same,
+                weightMinor: pLeg.weightMinor,
+                weightSource: pLeg.weightSource,
+                fxRateText: null,
+                fxRateId: null,
+                lotId: null,
+                kind: 'normal' as const,
+                memo: null,
+              },
+            ]),
+          });
+          if (!created.ok) throw new LedgerError('internal', created.error.map(describeTxnError).join('\n'));
+          await uow.appendTxn(created.value, { status: 'posted' });
+          correctionCount++;
+        }
+        for (const pLeg of legs) moved.push({ txnId: t.txn.id, payee: t.txn.payee, minor: pLeg.units.minor.toString() });
+      }
+      return { moved, correctionCount, dryRun: o.dryRun };
+    });
+    await store.close();
+
+    out(result);
+    if (result.dryRun) {
+      note(`${result.moved.length}건이 이동 대상입니다 (아직 적용 전 — --dry-run 없이 다시 실행하세요).`);
+    } else {
+      note(`정정 ${result.correctionCount}건을 기록했습니다 — 원래 기록은 그대로 두고 잔액만 ${o.to}로 옮겼습니다.`);
+    }
   });
 
 const review = program.command('review').description('드래프트 검토 — 승인 전엔 장부가 아니다');
@@ -1224,14 +1532,19 @@ review
       }
     }
     note('');
-    note(`${result.length}건 대기. \`holiday review accept <id>\` / \`reject <id> --reason\``);
+    note(`${result.length}건이 승인 대기 중입니다. \`holiday review accept <id>\` / \`reject <id> --reason\``);
   });
 
 review
   .command('accept <id>')
   .description('promote a draft to posted. Cannot fail — it is already balanced.')
   .option('--idem-key <key>')
-  .action(async (id: string, _o: { idemKey?: string }) => {
+  // Accepting "as" a category completes the proposal: the Uncategorized leg was
+  // never information, only a placeholder. Under the hood it is a supersede —
+  // reject the old draft, append the completed one posted — so the journal stays
+  // append-only and the audit chain never sees a mutation.
+  .option('--category <code>', 'accept as this category (swaps the Uncategorized leg)')
+  .action(async (id: string, o: { idemKey?: string; category?: string }) => {
     const ws = requireWorkspace();
     const store = await openLedger(ws);
     const result = await store.unitOfWork(async (uow) => {
@@ -1240,13 +1553,21 @@ review
       if (!item) throw new UsageError(`no such review item: ${id}`);
       if (item.status !== 'pending') throw new UsageError(`item ${id} is already ${item.status}`);
       if (!item.txnId) throw new UsageError(`item ${id} has no transaction`);
+      if (o.category) {
+        const accounts = await uow.listAccounts();
+        const target = accounts.find((a) => (a.code as string) === o.category);
+        if (!target) throw new UsageError(`no such account: ${o.category}`);
+        if (target.placeholder) throw new UsageError(`${o.category} is a placeholder and cannot be posted to.`);
+        const newId = await supersedeDraftAs(uow, item.id, item.txnId, target, accounts);
+        return { id, txnId: newId };
+      }
       await uow.promoteDraft(item.txnId);
       await uow.setIngestItemStatus(id, 'accepted', {});
       return { id, txnId: item.txnId };
     });
     await store.close();
-    out({ ...result, status: 'accepted' });
-    note(`승인됨. 이제 잔액과 현금흐름에 들어갑니다.`);
+    out({ ...result, status: 'accepted', ...(o.category ? { category: o.category } : {}) });
+    note(`승인했습니다. 잔액과 현금흐름에 반영됩니다.`);
   });
 
 review
@@ -1267,7 +1588,58 @@ review
     await store.close();
     out({ id, status: 'rejected', reason: o.reason });
     // Deleting it would let the same screenshot be re-proposed forever.
-    note(`거부됨. 기록은 남습니다 — 같은 캡쳐가 다시 제안되는 걸 막는 기억입니다.`);
+    note(`반려했습니다. 기록은 남습니다 — 같은 캡쳐가 다시 올라오는 것을 막는 기억입니다.`);
+  });
+
+review
+  .command('apply-rules')
+  .description('run the rule table over pending drafts. Reports by default; --accept posts the matches.')
+  .option('--accept', 'accept each matched draft as its rule category', false)
+  .action(async (o: { accept: boolean }) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+
+    // One unit of work for the whole sweep: either every matched draft posts, or
+    // none do. A rule pass that half-applies leaves the queue in a state nobody
+    // can reason about.
+    const result = await store.unitOfWork(async (uow) => {
+      const rules = await uow.listRules();
+      const accounts = await uow.listAccounts();
+      const byCode2 = new Map(accounts.map((a) => [a.code as string, a]));
+      const pending = (await uow.listIngestItems({ status: 'pending' })).filter((i) => i.txnId);
+
+      const matched: { itemId: string; payee: string | null; category: string; txnId?: string }[] = [];
+      const unmatched: number[] = [];
+      const warnings: string[] = [];
+      for (const item of pending) {
+        const rule = matchRule(rules, item.merchant);
+        if (!rule) {
+          unmatched.push(1);
+          continue;
+        }
+        const target = byCode2.get(rule.category);
+        if (!target || target.placeholder) {
+          warnings.push(`rule ${rule.id} → ${rule.category}: account missing or placeholder — skipped`);
+          continue;
+        }
+        if (o.accept) {
+          const newId = await supersedeDraftAs(uow, item.id, item.txnId!, target, accounts);
+          matched.push({ itemId: item.id, payee: item.merchant, category: rule.category, txnId: newId });
+        } else {
+          matched.push({ itemId: item.id, payee: item.merchant, category: rule.category });
+        }
+      }
+      return { matched, unmatchedCount: unmatched.length, warnings, accepted: o.accept };
+    });
+    await store.close();
+
+    out(result);
+    if (result.accepted) {
+      note(`${result.matched.length}건을 승인했습니다. ${result.unmatchedCount}건은 규칙이 없습니다 — 대시보드의 분류 대기 카드나 \`holiday rule add\`로.`);
+    } else {
+      note(`${result.matched.length}건이 규칙과 일치합니다 (아직 적용 전 — --accept로 승인), ${result.unmatchedCount}건은 규칙 없음.`);
+    }
+    for (const w of result.warnings) note(`  ⚠ ${w}`);
   });
 
 const loan = program.command('loan').description('대출 — 상환 스케줄과 대사');
@@ -1360,7 +1732,7 @@ loan
       // The number a borrower actually wants and never gets told: what it costs.
       note(`1회차 ${money(rows[0]!.principalMinor + rows[0]!.interestMinor)} (원금 ${money(rows[0]!.principalMinor)} + 이자 ${money(rows[0]!.interestMinor)})`);
       note(`총 이자 ${money(scheduleInterest(rows))}`);
-      note(`이건 예측입니다. 실제 잔액과 어긋나는지는 \`holiday loan check\`.`);
+      note(`이 스케줄은 예측입니다. 실제와 어긋나는지는 \`holiday loan check\`로 확인하세요.`);
     },
   );
 
@@ -1506,7 +1878,7 @@ loan
         // Do NOT silently reallocate. Interest is what the lender charged; the
         // difference is principal, and if that is wrong the user needs to see it
         // rather than have us quietly rebalance the entry.
-        note(`⚠ 실제 ${paid}, 스케줄 ${scheduled}. 차액을 원금에 반영합니다 — 명세서와 대조하세요.`);
+        note(`⚠ 실제 ${paid}, 스케줄 ${scheduled}. 차액은 원금에 반영했습니다 — 명세서와 대조해 주세요.`);
       }
       const interest = row.interestMinor;
       const principal = paid - interest;
@@ -1620,9 +1992,9 @@ program
 
     const money = (m: bigint) => amounts.format({ minor: m, commodity: proj.commodity });
     for (const g of proj.gaps) note(`⚠ ${g.subject} ${g.detail}.`);
-    note(`cash on hand (${now}):  ${money(proj.openingCashMinor)} ${proj.commodity}`);
+    note(`현재 현금 (${now}): ${money(proj.openingCashMinor)} ${proj.commodity}`);
     if (runway.length === 0) {
-      note(`no card bills projected through ${until}.`);
+      note(`${until}까지 예정된 지출이 없습니다.`);
       return;
     }
     note('');
@@ -1631,7 +2003,7 @@ program
       // A day's net can be an inflow now that --receive exists: a negative outflow
       // is money arriving, so show it as +, not as a double-negative "- -3,000,000".
       const net = p.outflowMinor >= 0n ? `-${money(p.outflowMinor)}` : `+${money(-p.outflowMinor)}`;
-      note(`${p.date}   ${net.padStart(13)}   →  ${money(p.balanceAfterMinor).padStart(12)}${short ? '   ⚠ SHORT' : ''}`);
+      note(`${p.date}   ${net.padStart(13)}   →  ${money(p.balanceAfterMinor).padStart(12)}${short ? '   ⚠ 부족' : ''}`);
       for (const b of p.items) {
         const line = b.amountMinor >= 0n ? `-${money(b.amountMinor)}` : `+${money(-b.amountMinor)}`;
         note(`             ${b.label.padEnd(30)} ${line.padStart(13)}`);
@@ -1640,9 +2012,9 @@ program
     const worst = runway.reduce((a, b) => (b.balanceAfterMinor < a.balanceAfterMinor ? b : a));
     note('');
     if (worst.balanceAfterMinor < 0n) {
-      note(`⚠ Short by ${money(-worst.balanceAfterMinor)} ${proj.commodity} on ${worst.date}.`);
+      note(`⚠ ${worst.date}에 ${money(-worst.balanceAfterMinor)} ${proj.commodity}가 부족합니다.`);
     } else {
-      note(`Lowest point: ${money(worst.balanceAfterMinor)} ${proj.commodity} on ${worst.date}.`);
+      note(`최저점: ${worst.date}, ${money(worst.balanceAfterMinor)} ${proj.commodity}.`);
     }
   });
 
@@ -1652,6 +2024,124 @@ program
  * The card or the bank — not the category. Two people can categorise the same
  * purchase differently; the money side is what the issuer actually recorded.
  */
+/**
+ * Accept a draft AS a category: reject the old draft, append the completed
+ * transaction posted, repoint the ingest item.
+ *
+ * A supersede rather than an in-place edit, deliberately. The audit chain
+ * commits to a transaction's CONTENT at append; mutating a draft's leg would
+ * either break verify or demand chain surgery, and the chain is the one thing
+ * this system never bends. Rejected drafts are already kept as dedup memory, so
+ * the leftover row costs nothing new.
+ *
+ * Only the Uncategorized leg is swappable — it is a placeholder, not
+ * information. Amounts, dates, and the money leg stay immutable even in drafts:
+ * a misread amount is a re-submission, because amount edits are where mistakes
+ * and fraud hide.
+ */
+/** The same units, and their negation, as Amount objects for a correction pair. */
+function amountsOf(pLeg: { units: { minor: bigint; commodity: CommodityCode } }): {
+  same: { minor: bigint; commodity: CommodityCode };
+  negated: { minor: bigint; commodity: CommodityCode };
+} {
+  return {
+    same: { minor: pLeg.units.minor, commodity: pLeg.units.commodity },
+    negated: { minor: -pLeg.units.minor, commodity: pLeg.units.commodity },
+  };
+}
+
+function byId2Code(accounts: readonly Account[], id: AccountId): string {
+  return (accounts.find((a) => a.id === id)?.code as string) ?? id;
+}
+
+async function supersedeDraftAs(
+  uow: LedgerUow,
+  itemId: string,
+  oldTxnId: TxnId,
+  target: Account,
+  accounts: readonly Account[],
+): Promise<TxnId> {
+  const old = await uow.getTxn(oldTxnId);
+  if (!old) throw new UsageError(`draft ${oldTxnId} not found`);
+  if (old.status !== 'draft') throw new UsageError(`transaction ${oldTxnId} is ${old.status}, not a draft`);
+
+  const uncatIds = new Set(
+    accounts
+      .filter((a) => (a.code as string) === 'Expenses:Uncategorized' || (a.code as string) === 'Income:Uncategorized')
+      .map((a) => a.id),
+  );
+  const swappable = old.txn.postings.filter((p) => uncatIds.has(p.accountId));
+  if (swappable.length === 0) {
+    throw new UsageError(
+      `draft ${oldTxnId} has no Uncategorized leg to swap — accept it without --category, or reject and resubmit.`,
+    );
+  }
+  if (target.commodity) {
+    for (const pLeg of swappable) {
+      if (pLeg.units.commodity !== target.commodity) {
+        throw new UsageError(
+          `${target.code} is ${target.commodity}-only but the leg is ${pLeg.units.commodity}.`,
+        );
+      }
+    }
+  }
+
+  const created = Txn.create({
+    id: nextUlid() as TxnId,
+    date: old.txn.date,
+    bookingCommodity: old.txn.bookingCommodity,
+    payee: old.txn.payee,
+    narration: old.txn.narration,
+    systemKind: old.txn.systemKind,
+    correctsTxnId: null,
+    sourceItemId: itemId,
+    tags: [...old.txn.tags],
+    meta: { ...old.txn.meta, supersedes: oldTxnId },
+    postings: old.txn.postings.map((pLeg) => ({
+      seq: pLeg.seq,
+      accountId: uncatIds.has(pLeg.accountId) ? target.id : pLeg.accountId,
+      units: pLeg.units,
+      weightMinor: pLeg.weightMinor,
+      weightSource: pLeg.weightSource,
+      fxRateText: pLeg.fxRateText,
+      fxRateId: pLeg.fxRateId,
+      lotId: pLeg.lotId,
+      kind: pLeg.kind,
+      memo: pLeg.memo,
+    })),
+  });
+  // Same amounts, same weights — only an account id changed. If this fails the
+  // original draft was never balanced, which appendTxn would have refused.
+  if (!created.ok) throw new LedgerError('internal', created.error.map(describeTxnError).join('\n'));
+
+  await uow.appendTxn(created.value, { status: 'posted' });
+  await uow.rejectDraft(oldTxnId, `recategorized → ${target.code as string}`);
+  await uow.setIngestItemStatus(itemId, 'accepted', { txnId: created.value.id });
+  return created.value.id;
+}
+
+/**
+ * First rule that matches the payee, in the store's order (priority DESC, then
+ * newest). Contains-match is case-insensitive; a broken regex simply never
+ * matches — a rule must fail toward "unclassified", never toward a wrong class.
+ */
+function matchRule(rules: readonly Rule[], payee: string | null): Rule | null {
+  if (!payee) return null;
+  const hay = payee.toLowerCase();
+  for (const r of rules) {
+    if (r.match === 'regex') {
+      try {
+        if (new RegExp(r.pattern).test(payee)) return r;
+      } catch {
+        // validated at `rule add`; a legacy bad pattern must not crash an import
+      }
+    } else if (hay.includes(r.pattern.toLowerCase())) {
+      return r;
+    }
+  }
+  return null;
+}
+
 function pickMoneyLeg(
   postings: readonly { accountId: AccountId; units: { minor: bigint; commodity: CommodityCode } }[],
   byId: ReadonlyMap<AccountId, Account>,
@@ -1735,7 +2225,7 @@ program
     if (jsonMode()) return out({ ...report, head });
     if (o.head) note(head ? `chain head: #${head.seq} ${head.hash}` : 'chain head: (empty ledger)');
     if (report.ok) {
-      note(`OK — ${report.checked} transaction(s) checked, audit chain intact.`);
+      note(`이상 없습니다 — 거래 ${report.checked}건 검사, 감사 체인 무결.`);
       return;
     }
     for (const p of report.problems) note(`${p.kind}  ${p.subject}\n  ${p.detail}`);
@@ -1780,10 +2270,10 @@ dash
     writeFileSync(join(dest, 'src', 'data', 'ledger.json'), `${JSON.stringify(data, null, 2)}\n`);
 
     out({ dir: dest, created, skipped });
-    note(`Dashboard scaffolded at ${dest}`);
-    if (skipped.length > 0) note(`Kept your existing: ${skipped.join(', ')}`);
+    note(`대시보드를 만들었습니다: ${dest}`);
+    if (skipped.length > 0) note(`기존 파일은 그대로 두었습니다: ${skipped.join(', ')}`);
     note(`  cd ${o.dir} && pnpm install && pnpm dev`);
-    note(`Edit src/data/spec.json to choose the layout. Never edit ledger.json — run \`holiday dash data\`.`);
+    note(`레이아웃은 src/data/spec.json에서 고르세요. ledger.json은 직접 수정하지 말고 \`holiday dash data\`로 다시 굽습니다.`);
   });
 
 dash
@@ -1807,8 +2297,8 @@ dash
     }
     writeFileSync(dest, `${JSON.stringify(data, null, 2)}\n`);
     if (jsonMode()) return out(data);
-    note(`Baked ${dest}`);
-    note(`This is a SNAPSHOT. Re-run after every txn add / ingest / close.`);
+    note(`스냅샷을 구웠습니다: ${dest}`);
+    note(`스냅샷은 그 시점의 사진입니다. 기록·수집·마감 후에는 다시 구워 주세요.`);
   });
 
 // No `dash catalog` command, on purpose. The catalog is a Zod object in

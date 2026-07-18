@@ -22,7 +22,9 @@
 2. `pnpm --filter holiday-plugin test`로 스킬↔CLI 정합을 확인한다 (양쪽 SKILL.md를 검증한다).
 3. **커밋된 번들은 없다.** CLI는 npm 배포이고 에이전트는 `npx @holiday-cfo/cli@latest`로 얻는다
    (ADR-007). CLI를 바꾸면 스펙 문서와 버전만 맞추면 된다.
-4. `plugins/*/.*-plugin/plugin.json`의 version/description을 스펙 문서
+4. 사용자 문구(`note()`·dash 블록·스킬 대화)를 만지면 `AGENTS.md`의 **말투·용어집**을
+   따른다 — 한 목소리, 한 용어.
+5. `plugins/*/.*-plugin/plugin.json`의 version/description을 스펙 문서
    (`apps/docs`의 `<SpecVersion>`)와 어긋나지 않게 둔다.
 
 마켓플레이스 메타: `.claude-plugin/marketplace.json` (`source: ./plugins/claude-code`).

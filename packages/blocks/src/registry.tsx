@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@holiday-cfo/ui/components/
 import { Badge } from '@holiday-cfo/ui/components/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@holiday-cfo/ui/components/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@holiday-cfo/ui/components/table';
+import { CategorizeQueue } from './categorize.js';
 import { catalog } from './catalog.js';
 import { useDatasets } from './data.js';
 import { formatAmount, signOf } from './money.js';
@@ -66,7 +67,7 @@ export const { registry } = defineRegistry(catalog, {
             <CardTitle className="flex items-center justify-between">
               <span>{props.title}</span>
               {breach ? (
-                <Badge variant="destructive">{breach.date} 마이너스</Badge>
+                <Badge variant="destructive">{breach.date} 부족</Badge>
               ) : (
                 <Badge variant="secondary">{props.horizonDays ?? 90}일 이상 버팀</Badge>
               )}
@@ -77,7 +78,7 @@ export const { registry } = defineRegistry(catalog, {
               현재 현금 {money(cashflow.openingCashMinor, cashflow.commodity)}
             </p>
             {rows.length === 0 ? (
-              <p className="text-muted-foreground text-sm">확정된 지출이 없다. 카드 청구·할부·정기지출을 등록하면 여기 나온다.</p>
+              <p className="text-muted-foreground text-sm">확정된 지출이 없습니다. 카드 청구·할부·정기지출을 등록하면 여기에 나옵니다.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -176,6 +177,8 @@ export const { registry } = defineRegistry(catalog, {
         </Card>
       );
     },
+
+    CategorizeQueue: ({ props }) => <CategorizeQueue title={props.title} limit={props.limit} />,
 
     Note: ({ props }) =>
       props.tone === 'warning' ? (

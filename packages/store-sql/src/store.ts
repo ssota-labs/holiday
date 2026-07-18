@@ -20,6 +20,7 @@ import {
   type SnapshotWithBalances,
   parseRate,
   type IngestBatch,
+  type Rule,
   type IngestItem,
   type IngestItemStatus,
   type InstallmentWithRows,
@@ -975,6 +976,45 @@ class SqlUow implements LedgerUow {
     return r ? mapBatch(r) : null;
   }
 
+  async listIngestBatches(): Promise<readonly IngestBatch[]> {
+    return (
+      await this.db.all<IngestBatchRaw>('SELECT * FROM ingest_batch ORDER BY submitted_at DESC, id DESC')
+    ).map(mapBatch);
+  }
+
+  async listRules(): Promise<readonly Rule[]> {
+    // priority DESC then created_at DESC: the order IS the matching order, so it
+    // is decided here once rather than re-sorted (differently) by each caller.
+    return (
+      await this.db.all<RuleRaw>('SELECT * FROM rule ORDER BY priority DESC, created_at DESC, id DESC')
+    ).map((r) => ({
+      id: r.id,
+      pattern: r.pattern,
+      match: r.match as Rule['match'],
+      category: r.category,
+      priority: toInt(r.priority),
+      createdAt: r.created_at,
+    }));
+  }
+
+  async addRule(r: Rule): Promise<void> {
+    await this.db.run(
+      'INSERT INTO rule (id, pattern, match, category, priority, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      r.id,
+      r.pattern,
+      r.match,
+      r.category,
+      r.priority,
+      r.createdAt,
+    );
+  }
+
+  async removeRule(id: string): Promise<void> {
+    // A real DELETE, not a soft flag: rules are config. The journal keeps its
+    // history; configuration does not need to.
+    await this.db.run('DELETE FROM rule WHERE id = ?', id);
+  }
+
   async findIngestItemsByDedupeKey(key: string): Promise<readonly IngestItem[]> {
     return (await this.db.all<IngestItemRaw>('SELECT * FROM ingest_item WHERE dedupe_key = ? ORDER BY created_at', key))
       .map(mapItem);
@@ -1215,6 +1255,15 @@ class SqlUow implements LedgerUow {
 async function chainHeadOf(db: SqlDriver): Promise<{ seq: number; hash: string } | null> {
   const head = await db.get<{ seq: bigint; hash: string }>('SELECT seq, hash FROM audit_log ORDER BY seq DESC LIMIT 1');
   return head ? { seq: toInt(head.seq), hash: head.hash } : null;
+}
+
+interface RuleRaw {
+  id: string;
+  pattern: string;
+  match: string;
+  category: string;
+  priority: bigint;
+  created_at: string;
 }
 
 interface IngestBatchRaw {

@@ -39,6 +39,12 @@ my wallet / brokerage / cash." You infer the destination; the row rarely states 
 
 ## Matching, in three tiers
 
+Do not re-derive this logic per session — `../../scripts/match-transfers.mjs`
+implements it over a normalized row list (`node match-transfers.mjs tx.json
+--self "이름,별칭"`). You still parse each bank's file yourself; the script only
+does the pairing. Its output maps to the tiers below: `transfers` → tier 1,
+`flagged` → tiers 2–3.
+
 Build one timeline across ALL the user's account files, then:
 
 **1. Auto — high confidence.** A withdrawal of amount X on date D in one account

@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -126,19 +126,37 @@ export function scaffold(dest: string, version: string): ScaffoldResult {
     created.push(entry);
   }
 
+  // Pin exactly; do not range. `^0.1.0` would let a project scaffolded by CLI
+  // 0.1.0 pull blocks 0.2.0, whose catalog it has never seen — and a spec.json
+  // written against the old vocabulary then fails in the browser, which is the
+  // worst place to find out. The CLI and the blocks ship as one version or not
+  // at all. The same token sits in the API routes (the CLI bridge npx-pins
+  // itself), so the sweep covers every text file just copied. It runs BEFORE the
+  // gitignore rename below — `created` holds the names as copied, and a renamed
+  // entry made walkFiles stat a path that no longer existed.
+  for (const entry of created) {
+    const root = join(dest, entry);
+    if (!existsSync(root)) continue;
+    for (const file of walkFiles(root)) {
+      if (!/\.(json|ts|tsx|md|mjs)$/.test(file)) continue;
+      const text = readFileSync(file, 'utf8');
+      if (text.includes('__HOLIDAY_VERSION__')) {
+        writeFileSync(file, text.replaceAll('__HOLIDAY_VERSION__', version));
+      }
+    }
+  }
+
   // npm silently refuses to publish a file named `.gitignore` inside a package,
   // so the template carries it dotless and it is renamed on the way out.
   const dotless = join(dest, 'gitignore');
   if (existsSync(dotless) && !existsSync(join(dest, '.gitignore'))) renameSync(dotless, join(dest, '.gitignore'));
 
-  // Pin exactly; do not range. `^0.1.0` would let a project scaffolded by CLI
-  // 0.1.0 pull blocks 0.2.0, whose catalog it has never seen — and a spec.json
-  // written against the old vocabulary then fails in the browser, which is the
-  // worst place to find out. The CLI and the blocks ship as one version or not
-  // at all.
-  if (created.includes('package.json')) {
-    const pkg = join(dest, 'package.json');
-    writeFileSync(pkg, readFileSync(pkg, 'utf8').replaceAll('__HOLIDAY_VERSION__', version));
-  }
   return { created, skipped };
+}
+
+function walkFiles(path: string): string[] {
+  const st = statSync(path);
+  if (st.isFile()) return [path];
+  if (!st.isDirectory()) return [];
+  return readdirSync(path).flatMap((e) => walkFiles(join(path, e)));
 }

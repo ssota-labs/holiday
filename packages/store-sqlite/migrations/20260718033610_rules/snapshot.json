@@ -1,0 +1,2884 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "0543a29a-3a2c-4158-8bec-c6a906835967",
+  "prevIds": [
+    "e632ea61-63b7-4a5d-a683-64c4c0a32787"
+  ],
+  "ddl": [
+    {
+      "name": "account",
+      "entityType": "tables"
+    },
+    {
+      "name": "audit_log",
+      "entityType": "tables"
+    },
+    {
+      "name": "balance_assertion",
+      "entityType": "tables"
+    },
+    {
+      "name": "book",
+      "entityType": "tables"
+    },
+    {
+      "name": "card",
+      "entityType": "tables"
+    },
+    {
+      "name": "command_log",
+      "entityType": "tables"
+    },
+    {
+      "name": "commodity",
+      "entityType": "tables"
+    },
+    {
+      "name": "fx_rate",
+      "entityType": "tables"
+    },
+    {
+      "name": "ingest_batch",
+      "entityType": "tables"
+    },
+    {
+      "name": "ingest_item",
+      "entityType": "tables"
+    },
+    {
+      "name": "installment",
+      "entityType": "tables"
+    },
+    {
+      "name": "installment_row",
+      "entityType": "tables"
+    },
+    {
+      "name": "loan",
+      "entityType": "tables"
+    },
+    {
+      "name": "loan_schedule_row",
+      "entityType": "tables"
+    },
+    {
+      "name": "period",
+      "entityType": "tables"
+    },
+    {
+      "name": "posting",
+      "entityType": "tables"
+    },
+    {
+      "name": "recurring",
+      "entityType": "tables"
+    },
+    {
+      "name": "rule",
+      "entityType": "tables"
+    },
+    {
+      "name": "snapshot",
+      "entityType": "tables"
+    },
+    {
+      "name": "snapshot_balance",
+      "entityType": "tables"
+    },
+    {
+      "name": "txn",
+      "entityType": "tables"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "code",
+      "entityType": "columns",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "type",
+      "entityType": "columns",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "parent_id",
+      "entityType": "columns",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "table": "account"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "1",
+      "generated": null,
+      "name": "monetary",
+      "entityType": "columns",
+      "table": "account"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "cash",
+      "entityType": "columns",
+      "table": "account"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "placeholder",
+      "entityType": "columns",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "opened_on",
+      "entityType": "columns",
+      "table": "account"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "closed_on",
+      "entityType": "columns",
+      "table": "account"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "seq",
+      "entityType": "columns",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "at",
+      "entityType": "columns",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "event",
+      "entityType": "columns",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "subject",
+      "entityType": "columns",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'{}'",
+      "generated": null,
+      "name": "detail",
+      "entityType": "columns",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "prev_hash",
+      "entityType": "columns",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "hash",
+      "entityType": "columns",
+      "table": "audit_log"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "as_of",
+      "entityType": "columns",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "expected_minor",
+      "entityType": "columns",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "note",
+      "entityType": "columns",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "balance_assertion"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "book"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "schema_version",
+      "entityType": "columns",
+      "table": "book"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "functional_currency",
+      "entityType": "columns",
+      "table": "book"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'month'",
+      "generated": null,
+      "name": "close_grain",
+      "entityType": "columns",
+      "table": "book"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'Asia/Seoul'",
+      "generated": null,
+      "name": "timezone",
+      "entityType": "columns",
+      "table": "book"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "1",
+      "generated": null,
+      "name": "dedupe_key_version",
+      "entityType": "columns",
+      "table": "book"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "7",
+      "generated": null,
+      "name": "fx_max_staleness_days",
+      "entityType": "columns",
+      "table": "book"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "book"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "table": "card"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "funding_account_id",
+      "entityType": "columns",
+      "table": "card"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "cycle_close_day",
+      "entityType": "columns",
+      "table": "card"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "payment_month_offset",
+      "entityType": "columns",
+      "table": "card"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "payment_day",
+      "entityType": "columns",
+      "table": "card"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "label",
+      "entityType": "columns",
+      "table": "card"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "idem_key",
+      "entityType": "columns",
+      "table": "command_log"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "request_sha256",
+      "entityType": "columns",
+      "table": "command_log"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "response_json",
+      "entityType": "columns",
+      "table": "command_log"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "command_log"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "code",
+      "entityType": "columns",
+      "table": "commodity"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "exponent",
+      "entityType": "columns",
+      "table": "commodity"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "kind",
+      "entityType": "columns",
+      "table": "commodity"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "commodity"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "as_of",
+      "entityType": "columns",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "base",
+      "entityType": "columns",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "quote",
+      "entityType": "columns",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "rate",
+      "entityType": "columns",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "source",
+      "entityType": "columns",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "fetched_at",
+      "entityType": "columns",
+      "table": "fx_rate"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "ingest_batch"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "source_sha256",
+      "entityType": "columns",
+      "table": "ingest_batch"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "source_name",
+      "entityType": "columns",
+      "table": "ingest_batch"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "submitted_at",
+      "entityType": "columns",
+      "table": "ingest_batch"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "item_count",
+      "entityType": "columns",
+      "table": "ingest_batch"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "batch_id",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "dedupe_key",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "dedupe_authority",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "external_ref",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "merchant",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "txn_id",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'pending'",
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "reason",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "parsed_json",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "ingest_item"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "card_account_id",
+      "entityType": "columns",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "liability_account_id",
+      "entityType": "columns",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "txn_id",
+      "entityType": "columns",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "purchased_on",
+      "entityType": "columns",
+      "table": "installment"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "months",
+      "entityType": "columns",
+      "table": "installment"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "total_minor",
+      "entityType": "columns",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "table": "installment"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "1",
+      "generated": null,
+      "name": "interest_free",
+      "entityType": "columns",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "label",
+      "entityType": "columns",
+      "table": "installment"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "installment_id",
+      "entityType": "columns",
+      "table": "installment_row"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "seq",
+      "entityType": "columns",
+      "table": "installment_row"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "payment_date",
+      "entityType": "columns",
+      "table": "installment_row"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "principal_minor",
+      "entityType": "columns",
+      "table": "installment_row"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "fee_minor",
+      "entityType": "columns",
+      "table": "installment_row"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "funding_account_id",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "interest_account_id",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "principal_minor",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "annual_rate_text",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "method",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "term_months",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "first_payment_date",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "payment_day",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "label",
+      "entityType": "columns",
+      "table": "loan"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "loan_id",
+      "entityType": "columns",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "seq",
+      "entityType": "columns",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "due_date",
+      "entityType": "columns",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "opening_minor",
+      "entityType": "columns",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "principal_minor",
+      "entityType": "columns",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "interest_minor",
+      "entityType": "columns",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "closing_minor",
+      "entityType": "columns",
+      "table": "loan_schedule_row"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "period"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "grain",
+      "entityType": "columns",
+      "table": "period"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "start",
+      "entityType": "columns",
+      "table": "period"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "end",
+      "entityType": "columns",
+      "table": "period"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'open'",
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "period"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "txn_id",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "seq",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "units_minor",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "weight_minor",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "weight_source",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "fx_rate_text",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "fx_rate_id",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "lot_id",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'normal'",
+      "generated": null,
+      "name": "kind",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "memo",
+      "entityType": "columns",
+      "table": "posting"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "label",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "expense_account_id",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "funding_account_id",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "amount_minor",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "cadence_kind",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "day_of_month",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "month",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "active_from",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "active_to",
+      "entityType": "columns",
+      "table": "recurring"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "rule"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "pattern",
+      "entityType": "columns",
+      "table": "rule"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'contains'",
+      "generated": null,
+      "name": "match",
+      "entityType": "columns",
+      "table": "rule"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "category",
+      "entityType": "columns",
+      "table": "rule"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "priority",
+      "entityType": "columns",
+      "table": "rule"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "rule"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "snapshot"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "period_id",
+      "entityType": "columns",
+      "table": "snapshot"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "kind",
+      "entityType": "columns",
+      "table": "snapshot"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "as_of",
+      "entityType": "columns",
+      "table": "snapshot"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "snapshot"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "snapshot_id",
+      "entityType": "columns",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "commodity",
+      "entityType": "columns",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "units_minor",
+      "entityType": "columns",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "weight_minor",
+      "entityType": "columns",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "period_units_minor",
+      "entityType": "columns",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "period_weight_minor",
+      "entityType": "columns",
+      "table": "snapshot_balance"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "date",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "booking_commodity",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "payee",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "''",
+      "generated": null,
+      "name": "narration",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "system_kind",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "corrects_txn_id",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "source_item_id",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "fx_estimated",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'[]'",
+      "generated": null,
+      "name": "tags_json",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'{}'",
+      "generated": null,
+      "name": "meta_json",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "sealed",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "reason",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "txn"
+    },
+    {
+      "columns": [
+        "commodity"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_account_commodity_commodity_code_fk",
+      "entityType": "fks",
+      "table": "account"
+    },
+    {
+      "columns": [
+        "account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_balance_assertion_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "balance_assertion"
+    },
+    {
+      "columns": [
+        "commodity"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_balance_assertion_commodity_commodity_code_fk",
+      "entityType": "fks",
+      "table": "balance_assertion"
+    },
+    {
+      "columns": [
+        "functional_currency"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_book_functional_currency_commodity_code_fk",
+      "entityType": "fks",
+      "table": "book"
+    },
+    {
+      "columns": [
+        "account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_card_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "card"
+    },
+    {
+      "columns": [
+        "funding_account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_card_funding_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "card"
+    },
+    {
+      "columns": [
+        "base"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_fx_rate_base_commodity_code_fk",
+      "entityType": "fks",
+      "table": "fx_rate"
+    },
+    {
+      "columns": [
+        "quote"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_fx_rate_quote_commodity_code_fk",
+      "entityType": "fks",
+      "table": "fx_rate"
+    },
+    {
+      "columns": [
+        "batch_id"
+      ],
+      "tableTo": "ingest_batch",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_ingest_item_batch_id_ingest_batch_id_fk",
+      "entityType": "fks",
+      "table": "ingest_item"
+    },
+    {
+      "columns": [
+        "txn_id"
+      ],
+      "tableTo": "txn",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_ingest_item_txn_id_txn_id_fk",
+      "entityType": "fks",
+      "table": "ingest_item"
+    },
+    {
+      "columns": [
+        "card_account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_installment_card_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "installment"
+    },
+    {
+      "columns": [
+        "liability_account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_installment_liability_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "installment"
+    },
+    {
+      "columns": [
+        "txn_id"
+      ],
+      "tableTo": "txn",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_installment_txn_id_txn_id_fk",
+      "entityType": "fks",
+      "table": "installment"
+    },
+    {
+      "columns": [
+        "commodity"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_installment_commodity_commodity_code_fk",
+      "entityType": "fks",
+      "table": "installment"
+    },
+    {
+      "columns": [
+        "installment_id"
+      ],
+      "tableTo": "installment",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_installment_row_installment_id_installment_id_fk",
+      "entityType": "fks",
+      "table": "installment_row"
+    },
+    {
+      "columns": [
+        "account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_loan_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "loan"
+    },
+    {
+      "columns": [
+        "funding_account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_loan_funding_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "loan"
+    },
+    {
+      "columns": [
+        "interest_account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_loan_interest_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "loan"
+    },
+    {
+      "columns": [
+        "commodity"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_loan_commodity_commodity_code_fk",
+      "entityType": "fks",
+      "table": "loan"
+    },
+    {
+      "columns": [
+        "loan_id"
+      ],
+      "tableTo": "loan",
+      "columnsTo": [
+        "account_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_loan_schedule_row_loan_id_loan_account_id_fk",
+      "entityType": "fks",
+      "table": "loan_schedule_row"
+    },
+    {
+      "columns": [
+        "txn_id"
+      ],
+      "tableTo": "txn",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_posting_txn_id_txn_id_fk",
+      "entityType": "fks",
+      "table": "posting"
+    },
+    {
+      "columns": [
+        "account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_posting_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "posting"
+    },
+    {
+      "columns": [
+        "commodity"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_posting_commodity_commodity_code_fk",
+      "entityType": "fks",
+      "table": "posting"
+    },
+    {
+      "columns": [
+        "expense_account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_recurring_expense_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "recurring"
+    },
+    {
+      "columns": [
+        "funding_account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_recurring_funding_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "recurring"
+    },
+    {
+      "columns": [
+        "commodity"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_recurring_commodity_commodity_code_fk",
+      "entityType": "fks",
+      "table": "recurring"
+    },
+    {
+      "columns": [
+        "period_id"
+      ],
+      "tableTo": "period",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_snapshot_period_id_period_id_fk",
+      "entityType": "fks",
+      "table": "snapshot"
+    },
+    {
+      "columns": [
+        "snapshot_id"
+      ],
+      "tableTo": "snapshot",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_snapshot_balance_snapshot_id_snapshot_id_fk",
+      "entityType": "fks",
+      "table": "snapshot_balance"
+    },
+    {
+      "columns": [
+        "account_id"
+      ],
+      "tableTo": "account",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_snapshot_balance_account_id_account_id_fk",
+      "entityType": "fks",
+      "table": "snapshot_balance"
+    },
+    {
+      "columns": [
+        "commodity"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_snapshot_balance_commodity_commodity_code_fk",
+      "entityType": "fks",
+      "table": "snapshot_balance"
+    },
+    {
+      "columns": [
+        "booking_commodity"
+      ],
+      "tableTo": "commodity",
+      "columnsTo": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_txn_booking_commodity_commodity_code_fk",
+      "entityType": "fks",
+      "table": "txn"
+    },
+    {
+      "columns": [
+        "installment_id",
+        "seq"
+      ],
+      "nameExplicit": false,
+      "name": "installment_row_pk",
+      "entityType": "pks",
+      "table": "installment_row"
+    },
+    {
+      "columns": [
+        "loan_id",
+        "seq"
+      ],
+      "nameExplicit": false,
+      "name": "loan_schedule_row_pk",
+      "entityType": "pks",
+      "table": "loan_schedule_row"
+    },
+    {
+      "columns": [
+        "txn_id",
+        "seq"
+      ],
+      "nameExplicit": false,
+      "name": "posting_pk",
+      "entityType": "pks",
+      "table": "posting"
+    },
+    {
+      "columns": [
+        "snapshot_id",
+        "account_id",
+        "commodity"
+      ],
+      "nameExplicit": false,
+      "name": "snapshot_balance_pk",
+      "entityType": "pks",
+      "table": "snapshot_balance"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "account_pk",
+      "table": "account",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "seq"
+      ],
+      "nameExplicit": false,
+      "name": "audit_log_pk",
+      "table": "audit_log",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "balance_assertion_pk",
+      "table": "balance_assertion",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "book_pk",
+      "table": "book",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "account_id"
+      ],
+      "nameExplicit": false,
+      "name": "card_pk",
+      "table": "card",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "idem_key"
+      ],
+      "nameExplicit": false,
+      "name": "command_log_pk",
+      "table": "command_log",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "code"
+      ],
+      "nameExplicit": false,
+      "name": "commodity_pk",
+      "table": "commodity",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "fx_rate_pk",
+      "table": "fx_rate",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "ingest_batch_pk",
+      "table": "ingest_batch",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "ingest_item_pk",
+      "table": "ingest_item",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "installment_pk",
+      "table": "installment",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "account_id"
+      ],
+      "nameExplicit": false,
+      "name": "loan_pk",
+      "table": "loan",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "period_pk",
+      "table": "period",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "recurring_pk",
+      "table": "recurring",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "rule_pk",
+      "table": "rule",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "snapshot_pk",
+      "table": "snapshot",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "txn_pk",
+      "table": "txn",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        {
+          "value": "code",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "account_by_code",
+      "entityType": "indexes",
+      "table": "account"
+    },
+    {
+      "columns": [
+        {
+          "value": "account_id",
+          "isExpression": false
+        },
+        {
+          "value": "as_of",
+          "isExpression": false
+        },
+        {
+          "value": "commodity",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "balance_assertion_unique",
+      "entityType": "indexes",
+      "table": "balance_assertion"
+    },
+    {
+      "columns": [
+        {
+          "value": "as_of",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "balance_assertion_by_date",
+      "entityType": "indexes",
+      "table": "balance_assertion"
+    },
+    {
+      "columns": [
+        {
+          "value": "as_of",
+          "isExpression": false
+        },
+        {
+          "value": "base",
+          "isExpression": false
+        },
+        {
+          "value": "quote",
+          "isExpression": false
+        },
+        {
+          "value": "source",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "fx_rate_unique",
+      "entityType": "indexes",
+      "table": "fx_rate"
+    },
+    {
+      "columns": [
+        {
+          "value": "dedupe_key",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "ingest_item_by_dedupe",
+      "entityType": "indexes",
+      "table": "ingest_item"
+    },
+    {
+      "columns": [
+        {
+          "value": "batch_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "ingest_item_by_batch",
+      "entityType": "indexes",
+      "table": "ingest_item"
+    },
+    {
+      "columns": [
+        {
+          "value": "card_account_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "installment_by_card",
+      "entityType": "indexes",
+      "table": "installment"
+    },
+    {
+      "columns": [
+        {
+          "value": "payment_date",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "installment_row_by_date",
+      "entityType": "indexes",
+      "table": "installment_row"
+    },
+    {
+      "columns": [
+        {
+          "value": "due_date",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "loan_schedule_by_date",
+      "entityType": "indexes",
+      "table": "loan_schedule_row"
+    },
+    {
+      "columns": [
+        {
+          "value": "grain",
+          "isExpression": false
+        },
+        {
+          "value": "start",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "period_grain_start",
+      "entityType": "indexes",
+      "table": "period"
+    },
+    {
+      "columns": [
+        {
+          "value": "account_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "posting_by_account",
+      "entityType": "indexes",
+      "table": "posting"
+    },
+    {
+      "columns": [
+        {
+          "value": "funding_account_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "recurring_by_funding",
+      "entityType": "indexes",
+      "table": "recurring"
+    },
+    {
+      "columns": [
+        {
+          "value": "period_id",
+          "isExpression": false
+        },
+        {
+          "value": "kind",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "snapshot_unique",
+      "entityType": "indexes",
+      "table": "snapshot"
+    },
+    {
+      "columns": [
+        {
+          "value": "date",
+          "isExpression": false
+        },
+        {
+          "value": "id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "txn_by_date",
+      "entityType": "indexes",
+      "table": "txn"
+    },
+    {
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "txn_by_status",
+      "entityType": "indexes",
+      "table": "txn"
+    },
+    {
+      "columns": [
+        "hash"
+      ],
+      "nameExplicit": false,
+      "name": "audit_log_hash_unique",
+      "entityType": "uniques",
+      "table": "audit_log"
+    },
+    {
+      "columns": [
+        "source_sha256"
+      ],
+      "nameExplicit": false,
+      "name": "ingest_batch_source_sha256_unique",
+      "entityType": "uniques",
+      "table": "ingest_batch"
+    },
+    {
+      "value": "\"type\" IN ('asset','liability','equity','income','expense')",
+      "name": "account_type_enum",
+      "entityType": "checks",
+      "table": "account"
+    },
+    {
+      "value": "\"monetary\" IN (0,1)",
+      "name": "account_monetary_bool",
+      "entityType": "checks",
+      "table": "account"
+    },
+    {
+      "value": "\"cash\" IN (0,1)",
+      "name": "account_cash_bool",
+      "entityType": "checks",
+      "table": "account"
+    },
+    {
+      "value": "\"placeholder\" IN (0,1)",
+      "name": "account_placeholder_bool",
+      "entityType": "checks",
+      "table": "account"
+    },
+    {
+      "value": "\"id\" = 'book'",
+      "name": "book_singleton",
+      "entityType": "checks",
+      "table": "book"
+    },
+    {
+      "value": "\"close_grain\" IN ('day','week','month','quarter','year')",
+      "name": "book_close_grain_enum",
+      "entityType": "checks",
+      "table": "book"
+    },
+    {
+      "value": "\"cycle_close_day\" BETWEEN 1 AND 31",
+      "name": "card_close_day_range",
+      "entityType": "checks",
+      "table": "card"
+    },
+    {
+      "value": "\"payment_month_offset\" BETWEEN 0 AND 3",
+      "name": "card_offset_range",
+      "entityType": "checks",
+      "table": "card"
+    },
+    {
+      "value": "\"payment_day\" = -1 OR \"payment_day\" BETWEEN 1 AND 31",
+      "name": "card_payment_day_range",
+      "entityType": "checks",
+      "table": "card"
+    },
+    {
+      "value": "\"exponent\" BETWEEN 0 AND 9",
+      "name": "commodity_exponent_range",
+      "entityType": "checks",
+      "table": "commodity"
+    },
+    {
+      "value": "\"kind\" IN ('fiat','crypto','security','unit')",
+      "name": "commodity_kind_enum",
+      "entityType": "checks",
+      "table": "commodity"
+    },
+    {
+      "value": "\"item_count\" >= 0",
+      "name": "ingest_batch_count_nonneg",
+      "entityType": "checks",
+      "table": "ingest_batch"
+    },
+    {
+      "value": "\"status\" IN ('pending','accepted','rejected')",
+      "name": "ingest_item_status_enum",
+      "entityType": "checks",
+      "table": "ingest_item"
+    },
+    {
+      "value": "\"dedupe_authority\" IN ('image','external_ref','natural')",
+      "name": "ingest_item_authority_enum",
+      "entityType": "checks",
+      "table": "ingest_item"
+    },
+    {
+      "value": "\"months\" >= 1",
+      "name": "installment_months_positive",
+      "entityType": "checks",
+      "table": "installment"
+    },
+    {
+      "value": "\"total_minor\" > 0",
+      "name": "installment_total_positive",
+      "entityType": "checks",
+      "table": "installment"
+    },
+    {
+      "value": "\"card_account_id\" <> \"liability_account_id\"",
+      "name": "installment_accounts_differ",
+      "entityType": "checks",
+      "table": "installment"
+    },
+    {
+      "value": "\"interest_free\" IN (0,1)",
+      "name": "installment_interest_free_bool",
+      "entityType": "checks",
+      "table": "installment"
+    },
+    {
+      "value": "\"seq\" >= 1",
+      "name": "installment_row_seq_positive",
+      "entityType": "checks",
+      "table": "installment_row"
+    },
+    {
+      "value": "\"principal_minor\" > 0",
+      "name": "loan_principal_positive",
+      "entityType": "checks",
+      "table": "loan"
+    },
+    {
+      "value": "\"term_months\" >= 1",
+      "name": "loan_term_positive",
+      "entityType": "checks",
+      "table": "loan"
+    },
+    {
+      "value": "\"method\" IN ('annuity','equal_principal','bullet','interest_only')",
+      "name": "loan_method_enum",
+      "entityType": "checks",
+      "table": "loan"
+    },
+    {
+      "value": "\"payment_day\" = -1 OR \"payment_day\" BETWEEN 1 AND 31",
+      "name": "loan_payment_day_range",
+      "entityType": "checks",
+      "table": "loan"
+    },
+    {
+      "value": "\"account_id\" <> \"funding_account_id\"",
+      "name": "loan_accounts_differ",
+      "entityType": "checks",
+      "table": "loan"
+    },
+    {
+      "value": "\"seq\" >= 1",
+      "name": "loan_schedule_seq_positive",
+      "entityType": "checks",
+      "table": "loan_schedule_row"
+    },
+    {
+      "value": "\"grain\" IN ('day','week','month','quarter','year')",
+      "name": "period_grain_enum",
+      "entityType": "checks",
+      "table": "period"
+    },
+    {
+      "value": "\"status\" IN ('open','closed','locked')",
+      "name": "period_status_enum",
+      "entityType": "checks",
+      "table": "period"
+    },
+    {
+      "value": "\"weight_source\" IN ('identity','actual','rate','plug')",
+      "name": "posting_weight_source_enum",
+      "entityType": "checks",
+      "table": "posting"
+    },
+    {
+      "value": "\"kind\" IN ('normal','fx_revaluation','rounding')",
+      "name": "posting_kind_enum",
+      "entityType": "checks",
+      "table": "posting"
+    },
+    {
+      "value": "\"amount_minor\" > 0",
+      "name": "recurring_amount_positive",
+      "entityType": "checks",
+      "table": "recurring"
+    },
+    {
+      "value": "\"cadence_kind\" IN ('monthly','yearly')",
+      "name": "recurring_cadence_enum",
+      "entityType": "checks",
+      "table": "recurring"
+    },
+    {
+      "value": "\"day_of_month\" = -1 OR \"day_of_month\" BETWEEN 1 AND 31",
+      "name": "recurring_day_range",
+      "entityType": "checks",
+      "table": "recurring"
+    },
+    {
+      "value": "\"month\" IS NULL OR \"month\" BETWEEN 1 AND 12",
+      "name": "recurring_month_range",
+      "entityType": "checks",
+      "table": "recurring"
+    },
+    {
+      "value": "\"cadence_kind\" <> 'yearly' OR \"month\" IS NOT NULL",
+      "name": "recurring_yearly_needs_month",
+      "entityType": "checks",
+      "table": "recurring"
+    },
+    {
+      "value": "\"match\" IN ('contains', 'regex')",
+      "name": "rule_match_kind",
+      "entityType": "checks",
+      "table": "rule"
+    },
+    {
+      "value": "\"kind\" IN ('close','checkpoint')",
+      "name": "snapshot_kind_enum",
+      "entityType": "checks",
+      "table": "snapshot"
+    },
+    {
+      "value": "\"status\" IN ('draft','posted','void','rejected')",
+      "name": "txn_status_enum",
+      "entityType": "checks",
+      "table": "txn"
+    },
+    {
+      "value": "\"system_kind\" IS NULL OR \"system_kind\" IN ('fx_revaluation','closing_entry','opening_balance')",
+      "name": "txn_system_kind_enum",
+      "entityType": "checks",
+      "table": "txn"
+    },
+    {
+      "value": "\"fx_estimated\" IN (0,1)",
+      "name": "txn_fx_estimated_bool",
+      "entityType": "checks",
+      "table": "txn"
+    },
+    {
+      "value": "\"sealed\" IN (0,1)",
+      "name": "txn_sealed_bool",
+      "entityType": "checks",
+      "table": "txn"
+    }
+  ],
+  "renames": []
+}
