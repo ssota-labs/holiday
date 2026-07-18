@@ -30,15 +30,12 @@ CLI가 맡는 일:
 이거를 기반으로 holiday-cfo 플러그인을 세팅하고, 가계부를 만들어줘.
 ```
 
-**Codex** — 터미널에서 플러그인을 깐 뒤, 채팅에 나머지 말을 넣는다.
+**Codex**
 
-```bash
+```
 codex plugin marketplace add ssota-labs/holiday-cfo
 codex plugin install holiday-cfo
-```
-
-```
-holiday-cfo 플러그인을 기준으로 가계부를 만들어줘.
+이거를 기반으로 holiday-cfo 플러그인을 세팅하고, 가계부를 만들어줘.
 ```
 
 **Node 24+**가 필요하다. 플러그인은 스킬만 싣고, 원장 CLI는 처음 쓸 때 `npx @holiday-cfo/cli@latest`로 받는다.
