@@ -67,4 +67,6 @@ Never invent an amount or a date to make a row balance. If a row is ambiguous, a
 **Transfers between the user's own accounts are the trap here** — one transfer
 shows up as a withdrawal in one file and a deposit in another, and merging them is
 its own problem (the row never says which account it went to). Import the accounts
-you have, then match transfers per `../concepts/transfers.md`.
+you have, then match transfers per `../concepts/transfers.md` — the pairing logic
+is already written (`../../scripts/match-transfers.mjs`); you only write the
+per-bank parser.

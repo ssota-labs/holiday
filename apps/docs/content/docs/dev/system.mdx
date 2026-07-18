@@ -8,12 +8,13 @@ related: ['/docs/dev/data-model', '/docs/dev/adr']
 
 <SpecVersion
   spec="시스템"
-  version="0.3.0"
+  version="0.4.0"
   source="plugins/claude-code/.claude-plugin/plugin.json"
   history={[
     { version: '0.1.0', date: '2026-07-17', summary: '코어 + SQLite 엔진 + CLI + 플러그인. Supabase 어댑터 없음', ref: 'plugins/claude-code/.claude-plugin/plugin.json' },
     { version: '0.2.0', date: '2026-07-17', summary: 'store-sql 추출 — LedgerStore 구현 하나가 SQLite와 Postgres를 모두 구동. Postgres 어댑터 적합성 통과', ref: 'packages/store-sql/src/store.ts' },
     { version: '0.3.0', date: '2026-07-18', summary: 'npm 배포 + 대시보드. CLI/블록 npm 배포, 번들 폐기(ADR-007), holiday dash 스캐폴드, claude-code+codex 두 플러그인', ref: 'packages/cli/src/dash.ts' },
+    { version: '0.4.0', date: '2026-07-18', summary: '분류 파이프라인 — 표준 차트, rule 테이블, ingest 자동분류(미매칭→draft), recategorize, dash 분류 대기 큐(ADR-008), 이체 매칭 스크립트', ref: 'packages/blocks/src/categorize.tsx' },
   ]}
 />
 
