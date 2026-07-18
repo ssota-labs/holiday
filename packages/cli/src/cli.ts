@@ -975,13 +975,20 @@ const ingest = program.command('ingest').description('캡쳐에서 읽은 거래
 
 ingest
   .command('submit')
-  .description('record parsed transactions as DRAFTS for review. Never does OCR — you are the parser.')
+  .description('record parsed transactions. Drafts for review by default; --post commits them directly. Never does OCR — you are the parser.')
   // NOT --json: that is the global machine-output flag, and commander resolves
   // one of them while silently ignoring the other. Made this mistake twice.
   .requiredOption('--data <submission>', 'see the schema in src/ingest.ts. Legs, not a flat amount.')
   .option('--image <path>', 'the screenshot, so the same file cannot be ingested twice')
   .option('--idem-key <key>', 'retry-safe. Same key + same request replays the stored result.')
-  .action(async (o: { data: string; image?: string; idemKey?: string }) => {
+  // The whole batch is one unit of work, so this is the fast path for a large
+  // history import: thousands of rows post in one process (one node start, one
+  // transaction) in seconds, instead of thousands of `txn add` calls each paying
+  // ~30ms of process startup. Skips the review queue on purpose — for a trusted
+  // bulk import the statement balance (`assert`) is the real check, not per-row
+  // human review.
+  .option('--post', 'commit directly as posted, skipping the review queue', false)
+  .action(async (o: { data: string; image?: string; idemKey?: string; post: boolean }) => {
     const ws = requireWorkspace();
     const config = readConfig(ws);
     const store = await openLedger(ws);
@@ -1125,7 +1132,11 @@ ingest
           );
         }
 
-        await uow.appendTxn(txn.value, { status: 'draft' });
+        // --post commits straight to posted; the ingest item is 'accepted' up
+        // front, mirroring exactly what `review accept` would do one row at a time.
+        const txnStatus = o.post ? 'posted' : 'draft';
+        const itemStatus = o.post ? 'accepted' : 'pending';
+        await uow.appendTxn(txn.value, { status: txnStatus });
         const itemId = nextUlid();
         await uow.recordIngestItem({
           id: itemId,
@@ -1135,13 +1146,13 @@ ingest
           externalRef: item.externalRef ?? null,
           merchant: item.payee ?? null,
           txnId: txn.value.id,
-          status: 'pending',
+          status: itemStatus,
           reason: null,
           // Verbatim, so a misread has an audit trail.
           parsedJson: JSON.stringify(item),
           createdAt: nowIso(),
         });
-        out.push({ itemId, txnId: txn.value.id, status: 'pending', warnings });
+        out.push({ itemId, txnId: txn.value.id, status: itemStatus, warnings });
       }
       return { batchId, items: out };
     });

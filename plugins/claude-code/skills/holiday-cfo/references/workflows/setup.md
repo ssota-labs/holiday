@@ -32,8 +32,12 @@ is an agent task and not a CLI flag.
 - Map each row to a double entry. The money leg is the bank or card; the other leg
   is a category (`Expenses:...`) or income. Ask the user how to categorise the ones
   you cannot infer, or bucket them into `Expenses:Uncategorized` and tell them.
-- Write and run a script that emits one `holiday txn add` per row, dated from the
-  file. For hundreds of rows, a loop is fine; you do not need the review queue.
+- Post them. For a few hundred rows, a loop of `holiday txn add` is fine. For a
+  large history (thousands of rows), **do not** loop `txn add` — each call pays
+  ~30ms of node startup, so 8,000 rows is ~9 minutes. Instead batch them through
+  one `holiday ingest submit --post` call: the whole batch is one process and one
+  transaction, so thousands of rows post in seconds. `--post` commits directly
+  (no review queue); build the JSON `{ "items": [ ... ] }` in your script.
 - Then `holiday verify` and `holiday balance`, and `assert` the closing balance
   against the statement so a mis-parsed sign shows up immediately.
 
