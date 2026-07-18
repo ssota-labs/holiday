@@ -113,7 +113,7 @@ function main() {
     process.exit(2);
   }
 
-  const changedPaths = git('diff', '--name-only', '--diff-filter=ACMRT', `${baseSha}...${headSha}`)
+  const changedPaths = git('diff', '--name-only', '--diff-filter=ACDMRT', `${baseSha}...${headSha}`)
     .split('\n')
     .filter(Boolean);
   const problems = validateDocsFirst({
