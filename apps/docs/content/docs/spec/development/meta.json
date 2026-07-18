@@ -1,7 +1,8 @@
 {
   "title": "개발 워크플로",
   "pages": [
-    "docs-first-workflow"
+    "docs-first-workflow",
+    "ledger-conversation-voice"
   ],
   "collapsible": true,
   "defaultOpen": false

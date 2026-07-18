@@ -13,7 +13,8 @@
     "us-close-assert",
     "us-cashflow-short",
     "us-verify",
-    "us-docs-first-development"
+    "us-docs-first-development",
+    "us-plain-language-ledger-report"
   ],
   "collapsible": true,
   "defaultOpen": false,

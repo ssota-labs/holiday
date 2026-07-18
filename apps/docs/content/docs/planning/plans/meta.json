@@ -1,7 +1,8 @@
 {
   "title": "구현계획",
   "pages": [
-    "plan-docs-first-development"
+    "plan-docs-first-development",
+    "plan-human-friendly-ledger-voice"
   ],
   "collapsible": true,
   "defaultOpen": true,

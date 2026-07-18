@@ -1,0 +1,51 @@
+---
+title: PRD-human-friendly-ledger-voice
+description: 회계나 개발을 몰라도 바로 이해되는 장부 대화
+type: conceptual
+period: continuous
+status: active
+stories:
+  - US-plain-language-ledger-report
+summary: 에이전트는 내부 작업을 숨기고 정확하고 자연스러운 한국어로 결과만 설명한다.
+id: PRD-human-friendly-ledger-voice
+changeType: product
+---
+
+## 문제
+
+현재 장부 에이전트는 사실을 정확히 찾고도 계정코드·분류 과정·기술 용어를 그대로
+나열할 수 있다. 표와 항목이 많아지면 사용자는 무엇이 달라졌는지보다 에이전트가 어떻게
+일했는지를 먼저 읽게 된다. 맞춤법이나 어색한 번역투가 섞이면 개인 재무를 맡기는
+제품에 대한 신뢰도 함께 떨어진다.
+
+## 목표
+
+- 사용자가 회계와 개발을 모른다고 가정하고 일상적인 한국어로 설명한다.
+- 명령어·파일·계정코드·전표 구조 등 내부 작업은 기본 답변에서 숨긴다.
+- 결과와 금전적 영향을 먼저 말하고, 필요한 이유와 다음 행동만 덧붙인다.
+- 전송 전에 맞춤법·띄어쓰기·조사·숫자와 단위를 다시 확인한다.
+- 장부 `AGENTS.md`와 Claude Code·Codex 스킬이 같은 말투 계약을 따른다.
+
+## Non-goals
+
+- 금액·날짜·상품명·원문의 적요를 자연스럽게 보이도록 임의로 고치지 않는다.
+- 회계적 확인이 필요한 변경을 사용자 동의 없이 확정하지 않는다.
+- 모든 답변을 짧게 줄여 필요한 위험이나 잔액 차이를 숨기지 않는다.
+- 자연스러운 문체를 이유로 CLI가 계산한 숫자를 반올림하거나 추정하지 않는다.
+
+## 성공 지표
+
+- 기본 답변은 결과 → 쉬운 설명 → 다음 행동 순서를 따른다.
+- 사용자가 요청하지 않으면 계정코드·명령어·전표·파서·JSON을 노출하지 않는다.
+- 전문 용어가 필요하면 같은 문장에서 일상어로 뜻을 설명한다.
+- 비교에 꼭 필요하지 않은 표와 백과사전식 정의로 답변을 시작하지 않는다.
+- 세 런타임 지침 표면의 말투 계약이 자동 검증된다.
+
+## 포함 스토리
+
+- [US-plain-language-ledger-report](/docs/planning/stories/us-plain-language-ledger-report)
+
+## 결과 계약
+
+- [장부 대화 말투 스펙](/docs/spec/development/ledger-conversation-voice)
+- [구현계획](/docs/planning/plans/plan-human-friendly-ledger-voice)

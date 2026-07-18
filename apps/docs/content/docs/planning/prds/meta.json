@@ -2,7 +2,8 @@
   "title": "PRDs",
   "pages": [
     "prd-0.1-foundation",
-    "prd-docs-first-development"
+    "prd-docs-first-development",
+    "prd-human-friendly-ledger-voice"
   ],
   "collapsible": true,
   "defaultOpen": true,

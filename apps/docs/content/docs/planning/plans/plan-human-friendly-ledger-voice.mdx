@@ -1,0 +1,72 @@
+---
+title: PLAN-human-friendly-ledger-voice
+description: 장부 에이전트가 내부 작업을 숨기고 쉬운 한국어로 답하도록 강제한다
+type: guide
+summary: 장부 AGENTS와 양쪽 스킬의 말투 계약을 맞추고 드리프트를 검사한다.
+id: PLAN-human-friendly-ledger-voice
+stage: ready
+changeType: product
+prd: PRD-human-friendly-ledger-voice
+specs:
+  - SPEC-ledger-conversation-voice
+stories:
+  - US-plain-language-ledger-report
+codeAreas:
+  - packages/cli/templates/ledger
+  - plugins/claude-code/skills/holiday-cfo/SKILL.md
+  - plugins/codex/skills/holiday-cfo/SKILL.md
+  - plugins/claude-code/scripts
+  - plugins/claude-code/package.json
+  - AGENTS.md
+related:
+  - /docs/planning/prds/prd-human-friendly-ledger-voice
+  - /docs/spec/development/ledger-conversation-voice
+---
+
+## 목표
+
+신규 장부에 항상 들어가는 `AGENTS.md`와 플러그인 업데이트로 전달되는 두 `SKILL.md`가
+같은 사용자 답변 계약을 갖게 한다. 에이전트는 작업 도구와 회계 구조를 안쪽에서
+사용하고, 사용자에게는 정확한 결과와 돈에 미치는 영향만 쉬운 한국어로 설명한다.
+
+## 영향 범위
+
+| 영역 | 변경 |
+|---|---|
+| 장부 템플릿 | 비개발자·회계 초보 가정, 내부 작업 숨김, 한국어 최종 교정, Ezy 예시 |
+| Claude Code 스킬 | 기존 장부에도 적용되는 동일한 핵심 말투 계약 |
+| Codex 스킬 | Claude Code와 같은 핵심 말투 계약 |
+| 플러그인 검사 | 세 표면의 말투 계약 키와 필수 지침이 같은지 검증 |
+| 저장소 `AGENTS.md` | CLI·대시보드 문구를 만들 때도 같은 사용자 기준 적용 |
+
+## 구현 순서
+
+1. 장부 `AGENTS.md`의 말투 섹션을 결과 중심 대화 계약으로 확장한다.
+2. 비자명한 전표를 기술 용어로 먼저 보여 주라는 규칙을 쉬운 확인 질문으로 바꾼다.
+3. Claude Code와 Codex `SKILL.md`에 같은 핵심 규칙과 계약 표식을 넣는다.
+4. 저장소 `AGENTS.md`의 사용자 문구 기준을 같은 방향으로 보강한다.
+5. 말투 계약 표식·필수 문구·폐기된 문구를 검사하는 스크립트를 추가한다.
+6. `holiday-plugin` 테스트에 말투 검사를 연결한다.
+
+## 검증 계획
+
+- 세 런타임 표면의 말투 계약 키가 모두 일치
+- 비개발자·회계 초보 가정, 내부 도구 숨김, 쉬운 한국어, 최종 교정 지침 존재
+- “Show your work”와 기술적인 전표 선공개 지침이 남아 있으면 실패
+- 양쪽 스킬이 주장하는 CLI 명령 정합 검사 통과
+- `pnpm --filter holiday-plugin test` 통과
+- 변경 소스 lint와 관련 typecheck 통과
+
+## 호환성과 배포
+
+- CLI 동작과 장부 데이터는 바뀌지 않는다.
+- 새로 `holiday init`한 장부는 강화된 `AGENTS.md`를 받는다.
+- 기존 장부의 `AGENTS.md`는 재실행으로 덮어쓰지 않으므로 자동 갱신되지 않는다.
+- 플러그인을 업데이트한 기존 사용자는 강화된 `SKILL.md` 규칙을 먼저 적용받는다.
+
+## 완료 조건
+
+- Ezy 사례를 계정코드 표 없이 일상적인 한국어로 설명하는 기준이 명시된다.
+- 사용자에게 보일 말과 안쪽에서 처리할 작업이 구분된다.
+- 맞춤법·띄어쓰기·조사·금액·단위를 전송 전에 확인하도록 강제한다.
+- 세 표면 중 하나에서 핵심 계약이 빠지면 플러그인 테스트가 실패한다.
