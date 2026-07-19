@@ -8,13 +8,14 @@ related: ['/docs/spec/data-model', '/docs/design/adr']
 
 <SpecVersion
   spec="시스템"
-  version="0.4.0"
+  version="0.5.0"
   source="plugins/claude-code/.claude-plugin/plugin.json"
   history={[
     { version: '0.1.0', date: '2026-07-17', summary: '코어 + SQLite 엔진 + CLI + 플러그인. Supabase 어댑터 없음', ref: 'plugins/claude-code/.claude-plugin/plugin.json' },
     { version: '0.2.0', date: '2026-07-17', summary: 'store-sql 추출 — LedgerStore 구현 하나가 SQLite와 Postgres를 모두 구동. Postgres 어댑터 적합성 통과', ref: 'packages/store-sql/src/store.ts' },
     { version: '0.3.0', date: '2026-07-18', summary: 'npm 배포 + 대시보드. CLI/블록 npm 배포, 번들 폐기(ADR-007), holiday dash 스캐폴드, claude-code+codex 두 플러그인', ref: 'packages/cli/src/dash.ts' },
     { version: '0.4.0', date: '2026-07-18', summary: '분류 파이프라인 — 표준 차트, rule 테이블, ingest 자동분류(미매칭→draft), recategorize, dash 분류 대기 큐(ADR-008), 이체 매칭 스크립트', ref: 'packages/blocks/src/categorize.tsx' },
+    { version: '0.5.0', date: '2026-07-18', summary: 'BYOC 멀티타깃 — contracts/adapters/usecases, deploy templates, D1 게이트, ADR-009', ref: 'packages/cli/src/deploy.ts' },
   ]}
 />
 
@@ -22,28 +23,30 @@ related: ['/docs/spec/data-model', '/docs/design/adr']
 
 ```
                   @holiday-cfo/core
-              (도메인 + 포트 + 유스케이스)
+         (도메인 + 포트 + 유스케이스)
                         ▲
-        ┌───────────────┴───────────────┐
-        │                               │
-  @holiday-cfo/store-sql              store-testkit
-  (LedgerStore 구현 — 딱 하나)      (적합성 스위트)
-        ▲                               ▲
-   ┌────┴─────┐                         │
-   │          │                         │
-store-sqlite  store-postgres            │
-(드라이버 +   (드라이버 +               │
- 스키마 +      스키마 +                 │
- PRAGMA)       plpgsql)                 │
-   ▲          ▲                         │
-   └────┬─────┴─────────────────────────┘
-        │
-   @holiday-cfo/cli
-   (composition root — 어떤 엔진을 쓰는지 아는 유일한 패키지)
+        ┌───────────────┼───────────────────┐
+        │               │                   │
+  @holiday-cfo/     @holiday-cfo/     @holiday-cfo/
+  contracts         adapters          store-sql
+  (Zod JSON)        (HTTP·MCP I/O)   (LedgerStore 하나)
+        ▲               ▲                   ▲
+        └───────┬───────┘                   │
+                │              ┌────────────┴────────────┐
+                │              │                         │
+           @holiday-cfo/cli  store-sqlite          store-postgres
+           + deploy templates (로컬 SoR)            (Supabase/PGlite)
+             (vercel-supabase / chatgpt-sites —
+              벤더 SDK는 템플릿 package.json에만)
 ```
 
-`core`는 어댑터에서 **아무것도** import하지 않는다. `cli`만이 `sqliteLedgerStore()`를
-아는 유일한 곳이다.
+`core`는 어댑터에서 **아무것도** import하지 않는다. CLI와 생성된 BYOC 템플릿이
+composition root다. Supabase / Vercel / vinext / D1 / R2 SDK는 **holiday 런타임
+패키지에 넣지 않는다** — `packages/cli/templates/*`의 생성물 `package.json`에만 존재한다.
+
+`@holiday-cfo/store-d1`은 projection으로만 존재하며 engine 적합성에 실패한다. ChatGPT
+Sites는 그 결과가 바뀔 때까지 fax inbox + review/export로 제한한다 (능력 플래그로
+실패를 숨기지 않음).
 
 **`LedgerStore` 구현은 엔진마다 있지 않고 `store-sql`에 하나만 있다.** 엔진 패키지가
 가진 건 드라이버, 스키마, 마이그레이션뿐이다. 이유는 취향이 아니라 측정이다 — 스토어

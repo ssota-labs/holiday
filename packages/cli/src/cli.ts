@@ -52,10 +52,10 @@ import {
   monthlyFromAnnual,
   parseAnnualPercent,
   rowForDate,
-  type ExistingTxn,
-  type ParsedTxn,
   type AssertionCheck,
   type SnapshotBalance,
+  type ExistingTxn,
+  type ParsedTxn,
   convert,
   formatRate,
   resolveRate,
@@ -68,9 +68,15 @@ import {
   sha256,
   sha256Bytes,
   scheduleInterest,
+  AppError,
+  listAccounts,
+  listPendingReviews,
+  rejectReview,
+  verifyLedger,
 } from '@holiday-cfo/core';
 
 import { bakeDatasets, scaffold, scaffoldLedgerDocs } from './dash.js';
+import { scaffoldDeploy } from './deploy.js';
 import { INGEST_SUBMISSION, type IngestItemInput } from './ingest.js';
 import { type DeriveWeight, UsageError, parseLeg } from './legs.js';
 import { createWorkspace, openLedger, readConfig, requireWorkspace } from './workspace.js';
@@ -178,10 +184,10 @@ account
   .action(async () => {
     const ws = requireWorkspace();
     const store = await openLedger(ws);
-    const accounts = await store.read((r) => r.listAccounts());
+    const result = await listAccounts(store);
     await store.close();
-    if (jsonMode()) return out(accounts);
-    for (const a of accounts) {
+    if (jsonMode()) return out(result.accounts);
+    for (const a of result.accounts) {
       const tags = [a.cash ? 'cash' : null, a.placeholder ? 'placeholder' : null, a.monetary ? null : 'non-monetary']
         .filter(Boolean)
         .join(' ');
@@ -1522,28 +1528,22 @@ review
   .action(async () => {
     const ws = requireWorkspace();
     const store = await openLedger(ws);
-    const result = await store.read(async (r) => {
-      const items = await r.listIngestItems({ status: 'pending' });
+    const listed = await listPendingReviews(store);
+    const detail = await store.read(async (r) => {
       const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
       return Promise.all(
-        items.map(async (i) => ({ item: i, txn: i.txnId ? await r.getTxn(i.txnId) : null, accounts })),
+        listed.items.map(async (item) => ({
+          item,
+          txn: item.txnId ? await r.getTxn(item.txnId as TxnId) : null,
+          accounts,
+        })),
       );
     });
     await store.close();
 
-    if (jsonMode()) {
-      return out(
-        result.map(({ item, txn }) => ({
-          id: item.id,
-          txnId: item.txnId,
-          date: txn?.txn.date,
-          payee: txn?.txn.payee,
-          merchant: item.merchant,
-        })),
-      );
-    }
-    if (result.length === 0) return note('검토할 드래프트가 없습니다.');
-    for (const { item, txn, accounts } of result) {
+    if (jsonMode()) return out(listed.items);
+    if (detail.length === 0) return note('검토할 드래프트가 없습니다.');
+    for (const { item, txn, accounts } of detail) {
       if (!txn) continue;
       note(`${item.id}  ${txn.txn.date}  ${txn.txn.payee ?? txn.txn.narration}`);
       for (const p of txn.txn.postings) {
@@ -1554,7 +1554,7 @@ review
       }
     }
     note('');
-    note(`${result.length}건이 승인 대기 중입니다. \`holiday review accept <id>\` / \`reject <id> --reason\``);
+    note(`${detail.length}건이 승인 대기 중입니다. \`holiday review accept <id>\` / \`reject <id> --reason\``);
   });
 
 review
@@ -1599,16 +1599,9 @@ review
   .action(async (id: string, o: { reason: string }) => {
     const ws = requireWorkspace();
     const store = await openLedger(ws);
-    await store.unitOfWork(async (uow) => {
-      const items = await uow.listIngestItems();
-      const item = items.find((i) => i.id === id);
-      if (!item) throw new UsageError(`no such review item: ${id}`);
-      if (item.status !== 'pending') throw new UsageError(`item ${id} is already ${item.status}`);
-      if (item.txnId) await uow.rejectDraft(item.txnId, o.reason);
-      await uow.setIngestItemStatus(id, 'rejected', { reason: o.reason });
-    });
+    const result = await rejectReview(store, id, o.reason);
     await store.close();
-    out({ id, status: 'rejected', reason: o.reason });
+    out(result);
     // Deleting it would let the same screenshot be re-proposed forever.
     note(`반려했습니다. 기록은 남습니다 — 같은 캡쳐가 다시 올라오는 것을 막는 기억입니다.`);
   });
@@ -1974,7 +1967,6 @@ program
   .option('--receive <spec>', 'hypothetical inflow "DATE AMOUNT LABEL" (repeatable)', collectAssume, [])
   .action(async (o: { until: string; spend: string[]; receive: string[] }) => {
     const ws = requireWorkspace();
-    const config = readConfig(ws);
     const store = await openLedger(ws);
 
     const now = assertIsoDate(today());
@@ -2240,17 +2232,22 @@ program
   .action(async (o: { head: boolean }) => {
     const ws = requireWorkspace();
     const store = await openLedger(ws);
-    const report = await store.unitOfWork((uow) => uow.verify());
-    const head = await store.chainHead();
+    const report = await verifyLedger(store, {
+      chainHead: () => store.chainHead(),
+      throwOnFailure: false,
+    });
     await store.close();
 
-    if (jsonMode()) return out({ ...report, head });
-    if (o.head) note(head ? `chain head: #${head.seq} ${head.hash}` : 'chain head: (empty ledger)');
+    if (jsonMode()) return out(report);
+    if (o.head) {
+      const head = report.head ?? null;
+      note(head ? `chain head: #${head.seq} ${head.hash}` : 'chain head: (empty ledger)');
+    }
     if (report.ok) {
       note(`이상 없습니다 — 거래 ${report.checked}건 검사, 감사 체인 무결.`);
       return;
     }
-    for (const p of report.problems) note(`${p.kind}  ${p.subject}\n  ${p.detail}`);
+    for (const p of report.problems) note(`${p.kind}  ${p.subject ?? ''}\n  ${p.detail}`);
     throw new LedgerError('verify_failed', `${report.problems.length} problem(s) found`);
   });
 
@@ -2364,8 +2361,75 @@ program.option('--json', 'machine-readable output on stdout');
  * a bare message is ambiguous. Exit 2 means "you asked for something impossible",
  * exit 1 means "the ledger says no".
  */
+const deploy = program.command('deploy').description('BYOC 배포 — 사용자가 고른 타깃에 팩스 자동화 스택을 생성');
+
+deploy
+  .command('init')
+  .description('scaffold a non-destructive deploy project (vercel-supabase | chatgpt-sites)')
+  .requiredOption('--target <name>', 'vercel-supabase | chatgpt-sites')
+  .option('--dir <path>', 'where to write it', '.')
+  .option(
+    '--mode <mode>',
+    'chatgpt-sites only: inbox-export (default) | engine (requires D1 conformance)',
+    'inbox-export',
+  )
+  .action(async (o: { target: string; dir: string; mode: string }) => {
+    if (o.target !== 'vercel-supabase' && o.target !== 'chatgpt-sites') {
+      throw new UsageError(`unknown deploy target: ${o.target}. Use vercel-supabase or chatgpt-sites.`);
+    }
+    if (o.mode !== 'inbox-export' && o.mode !== 'engine') {
+      throw new UsageError(`unknown mode: ${o.mode}. Use inbox-export or engine.`);
+    }
+    const dest = resolve(process.cwd(), o.dir);
+    const result = scaffoldDeploy({
+      dest,
+      target: o.target,
+      version: program.version() ?? '0.1.0',
+      mode: o.mode as 'inbox-export' | 'engine',
+    });
+    out({
+      dir: dest,
+      target: o.target,
+      mode: result.mode,
+      created: result.created,
+      skipped: result.skipped,
+      d1EngineEligible: result.d1EngineEligible,
+    });
+    note(`Deploy scaffold at ${dest} (target=${o.target}, mode=${result.mode})`);
+    if (result.skipped.length > 0) note(`Kept existing: ${result.skipped.join(', ')}`);
+    if (o.target === 'chatgpt-sites' && result.mode === 'inbox-export') {
+      note('D1 is NOT an engine-tier ledger here. Sites mode is fax inbox + review/export only.');
+    }
+    note('Never copy .holiday/**, *.db, or .env* into the deploy project.');
+    note('Next: follow holiday-deploy-* / holiday-fax skills; run synthetic fax tests before production.');
+  });
+
+deploy
+  .command('check')
+  .description('print deploy target capabilities and D1 engine gate status')
+  .action(() => {
+    out({
+      targets: {
+        'vercel-supabase': {
+          ledger: 'postgres via @holiday-cfo/store-postgres (engine)',
+          objects: 'Supabase Storage (private)',
+          background: 'Vercel after() + durable fax_inbox recovery route',
+        },
+        'chatgpt-sites': {
+          ledger: 'not claimed — D1 fails interactive unitOfWork conformance',
+          objects: 'Sites-managed R2',
+          background: 'none (Queues/Cron unsupported) — explicit retry via UI/MCP',
+          mode: 'inbox-export',
+        },
+      },
+      d1EngineEligible: false,
+      managedWeb: false,
+    });
+  });
+
 program.parseAsync().catch((e: unknown) => {
-  const code = e instanceof UsageError ? 'usage' : e instanceof LedgerError ? e.code : 'internal';
+  const code =
+    e instanceof UsageError ? 'usage' : e instanceof AppError ? e.code : e instanceof LedgerError ? e.code : 'internal';
   const message = e instanceof Error ? e.message : String(e);
   process.stderr.write(`${JSON.stringify({ error: { code, message } })}\n`);
   process.exit(code === 'usage' ? 2 : 1);

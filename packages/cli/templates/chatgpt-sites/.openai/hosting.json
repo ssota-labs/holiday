@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "runtime": "edge",
+  "bindings": {
+    "DB": { "type": "d1" },
+    "ORIGINALS": { "type": "r2" }
+  }
+}

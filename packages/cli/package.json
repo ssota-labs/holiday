@@ -16,9 +16,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
+    "@holiday-cfo/adapters": "workspace:*",
+    "@holiday-cfo/contracts": "workspace:*",
     "@holiday-cfo/core": "workspace:*",
     "@holiday-cfo/store-sqlite": "workspace:*",
     "commander": "^13.0.0",

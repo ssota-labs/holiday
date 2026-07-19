@@ -1,0 +1,33 @@
+{
+  "name": "@holiday-cfo/adapters",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@holiday-cfo/contracts": "workspace:*",
+    "@holiday-cfo/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@holiday-cfo/store-sqlite": "workspace:*",
+    "@holiday-cfo/store-sql": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ssota-labs/holiday.git",
+    "directory": "packages/adapters"
+  }
+}

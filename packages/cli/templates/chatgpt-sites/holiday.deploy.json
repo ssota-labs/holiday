@@ -1,0 +1,6 @@
+{
+  "target": "chatgpt-sites",
+  "mode": "inbox-export",
+  "d1EngineEligible": false,
+  "notes": "D1 does not pass LedgerStore unitOfWork conformance. This app is fax inbox + review/export only — it does not claim to be a holiday engine ledger."
+}

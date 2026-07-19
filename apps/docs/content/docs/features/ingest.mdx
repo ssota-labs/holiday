@@ -45,3 +45,25 @@ posted로 넣는다 — 대량 히스토리 수입용.
 ## 스토리
 
 [US-ingest-review](/docs/planning/stories/us-ingest-review)
+
+## BYOC 팩스 경로 (벤더 비종속)
+
+은행/카드 **팩스 자동통지**는 SOLAPI FAX-RECEIVE 같은 가상팩스 → 사용자가 고른
+HTTPS 엔드포인트로 들어온다. holiday는 관리형 멀티테넌트 웹을 운영하지 않는다
+(`holiday deploy`가 스캐폴드만 한다).
+
+```
+KB 팩스 → SOLAPI → (Vercel+Supabase | ChatGPT Sites) → Cursor Automation → holiday MCP → draft → review
+```
+
+- **계약:** `@holiday-cfo/contracts` (금액은 decimal string). CLI · HTTP · MCP가 같은
+  usecase(`submitIngest` / `review*` / `verifyLedger`)를 호출한다.
+- **Vercel+Supabase:** Postgres는 engine tier (`prepare: false` + bigint). `fileId`
+  UNIQUE, 5초 내 ack, `after()` + `/api/fax/recover`.
+- **ChatGPT Sites:** vinext + D1/R2. Queue/Cron 없음 → 실패는 D1에 남기고 UI/MCP로
+  재처리. D1은 interactive `unitOfWork`가 없어 **engine 원장으로 선언하지 않는다**
+  (inbox + review/export만). `holiday deploy check` / `@holiday-cfo/store-d1` 게이트.
+- **보존:** 원본은 private Storage/R2. `.holiday/**` · `*.db` · `.env*`는 배포 산출물에
+  넣지 않는다.
+- **비용:** Cursor Automation은 파싱 실패 시에만. 배포 스킬은 preview에서 합성 팩스
+  중복 테스트를 통과한 뒤에만 production을 제안한다.

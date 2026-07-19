@@ -4,7 +4,7 @@
  * Run: node --experimental-strip-types apps/docs/scripts/generate-ssot-docs.mts
  * from repo root, or node this file from apps/docs.
  */
-import { mkdirSync, writeFileSync, cpSync, existsSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 

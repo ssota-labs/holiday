@@ -1,0 +1,31 @@
+{
+  "name": "holiday-byoc-vercel-supabase",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:synthetic-fax": "node --experimental-strip-types scripts/synthetic-fax.mts"
+  },
+  "dependencies": {
+    "@holiday-cfo/adapters": "__HOLIDAY_VERSION__",
+    "@holiday-cfo/contracts": "__HOLIDAY_VERSION__",
+    "@holiday-cfo/core": "__HOLIDAY_VERSION__",
+    "@holiday-cfo/store-postgres": "__HOLIDAY_VERSION__",
+    "@holiday-cfo/store-sql": "__HOLIDAY_VERSION__",
+    "@supabase/supabase-js": "2.49.8",
+    "next": "15.3.3",
+    "postgres": "3.4.7",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.7.3"
+  }
+}

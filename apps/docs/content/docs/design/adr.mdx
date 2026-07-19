@@ -211,5 +211,22 @@ CLI는 `@holiday-cfo/cli`로 npm에 배포한다. 두 플러그인은 스킬만 
 수 있는 쓰기는 사용자가 자기 기계에서 누르는 클릭뿐이다.
 </Decision>
 
+<Decision
+  id="ADR-009"
+  title="BYOC 멀티타깃 — 벤더 SDK는 템플릿에만, D1은 적합성 전 engine 금지"
+  status="accepted"
+  date="2026-07-18"
+  rejected={[
+    { option: '관리형 멀티테넌트 holiday 웹', because: '단일인 원장의 SoR를 우리가 호스팅하면 보관·접근통제·비용이 제품 범위 밖으로 커진다. BYOC가 경계다.' },
+    { option: '루트 런타임에 supabase-js / vercel / vinext / D1 SDK', because: 'CLI·core가 벤더에 묶이고, 로컬 SQLite 경로에 불필요한 의존성이 생긴다. 배포 대상별 의존성은 생성 템플릿 package.json에만 둔다.' },
+    { option: 'D1을 capability flag로 engine처럼 쓰기', because: 'batch()는 있으나 interactive unitOfWork가 없다. store-testkit 전부 통과 전에는 원장으로 선언하지 않고 Sites는 inbox/export로 제한한다.' },
+  ]}
+>
+`holiday deploy init --target vercel-supabase|chatgpt-sites`가 비파괴 스캐폴드를 만든다.
+공유 진입점은 `@holiday-cfo/core` usecases + `@holiday-cfo/contracts`이고, CLI·HTTP·MCP는
+`@holiday-cfo/adapters`로 I/O만 변환한다. 공식 upstream 스킬(supabase, deploy-to-vercel,
+migrate-to-vinext)은 `.agents/skills`에 고정하고 holiday 소유 wrapper 스킬이 오케스트레이션만
+한다. Managed Web은 이 ADR 범위 밖이다.
+</Decision>
 
 

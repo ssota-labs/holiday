@@ -97,6 +97,22 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  packages/adapters:
+    dependencies:
+      '@holiday-cfo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@holiday-cfo/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@holiday-cfo/store-sql':
+        specifier: workspace:*
+        version: link:../store-sql
+      '@holiday-cfo/store-sqlite':
+        specifier: workspace:*
+        version: link:../store-sqlite
+
   packages/blocks:
     dependencies:
       '@holiday-cfo/ui':
@@ -127,6 +143,12 @@ importers:
 
   packages/cli:
     dependencies:
+      '@holiday-cfo/adapters':
+        specifier: workspace:*
+        version: link:../adapters
+      '@holiday-cfo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@holiday-cfo/core':
         specifier: workspace:*
         version: link:../core
@@ -143,11 +165,33 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
 
-  packages/core:
+  packages/contracts:
     dependencies:
       zod:
         specifier: ^3.24.1
         version: 3.25.76
+
+  packages/core:
+    dependencies:
+      '@holiday-cfo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+
+  packages/store-d1:
+    dependencies:
+      '@holiday-cfo/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@holiday-cfo/store-testkit':
+        specifier: workspace:*
+        version: link:../store-testkit
+      vitest:
+        specifier: ^3.0.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
 
   packages/store-postgres:
     dependencies:

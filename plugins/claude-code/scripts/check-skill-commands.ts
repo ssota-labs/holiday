@@ -19,7 +19,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const PLUGIN = resolve(import.meta.dirname, '..');
-const SKILL = join(PLUGIN, 'skills', 'holiday-cfo');
+const SKILLS_ROOT = join(PLUGIN, 'skills');
+const SKILL = join(SKILLS_ROOT, 'holiday-cfo');
 
 /**
  * The CLI under test is the freshly-built workspace copy, not a published npm
@@ -33,14 +34,12 @@ const SKILL = join(PLUGIN, 'skills', 'holiday-cfo');
 const BIN = resolve(PLUGIN, '..', '..', 'packages', 'cli', 'dist', 'main.js');
 
 /**
- * The Codex skill is a SECOND SKILL.md that must be checked too.
- *
- * It shares this plugin's references/ by symlink, so those are already walked
- * once under SKILL — only its own SKILL.md is new. Both hosts drive the same CLI,
- * so a command that drifts out from under one drifts out from under both, and a
- * checker that only reads the Claude Code copy would bless a broken Codex skill.
+ * Codex skills live next to this plugin. Shared references/ are symlinked into
+ * holiday-cfo; BYOC wrapper skills are duplicated SKILL.md files that must be
+ * checked too — they document `holiday deploy …`.
  */
-const CODEX_SKILL_MD = resolve(PLUGIN, '..', 'codex', 'skills', 'holiday-cfo', 'SKILL.md');
+const CODEX_SKILLS = resolve(PLUGIN, '..', 'codex', 'skills');
+const CODEX_SKILL_MD = join(CODEX_SKILLS, 'holiday-cfo', 'SKILL.md');
 
 /**
  * The ledger project's AGENTS.md template is a THIRD claim surface. `holiday
@@ -57,7 +56,19 @@ const LEDGER_DOCS_MD = resolve(PLUGIN, '..', '..', 'packages', 'cli', 'templates
 const CMD_RE = /\bholiday ([a-z][a-z-]*(?: [a-z][a-z-]*)?)\b/g;
 
 /** Not commands — flags, and words that follow "holiday" in a sentence. */
-const IGNORE = new Set(['is', 'a', 'the', 'cfo', 'ledger', 'init', 'account add']);
+const IGNORE = new Set([
+  'is',
+  'a',
+  'the',
+  'cfo',
+  'ledger',
+  'init',
+  'account add',
+  'does',
+  'drafts',
+  'commands',
+  'deploy', // group name alone — skills must say `holiday deploy init|check`
+]);
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((e) => {
@@ -121,7 +132,11 @@ function commandTree(): { leaves: Set<string>; groups: Map<string, Set<string>> 
 }
 
 function main(): void {
-  const files = [...walk(SKILL), CODEX_SKILL_MD, LEDGER_DOCS_MD];
+  const files = [
+    ...walk(SKILLS_ROOT),
+    ...walk(CODEX_SKILLS).filter((f) => f.endsWith('SKILL.md')),
+    LEDGER_DOCS_MD,
+  ];
   const claimed = new Map<string, string>();
 
   for (const f of files) {

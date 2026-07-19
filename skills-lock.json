@@ -1,29 +1,47 @@
 {
   "version": 1,
   "skills": {
+    "deploy-to-vercel": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/deploy-to-vercel/SKILL.md",
+      "computedHash": "8e95b408c650467aef6ea3b82d25814ffe53f3de2564b63e1f8b341ca402021c"
+    },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grill-me/SKILL.md",
-      "computedHash": "f361db4e15e6bfd562a9282b1dccda513910a50061f9e838ce017be9c69dde3f"
+      "computedHash": "000514e9633b1a2df8bef98549e99b6eaf1a8c3fabfad0e3b328440b3b226c90"
     },
     "humanize": {
       "source": "epoko77-ai/im-not-ai",
       "sourceType": "github",
       "skillPath": ".claude/skills/humanize/SKILL.md",
-      "computedHash": "dc85c84afd26d1f5d402e8fddc494cc03d1550ed6ff98af7d8f8bdac038ec38a"
+      "computedHash": "62eaa1aaadc86296b3b1a26de8d21f1491882228d219819123a55f1084318538"
     },
     "humanize-korean": {
       "source": "epoko77-ai/im-not-ai",
       "sourceType": "github",
       "skillPath": ".claude/skills/humanize-korean/SKILL.md",
-      "computedHash": "75e1c643add0abab707d1f6b8629844b0322fdd71615a2b0d4672d82b3085002"
+      "computedHash": "76d0067171758e42af9e6523885c885f6648c1372887eadefd0560e4d4cc3346"
     },
     "humanize-redo": {
       "source": "epoko77-ai/im-not-ai",
       "sourceType": "github",
       "skillPath": ".claude/skills/humanize-redo/SKILL.md",
-      "computedHash": "790abcc9e39f0bd7ea3e03dab671ab72348831bdd199814aea45079499841d11"
+      "computedHash": "d65ce525031f6e46e83d3c11303b9bf301482f2290e6056738f19189d49558e4"
+    },
+    "migrate-to-vinext": {
+      "source": "cloudflare/vinext",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/migrate-to-vinext/SKILL.md",
+      "computedHash": "27d6d96ca63d3aec1f54d8fc10bedd6f504d15604ea364cc9f5e63c8b196e882"
+    },
+    "supabase": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase/SKILL.md",
+      "computedHash": "43efb6ff01bb9b6f56b8b33a6e705e104f440a563f6facde4866ee962ba0cd7a"
     }
   }
 }

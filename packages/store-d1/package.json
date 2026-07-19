@@ -1,0 +1,32 @@
+{
+  "name": "@holiday-cfo/store-d1",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@holiday-cfo/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@holiday-cfo/store-testkit": "workspace:*",
+    "vitest": "^3.0.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ssota-labs/holiday.git",
+    "directory": "packages/store-d1"
+  }
+}
