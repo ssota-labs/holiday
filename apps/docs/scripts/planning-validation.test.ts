@@ -49,7 +49,7 @@ stage: accepted
   write(root, 'spec/development/meta.json', '{"pages":["spec-one"]}\n');
   write(
     root,
-    'planning/plans/plan-one.mdx',
+    'development/plans/plan-one.mdx',
     document(`
 title: Plan
 id: PLAN-one
@@ -61,7 +61,7 @@ stories: [US-one]
 codeAreas: [packages/core]
 `),
   );
-  write(root, 'planning/plans/meta.json', '{"pages":["plan-one"]}\n');
+  write(root, 'development/plans/meta.json', '{"pages":["plan-one"]}\n');
   return root;
 }
 
@@ -88,7 +88,7 @@ id: US-one
     write(root, 'planning/stories/meta.json', '{"pages":["us-one","us-two"]}\n');
     write(
       root,
-      'planning/plans/plan-one.mdx',
+      'development/plans/plan-one.mdx',
       document(`
 title: Plan
 id: PLAN-one
@@ -136,10 +136,10 @@ stage: draft
 test('requires navigation registration and code areas', () => {
   const root = fixture();
   try {
-    write(root, 'planning/plans/meta.json', '{"pages":[]}\n');
+    write(root, 'development/plans/meta.json', '{"pages":[]}\n');
     write(
       root,
-      'planning/plans/plan-one.mdx',
+      'development/plans/plan-one.mdx',
       document(`
 title: Plan
 id: PLAN-one

@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
+    "generate:schema": "node scripts/generate-schema-manifest.mjs",
+    "prebuild": "pnpm run generate:schema",
     "build": "next build && pnpm run check:rules && pnpm run check:planning",
     "start": "next start",
-    "test": "node --test --experimental-strip-types scripts/*.test.ts",
+    "test": "node --test --experimental-strip-types scripts/*.test.ts scripts/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "postinstall": "fumadocs-mdx",
     "check:rules": "node --experimental-strip-types scripts/check-rule-links.ts",

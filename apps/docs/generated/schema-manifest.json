@@ -1,0 +1,3479 @@
+{
+  "metadata": {
+    "latestMigration": "20260719045457_loose_sunspot",
+    "snapshotPath": "packages/store-sqlite/migrations/20260719045457_loose_sunspot/snapshot.json",
+    "schemaSourcePath": "packages/store-sqlite/src/schema.drizzle.ts",
+    "generatorPath": "apps/docs/scripts/generate-schema-manifest.mjs"
+  },
+  "tables": [
+    {
+      "name": "account",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "code",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "type",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "parent_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "monetary",
+          "physicalType": "integer",
+          "semanticType": "bool",
+          "nullable": false,
+          "default": "1",
+          "primaryKey": false
+        },
+        {
+          "name": "cash",
+          "physicalType": "integer",
+          "semanticType": "bool",
+          "nullable": false,
+          "default": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "placeholder",
+          "physicalType": "integer",
+          "semanticType": "bool",
+          "nullable": false,
+          "default": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "opened_on",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "closed_on",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "account_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_account_commodity_commodity_code_fk",
+          "sourceTable": "account",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "account_cash_bool",
+          "expression": "\"cash\" IN (0,1)"
+        },
+        {
+          "name": "account_monetary_bool",
+          "expression": "\"monetary\" IN (0,1)"
+        },
+        {
+          "name": "account_placeholder_bool",
+          "expression": "\"placeholder\" IN (0,1)"
+        },
+        {
+          "name": "account_type_enum",
+          "expression": "\"type\" IN ('asset','liability','equity','income','expense')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "account_by_code",
+          "columns": [
+            "code"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "audit_log",
+      "columns": [
+        {
+          "name": "seq",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "event",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "subject",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "detail",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": "'{}'",
+          "primaryKey": false
+        },
+        {
+          "name": "prev_hash",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "hash",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "audit_log_pk",
+        "columns": [
+          "seq"
+        ]
+      },
+      "foreignKeys": [],
+      "checks": [],
+      "indexes": [
+        {
+          "name": "audit_log_hash_unique",
+          "columns": [
+            "hash"
+          ],
+          "unique": true
+        }
+      ]
+    },
+    {
+      "name": "balance_assertion",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "as_of",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "expected_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "note",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "balance_assertion_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_balance_assertion_account_id_account_id_fk",
+          "sourceTable": "balance_assertion",
+          "sourceColumns": [
+            "account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_balance_assertion_commodity_commodity_code_fk",
+          "sourceTable": "balance_assertion",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [],
+      "indexes": [
+        {
+          "name": "balance_assertion_by_date",
+          "columns": [
+            "as_of"
+          ],
+          "unique": false
+        },
+        {
+          "name": "balance_assertion_unique",
+          "columns": [
+            "account_id",
+            "as_of",
+            "commodity"
+          ],
+          "unique": true
+        }
+      ]
+    },
+    {
+      "name": "book",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "schema_version",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "functional_currency",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "close_grain",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": "'month'",
+          "primaryKey": false
+        },
+        {
+          "name": "timezone",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": "'Asia/Seoul'",
+          "primaryKey": false
+        },
+        {
+          "name": "dedupe_key_version",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": "1",
+          "primaryKey": false
+        },
+        {
+          "name": "fx_max_staleness_days",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": "7",
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "book_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_book_functional_currency_commodity_code_fk",
+          "sourceTable": "book",
+          "sourceColumns": [
+            "functional_currency"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "book_close_grain_enum",
+          "expression": "\"close_grain\" IN ('day','week','month','quarter','year')"
+        },
+        {
+          "name": "book_singleton",
+          "expression": "\"id\" = 'book'"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "card",
+      "columns": [
+        {
+          "name": "account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "funding_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "cycle_close_day",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "payment_month_offset",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "payment_day",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "label",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "card_pk",
+        "columns": [
+          "account_id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_card_account_id_account_id_fk",
+          "sourceTable": "card",
+          "sourceColumns": [
+            "account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_card_funding_account_id_account_id_fk",
+          "sourceTable": "card",
+          "sourceColumns": [
+            "funding_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "card_close_day_range",
+          "expression": "\"cycle_close_day\" BETWEEN 1 AND 31"
+        },
+        {
+          "name": "card_offset_range",
+          "expression": "\"payment_month_offset\" BETWEEN 0 AND 3"
+        },
+        {
+          "name": "card_payment_day_range",
+          "expression": "\"payment_day\" = -1 OR \"payment_day\" BETWEEN 1 AND 31"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "command_log",
+      "columns": [
+        {
+          "name": "idem_key",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "request_sha256",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "response_json",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "command_log_pk",
+        "columns": [
+          "idem_key"
+        ]
+      },
+      "foreignKeys": [],
+      "checks": [],
+      "indexes": []
+    },
+    {
+      "name": "commodity",
+      "columns": [
+        {
+          "name": "code",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "exponent",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "kind",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "name",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "commodity_pk",
+        "columns": [
+          "code"
+        ]
+      },
+      "foreignKeys": [],
+      "checks": [
+        {
+          "name": "commodity_exponent_range",
+          "expression": "\"exponent\" BETWEEN 0 AND 9"
+        },
+        {
+          "name": "commodity_kind_enum",
+          "expression": "\"kind\" IN ('fiat','crypto','security','unit')"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "fx_rate",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "as_of",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "base",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "quote",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "rate",
+          "physicalType": "text",
+          "semanticType": "decimal-string",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "source",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "fetched_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "fx_rate_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_fx_rate_base_commodity_code_fk",
+          "sourceTable": "fx_rate",
+          "sourceColumns": [
+            "base"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_fx_rate_quote_commodity_code_fk",
+          "sourceTable": "fx_rate",
+          "sourceColumns": [
+            "quote"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [],
+      "indexes": [
+        {
+          "name": "fx_rate_unique",
+          "columns": [
+            "as_of",
+            "base",
+            "quote",
+            "source"
+          ],
+          "unique": true
+        }
+      ]
+    },
+    {
+      "name": "income_settlement",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "source_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "paid_on",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "gross_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "net_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "statute_as_of",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "txn_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "label",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "income_settlement_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_income_settlement_commodity_commodity_code_fk",
+          "sourceTable": "income_settlement",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_income_settlement_source_id_income_source_id_fk",
+          "sourceTable": "income_settlement",
+          "sourceColumns": [
+            "source_id"
+          ],
+          "targetTable": "income_source",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "CASCADE"
+        },
+        {
+          "name": "fk_income_settlement_txn_id_txn_id_fk",
+          "sourceTable": "income_settlement",
+          "sourceColumns": [
+            "txn_id"
+          ],
+          "targetTable": "txn",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "income_settlement_gross_positive",
+          "expression": "\"gross_minor\" > 0"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "income_settlement_by_date",
+          "columns": [
+            "paid_on"
+          ],
+          "unique": false
+        },
+        {
+          "name": "income_settlement_by_source",
+          "columns": [
+            "source_id"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "income_settlement_line",
+      "columns": [
+        {
+          "name": "settlement_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "seq",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "kind",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "amount_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "income_settlement_line_pk",
+        "columns": [
+          "settlement_id",
+          "seq"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_income_settlement_line_settlement_id_income_settlement_id_fk",
+          "sourceTable": "income_settlement_line",
+          "sourceColumns": [
+            "settlement_id"
+          ],
+          "targetTable": "income_settlement",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "CASCADE"
+        }
+      ],
+      "checks": [
+        {
+          "name": "income_settlement_line_amount_nonneg",
+          "expression": "\"amount_minor\" >= 0"
+        },
+        {
+          "name": "income_settlement_line_kind_enum",
+          "expression": "\"kind\" IN ('income_tax_3','local_tax_0_3','vat_10','national_pension','health_insurance','long_term_care','employment_insurance','earned_income_tax','local_income_tax')"
+        },
+        {
+          "name": "income_settlement_line_seq_positive",
+          "expression": "\"seq\" >= 1"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "income_source",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "label",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "income_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "deposit_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "regime",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "active_from",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "active_to",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "income_source_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_income_source_commodity_commodity_code_fk",
+          "sourceTable": "income_source",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_income_source_deposit_account_id_account_id_fk",
+          "sourceTable": "income_source",
+          "sourceColumns": [
+            "deposit_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_income_source_income_account_id_account_id_fk",
+          "sourceTable": "income_source",
+          "sourceColumns": [
+            "income_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "income_source_regime_enum",
+          "expression": "\"regime\" IN ('business_withholding','business_vat','salary','allowance')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "income_source_by_income",
+          "columns": [
+            "income_account_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "income_source_label_unique",
+          "columns": [
+            "label"
+          ],
+          "unique": true
+        }
+      ]
+    },
+    {
+      "name": "ingest_batch",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "source_sha256",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "source_name",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "submitted_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "item_count",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": "0",
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "ingest_batch_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [],
+      "checks": [
+        {
+          "name": "ingest_batch_count_nonneg",
+          "expression": "\"item_count\" >= 0"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ingest_batch_source_sha256_unique",
+          "columns": [
+            "source_sha256"
+          ],
+          "unique": true
+        }
+      ]
+    },
+    {
+      "name": "ingest_item",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "batch_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "dedupe_key",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "dedupe_authority",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "external_ref",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "merchant",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "txn_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": "'pending'",
+          "primaryKey": false
+        },
+        {
+          "name": "reason",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "parsed_json",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "ingest_item_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_ingest_item_batch_id_ingest_batch_id_fk",
+          "sourceTable": "ingest_item",
+          "sourceColumns": [
+            "batch_id"
+          ],
+          "targetTable": "ingest_batch",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "CASCADE"
+        },
+        {
+          "name": "fk_ingest_item_txn_id_txn_id_fk",
+          "sourceTable": "ingest_item",
+          "sourceColumns": [
+            "txn_id"
+          ],
+          "targetTable": "txn",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "ingest_item_authority_enum",
+          "expression": "\"dedupe_authority\" IN ('image','external_ref','natural')"
+        },
+        {
+          "name": "ingest_item_status_enum",
+          "expression": "\"status\" IN ('pending','accepted','rejected')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ingest_item_by_batch",
+          "columns": [
+            "batch_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ingest_item_by_dedupe",
+          "columns": [
+            "dedupe_key"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "installment",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "card_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "liability_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "txn_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "purchased_on",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "months",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "total_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "interest_free",
+          "physicalType": "integer",
+          "semanticType": "bool",
+          "nullable": false,
+          "default": "1",
+          "primaryKey": false
+        },
+        {
+          "name": "label",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "installment_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_installment_card_account_id_account_id_fk",
+          "sourceTable": "installment",
+          "sourceColumns": [
+            "card_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_installment_commodity_commodity_code_fk",
+          "sourceTable": "installment",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_installment_liability_account_id_account_id_fk",
+          "sourceTable": "installment",
+          "sourceColumns": [
+            "liability_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_installment_txn_id_txn_id_fk",
+          "sourceTable": "installment",
+          "sourceColumns": [
+            "txn_id"
+          ],
+          "targetTable": "txn",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "installment_accounts_differ",
+          "expression": "\"card_account_id\" <> \"liability_account_id\""
+        },
+        {
+          "name": "installment_interest_free_bool",
+          "expression": "\"interest_free\" IN (0,1)"
+        },
+        {
+          "name": "installment_months_positive",
+          "expression": "\"months\" >= 1"
+        },
+        {
+          "name": "installment_total_positive",
+          "expression": "\"total_minor\" > 0"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "installment_by_card",
+          "columns": [
+            "card_account_id"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "installment_row",
+      "columns": [
+        {
+          "name": "installment_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "seq",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "payment_date",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "principal_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "fee_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": "0",
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "installment_row_pk",
+        "columns": [
+          "installment_id",
+          "seq"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_installment_row_installment_id_installment_id_fk",
+          "sourceTable": "installment_row",
+          "sourceColumns": [
+            "installment_id"
+          ],
+          "targetTable": "installment",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "CASCADE"
+        }
+      ],
+      "checks": [
+        {
+          "name": "installment_row_seq_positive",
+          "expression": "\"seq\" >= 1"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "installment_row_by_date",
+          "columns": [
+            "payment_date"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "loan",
+      "columns": [
+        {
+          "name": "account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "funding_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "interest_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "principal_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "annual_rate_text",
+          "physicalType": "text",
+          "semanticType": "decimal-string",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "method",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "term_months",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "first_payment_date",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "payment_day",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "label",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "loan_pk",
+        "columns": [
+          "account_id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_loan_account_id_account_id_fk",
+          "sourceTable": "loan",
+          "sourceColumns": [
+            "account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_loan_commodity_commodity_code_fk",
+          "sourceTable": "loan",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_loan_funding_account_id_account_id_fk",
+          "sourceTable": "loan",
+          "sourceColumns": [
+            "funding_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_loan_interest_account_id_account_id_fk",
+          "sourceTable": "loan",
+          "sourceColumns": [
+            "interest_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "loan_accounts_differ",
+          "expression": "\"account_id\" <> \"funding_account_id\""
+        },
+        {
+          "name": "loan_method_enum",
+          "expression": "\"method\" IN ('annuity','equal_principal','bullet','interest_only')"
+        },
+        {
+          "name": "loan_payment_day_range",
+          "expression": "\"payment_day\" = -1 OR \"payment_day\" BETWEEN 1 AND 31"
+        },
+        {
+          "name": "loan_principal_positive",
+          "expression": "\"principal_minor\" > 0"
+        },
+        {
+          "name": "loan_term_positive",
+          "expression": "\"term_months\" >= 1"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "loan_schedule_row",
+      "columns": [
+        {
+          "name": "loan_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "seq",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "due_date",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "opening_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "principal_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "interest_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "closing_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "loan_schedule_row_pk",
+        "columns": [
+          "loan_id",
+          "seq"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_loan_schedule_row_loan_id_loan_account_id_fk",
+          "sourceTable": "loan_schedule_row",
+          "sourceColumns": [
+            "loan_id"
+          ],
+          "targetTable": "loan",
+          "targetColumns": [
+            "account_id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "CASCADE"
+        }
+      ],
+      "checks": [
+        {
+          "name": "loan_schedule_seq_positive",
+          "expression": "\"seq\" >= 1"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "loan_schedule_by_date",
+          "columns": [
+            "due_date"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "period",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "grain",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "start",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "end",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": "'open'",
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "period_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [],
+      "checks": [
+        {
+          "name": "period_grain_enum",
+          "expression": "\"grain\" IN ('day','week','month','quarter','year')"
+        },
+        {
+          "name": "period_status_enum",
+          "expression": "\"status\" IN ('open','closed','locked')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "period_grain_start",
+          "columns": [
+            "grain",
+            "start"
+          ],
+          "unique": true
+        }
+      ]
+    },
+    {
+      "name": "posting",
+      "columns": [
+        {
+          "name": "txn_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "seq",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "units_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "weight_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "weight_source",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "fx_rate_text",
+          "physicalType": "text",
+          "semanticType": "decimal-string",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "fx_rate_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "lot_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "kind",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": "'normal'",
+          "primaryKey": false
+        },
+        {
+          "name": "memo",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "posting_pk",
+        "columns": [
+          "txn_id",
+          "seq"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_posting_account_id_account_id_fk",
+          "sourceTable": "posting",
+          "sourceColumns": [
+            "account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_posting_commodity_commodity_code_fk",
+          "sourceTable": "posting",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_posting_txn_id_txn_id_fk",
+          "sourceTable": "posting",
+          "sourceColumns": [
+            "txn_id"
+          ],
+          "targetTable": "txn",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "posting_kind_enum",
+          "expression": "\"kind\" IN ('normal','fx_revaluation','rounding')"
+        },
+        {
+          "name": "posting_weight_source_enum",
+          "expression": "\"weight_source\" IN ('identity','actual','rate','plug')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "posting_by_account",
+          "columns": [
+            "account_id"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "recurring",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "label",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "expense_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "funding_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "amount_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "cadence_kind",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "day_of_month",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "month",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "active_from",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "active_to",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "recurring_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_recurring_commodity_commodity_code_fk",
+          "sourceTable": "recurring",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_recurring_expense_account_id_account_id_fk",
+          "sourceTable": "recurring",
+          "sourceColumns": [
+            "expense_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_recurring_funding_account_id_account_id_fk",
+          "sourceTable": "recurring",
+          "sourceColumns": [
+            "funding_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "recurring_amount_positive",
+          "expression": "\"amount_minor\" > 0"
+        },
+        {
+          "name": "recurring_cadence_enum",
+          "expression": "\"cadence_kind\" IN ('monthly','yearly')"
+        },
+        {
+          "name": "recurring_day_range",
+          "expression": "\"day_of_month\" = -1 OR \"day_of_month\" BETWEEN 1 AND 31"
+        },
+        {
+          "name": "recurring_month_range",
+          "expression": "\"month\" IS NULL OR \"month\" BETWEEN 1 AND 12"
+        },
+        {
+          "name": "recurring_yearly_needs_month",
+          "expression": "\"cadence_kind\" <> 'yearly' OR \"month\" IS NOT NULL"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recurring_by_funding",
+          "columns": [
+            "funding_account_id"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "recurring_income",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "label",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "income_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "deposit_account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "amount_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "cadence_kind",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "day_of_month",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "month",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "active_from",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "active_to",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "recurring_income_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_recurring_income_commodity_commodity_code_fk",
+          "sourceTable": "recurring_income",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_recurring_income_deposit_account_id_account_id_fk",
+          "sourceTable": "recurring_income",
+          "sourceColumns": [
+            "deposit_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_recurring_income_income_account_id_account_id_fk",
+          "sourceTable": "recurring_income",
+          "sourceColumns": [
+            "income_account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "recurring_income_amount_positive",
+          "expression": "\"amount_minor\" > 0"
+        },
+        {
+          "name": "recurring_income_cadence_enum",
+          "expression": "\"cadence_kind\" IN ('monthly','yearly')"
+        },
+        {
+          "name": "recurring_income_day_range",
+          "expression": "\"day_of_month\" = -1 OR \"day_of_month\" BETWEEN 1 AND 31"
+        },
+        {
+          "name": "recurring_income_month_range",
+          "expression": "\"month\" IS NULL OR \"month\" BETWEEN 1 AND 12"
+        },
+        {
+          "name": "recurring_income_yearly_needs_month",
+          "expression": "\"cadence_kind\" <> 'yearly' OR \"month\" IS NOT NULL"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recurring_income_by_deposit",
+          "columns": [
+            "deposit_account_id"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "rule",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "pattern",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "match",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": "'contains'",
+          "primaryKey": false
+        },
+        {
+          "name": "category",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "priority",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "rule_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [],
+      "checks": [
+        {
+          "name": "rule_match_kind",
+          "expression": "\"match\" IN ('contains', 'regex')"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "snapshot",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "period_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "kind",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "as_of",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "snapshot_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_snapshot_period_id_period_id_fk",
+          "sourceTable": "snapshot",
+          "sourceColumns": [
+            "period_id"
+          ],
+          "targetTable": "period",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "snapshot_kind_enum",
+          "expression": "\"kind\" IN ('close','checkpoint')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "snapshot_unique",
+          "columns": [
+            "period_id",
+            "kind"
+          ],
+          "unique": true
+        }
+      ]
+    },
+    {
+      "name": "snapshot_balance",
+      "columns": [
+        {
+          "name": "snapshot_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "account_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "units_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "weight_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "period_units_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "period_weight_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": "0",
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "snapshot_balance_pk",
+        "columns": [
+          "snapshot_id",
+          "account_id",
+          "commodity"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_snapshot_balance_account_id_account_id_fk",
+          "sourceTable": "snapshot_balance",
+          "sourceColumns": [
+            "account_id"
+          ],
+          "targetTable": "account",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_snapshot_balance_commodity_commodity_code_fk",
+          "sourceTable": "snapshot_balance",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        },
+        {
+          "name": "fk_snapshot_balance_snapshot_id_snapshot_id_fk",
+          "sourceTable": "snapshot_balance",
+          "sourceColumns": [
+            "snapshot_id"
+          ],
+          "targetTable": "snapshot",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "CASCADE"
+        }
+      ],
+      "checks": [],
+      "indexes": []
+    },
+    {
+      "name": "txn",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "date",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "booking_commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "payee",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "narration",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": "''",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "system_kind",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "corrects_txn_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "source_item_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "fx_estimated",
+          "physicalType": "integer",
+          "semanticType": "bool",
+          "nullable": false,
+          "default": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "tags_json",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": "'[]'",
+          "primaryKey": false
+        },
+        {
+          "name": "meta_json",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": "'{}'",
+          "primaryKey": false
+        },
+        {
+          "name": "sealed",
+          "physicalType": "integer",
+          "semanticType": "bool",
+          "nullable": false,
+          "default": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "reason",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "txn_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_txn_booking_commodity_commodity_code_fk",
+          "sourceTable": "txn",
+          "sourceColumns": [
+            "booking_commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "txn_fx_estimated_bool",
+          "expression": "\"fx_estimated\" IN (0,1)"
+        },
+        {
+          "name": "txn_sealed_bool",
+          "expression": "\"sealed\" IN (0,1)"
+        },
+        {
+          "name": "txn_status_enum",
+          "expression": "\"status\" IN ('draft','posted','void','rejected')"
+        },
+        {
+          "name": "txn_system_kind_enum",
+          "expression": "\"system_kind\" IS NULL OR \"system_kind\" IN ('fx_revaluation','closing_entry','opening_balance')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "txn_by_date",
+          "columns": [
+            "date",
+            "id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "txn_by_status",
+          "columns": [
+            "status"
+          ],
+          "unique": false
+        }
+      ]
+    }
+  ],
+  "foreignKeys": [
+    {
+      "name": "fk_account_commodity_commodity_code_fk",
+      "sourceTable": "account",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_balance_assertion_account_id_account_id_fk",
+      "sourceTable": "balance_assertion",
+      "sourceColumns": [
+        "account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_balance_assertion_commodity_commodity_code_fk",
+      "sourceTable": "balance_assertion",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_book_functional_currency_commodity_code_fk",
+      "sourceTable": "book",
+      "sourceColumns": [
+        "functional_currency"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_card_account_id_account_id_fk",
+      "sourceTable": "card",
+      "sourceColumns": [
+        "account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_card_funding_account_id_account_id_fk",
+      "sourceTable": "card",
+      "sourceColumns": [
+        "funding_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_fx_rate_base_commodity_code_fk",
+      "sourceTable": "fx_rate",
+      "sourceColumns": [
+        "base"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_fx_rate_quote_commodity_code_fk",
+      "sourceTable": "fx_rate",
+      "sourceColumns": [
+        "quote"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_income_settlement_commodity_commodity_code_fk",
+      "sourceTable": "income_settlement",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_income_settlement_line_settlement_id_income_settlement_id_fk",
+      "sourceTable": "income_settlement_line",
+      "sourceColumns": [
+        "settlement_id"
+      ],
+      "targetTable": "income_settlement",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE"
+    },
+    {
+      "name": "fk_income_settlement_source_id_income_source_id_fk",
+      "sourceTable": "income_settlement",
+      "sourceColumns": [
+        "source_id"
+      ],
+      "targetTable": "income_source",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE"
+    },
+    {
+      "name": "fk_income_settlement_txn_id_txn_id_fk",
+      "sourceTable": "income_settlement",
+      "sourceColumns": [
+        "txn_id"
+      ],
+      "targetTable": "txn",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_income_source_commodity_commodity_code_fk",
+      "sourceTable": "income_source",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_income_source_deposit_account_id_account_id_fk",
+      "sourceTable": "income_source",
+      "sourceColumns": [
+        "deposit_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_income_source_income_account_id_account_id_fk",
+      "sourceTable": "income_source",
+      "sourceColumns": [
+        "income_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_ingest_item_batch_id_ingest_batch_id_fk",
+      "sourceTable": "ingest_item",
+      "sourceColumns": [
+        "batch_id"
+      ],
+      "targetTable": "ingest_batch",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE"
+    },
+    {
+      "name": "fk_ingest_item_txn_id_txn_id_fk",
+      "sourceTable": "ingest_item",
+      "sourceColumns": [
+        "txn_id"
+      ],
+      "targetTable": "txn",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_installment_card_account_id_account_id_fk",
+      "sourceTable": "installment",
+      "sourceColumns": [
+        "card_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_installment_commodity_commodity_code_fk",
+      "sourceTable": "installment",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_installment_liability_account_id_account_id_fk",
+      "sourceTable": "installment",
+      "sourceColumns": [
+        "liability_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_installment_row_installment_id_installment_id_fk",
+      "sourceTable": "installment_row",
+      "sourceColumns": [
+        "installment_id"
+      ],
+      "targetTable": "installment",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE"
+    },
+    {
+      "name": "fk_installment_txn_id_txn_id_fk",
+      "sourceTable": "installment",
+      "sourceColumns": [
+        "txn_id"
+      ],
+      "targetTable": "txn",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_loan_account_id_account_id_fk",
+      "sourceTable": "loan",
+      "sourceColumns": [
+        "account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_loan_commodity_commodity_code_fk",
+      "sourceTable": "loan",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_loan_funding_account_id_account_id_fk",
+      "sourceTable": "loan",
+      "sourceColumns": [
+        "funding_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_loan_interest_account_id_account_id_fk",
+      "sourceTable": "loan",
+      "sourceColumns": [
+        "interest_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_loan_schedule_row_loan_id_loan_account_id_fk",
+      "sourceTable": "loan_schedule_row",
+      "sourceColumns": [
+        "loan_id"
+      ],
+      "targetTable": "loan",
+      "targetColumns": [
+        "account_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE"
+    },
+    {
+      "name": "fk_posting_account_id_account_id_fk",
+      "sourceTable": "posting",
+      "sourceColumns": [
+        "account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_posting_commodity_commodity_code_fk",
+      "sourceTable": "posting",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_posting_txn_id_txn_id_fk",
+      "sourceTable": "posting",
+      "sourceColumns": [
+        "txn_id"
+      ],
+      "targetTable": "txn",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_recurring_commodity_commodity_code_fk",
+      "sourceTable": "recurring",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_recurring_expense_account_id_account_id_fk",
+      "sourceTable": "recurring",
+      "sourceColumns": [
+        "expense_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_recurring_funding_account_id_account_id_fk",
+      "sourceTable": "recurring",
+      "sourceColumns": [
+        "funding_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_recurring_income_commodity_commodity_code_fk",
+      "sourceTable": "recurring_income",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_recurring_income_deposit_account_id_account_id_fk",
+      "sourceTable": "recurring_income",
+      "sourceColumns": [
+        "deposit_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_recurring_income_income_account_id_account_id_fk",
+      "sourceTable": "recurring_income",
+      "sourceColumns": [
+        "income_account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_snapshot_balance_account_id_account_id_fk",
+      "sourceTable": "snapshot_balance",
+      "sourceColumns": [
+        "account_id"
+      ],
+      "targetTable": "account",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_snapshot_balance_commodity_commodity_code_fk",
+      "sourceTable": "snapshot_balance",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_snapshot_balance_snapshot_id_snapshot_id_fk",
+      "sourceTable": "snapshot_balance",
+      "sourceColumns": [
+        "snapshot_id"
+      ],
+      "targetTable": "snapshot",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE"
+    },
+    {
+      "name": "fk_snapshot_period_id_period_id_fk",
+      "sourceTable": "snapshot",
+      "sourceColumns": [
+        "period_id"
+      ],
+      "targetTable": "period",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_txn_booking_commodity_commodity_code_fk",
+      "sourceTable": "txn",
+      "sourceColumns": [
+        "booking_commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    }
+  ]
+}

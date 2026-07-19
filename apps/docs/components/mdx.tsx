@@ -56,6 +56,8 @@ import { DocKind } from './blocks/doc-kind';
 import { DocStatus } from './blocks/doc-status';
 import { LedgerExample } from './blocks/ledger-example';
 import { Rule } from './blocks/rule';
+import { SchemaGraph } from './blocks/schema-graph';
+import { SchemaSnapshot } from './blocks/schema-snapshot';
 import { SpecVersion } from './blocks/spec-version';
 import { SchemaTable } from './blocks/schema-table';
 import { Glossary, Term } from './blocks/term';
@@ -86,6 +88,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     DocKind,
     DocStatus,
     SchemaTable,
+    SchemaGraph,
+    SchemaSnapshot,
     CommandSpec,
     SpecVersion,
     LedgerExample,
