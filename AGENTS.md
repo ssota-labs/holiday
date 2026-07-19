@@ -70,7 +70,7 @@ node packages/cli/dist/main.js <command>   # 배포되면 `npx @holiday-cfo/cli@
 3. **허용오차는 없다.** `SUM(weight_minor) === 0`이 정확히 0. fuzz/epsilon 파라미터 추가 금지.
 4. **금액은 i64 minor unit (`bigint`).** `number`로 왕복하지 마라. 적합성 스위트가 `2^53+1`을 못박는다.
 5. **환율이 아니라 상대금액으로 균형.** `@@`는 총액(weight). `@`(단위당 환율)는 의도적으로 거부.
-6. **스케줄은 원장 밖.** 카드·할부·정기지출·대출은 예측이다. 전기하면 금리 변경이 과거를 오염시킨다.
+6. **스케줄은 원장 밖.** 카드·할부·정기지출·정기수입·대출은 예측이다. 전기하면 금리 변경이 과거를 오염시킨다.
 7. **engine 티어는 참칭 불가.** `init()`이 `atomicMultiRowWrite`·`uniqueConstraints`·`readAfterWriteConsistency`를 요구한다. Notion/Airtable 어댑터를 engine으로 올리지 마라.
 8. **적용된 마이그레이션은 수정 금지.** 새 마이그레이션을 append한다. sha256이 바뀌면 기존 원장이 안 열린다.
 9. **`LedgerStore` 구현은 `store-sql`에 하나.** 엔진 패키지는 드라이버·스키마·마이그레이션만.

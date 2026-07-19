@@ -1,0 +1,54 @@
+---
+title: income add
+description: holiday income add 명령 계약
+type: reference
+summary: 정기수입을 등록한다. 입금 계정이 --cash여야 현금흐름에 잡힌다.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.1"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.1',
+      date: '2026-07-18',
+      summary: '정기수입 income add/list, cashflow에 투영',
+      ref: 'packages/cli/src/cli.ts',
+    },
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+
+관련 기능: [income](/docs/features/income)
+
+<CommandSpec
+  command="income add"
+  mutates={true}
+  summary="정기수입을 등록한다. 입금 계정이 --cash여야 현금흐름에 잡힌다."
+  signature={`holiday income add <label> --income <code> --deposit <code> --amount <amount> [--day 1] [--yearly <month>] [--from] [--to]`}
+  flags={[
+    { name: '<label>', type: 'string', kind: 'arg', required: true },
+    { name: '--income', type: 'string', required: true, description: 'Income 계정' },
+    { name: '--deposit', type: 'string', required: true, description: '입금 asset (--cash 권장)' },
+    { name: '--amount', type: 'amount', required: true },
+    { name: '--day', type: 'number', default: '1', description: '-1 = 말일' },
+    { name: '--yearly', type: '1-12', description: '있으면 yearly cadence' },
+    { name: '--from', type: 'YYYY-MM-DD', default: 'today' },
+    { name: '--to', type: 'YYYY-MM-DD' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday income add "급여" --income Income:Salary --deposit Assets:Bank:KB:Checking --amount 3000000 --day 25 --json`}
+/>

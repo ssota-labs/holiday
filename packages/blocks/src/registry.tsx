@@ -78,7 +78,7 @@ export const { registry } = defineRegistry(catalog, {
               현재 현금 {money(cashflow.openingCashMinor, cashflow.commodity)}
             </p>
             {rows.length === 0 ? (
-              <p className="text-muted-foreground text-sm">확정된 지출이 없습니다. 카드 청구·할부·정기지출을 등록하면 여기에 나옵니다.</p>
+              <p className="text-muted-foreground text-sm">확정된 지출이 없습니다. 카드 청구·할부·정기지출·정기수입을 등록하면 여기에 나옵니다.</p>
             ) : (
               <Table>
                 <TableHeader>

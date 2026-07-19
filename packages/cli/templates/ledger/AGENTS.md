@@ -145,7 +145,7 @@ Equity:Opening                # 개시잔액의 상대 계정
 
 ## 스케줄 — 예측은 원장 밖
 
-카드 청구주기·할부·정기지출·대출 상환은 **예측이지 사실이 아니다.** 원장에
+카드 청구주기·할부·정기지출·정기수입·대출 상환은 **예측이지 사실이 아니다.** 원장에
 전기하지 않는다 — 가격이 오르고 결제일이 바뀌는데, 이력으로 저장된 예측은
 과거를 오염시킨다. `holiday cashflow`에서 원장과 만난다.
 
@@ -165,9 +165,13 @@ Equity:Opening                # 개시잔액의 상대 계정
   그날 출금, 카드면 그날은 빚만 생기고 현금은 카드 주기로 몇 주 뒤에 나간다.
   `--day -1`은 말일, `--yearly <월>`은 연 1회. 실제 청구되면 보통 전표로
   기록한다 — 이건 예측일 뿐이다.
-- 확인: `holiday card list` / `installment list` / `recurring list`, 그리고
-  `holiday cashflow --until <날짜>`. 전망의 각 항목은 출처를 이름으로 밝힌다
-  ("넷플릭스 (2026-08-17 결제분)").
+- **정기수입**: `holiday income add "급여" --income Income:Salary --deposit
+  <통장> --amount 3000000 --day 25`. 입금일이 현금일이다. **`--deposit`은
+  `--cash` 계정이어야** 현금흐름에 잡힌다 — 아니면 등록은 되지만 투영에서
+  빠지고 ⚠로 알린다. 실제 입금은 보통 전표로 기록한다.
+- 확인: `holiday card list` / `installment list` / `recurring list` /
+  `income list`, 그리고 `holiday cashflow --until <날짜>`. 전망의 각 항목은
+  출처를 이름으로 밝힌다 ("넷플릭스 (2026-08-17 결제분)").
 
 "이 대출 받으면?" 같은 what-if는 전표를 만들지 말고 전망에 접어 넣는다:
 `holiday cashflow --until 2027-06-30 --spend "2026-09-01 5000000 노트북"

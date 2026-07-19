@@ -9,6 +9,7 @@
     "card",
     "installment",
     "recurring",
+    "income",
     "loan",
     "fx",
     "assert",

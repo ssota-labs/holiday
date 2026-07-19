@@ -17,5 +17,5 @@ holiday cashflow --until 2027-06-30 \
 repeat, so stack several and watch them interact. Each shows up as `가정: <label>`,
 and the base ledger is untouched: re-run plain `holiday cashflow` to confirm.
 
-For a recurring commitment (a new loan, a new 정기지출), model the first few months
+For a recurring commitment (a new loan, a new 정기지출 or 정기수입), model the first few months
 with several `--spend` lines rather than one, so the user sees the monthly bite.

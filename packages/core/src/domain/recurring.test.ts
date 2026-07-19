@@ -4,8 +4,15 @@ import fc from 'fast-check';
 import type { AccountId, IsoDate } from './account.js';
 import type { CardCycleRule } from './billing.js';
 import type { CommodityCode } from './commodity.js';
-import { projectRecurring } from './cashflow.js';
-import { CadenceError, type RecurringExpense, assertCadence, describeCadence, occurrencesBetween } from './recurring.js';
+import { projectRecurring, projectRecurringIncome } from './cashflow.js';
+import {
+  CadenceError,
+  type RecurringExpense,
+  type RecurringIncome,
+  assertCadence,
+  describeCadence,
+  occurrencesBetween,
+} from './recurring.js';
 
 const d = (s: string) => s as IsoDate;
 const BANK = 'bank' as AccountId;
@@ -194,6 +201,57 @@ describe('projectRecurring', () => {
     // may overstate how soon the cash goes, but silently dropping the expense
     // would understate the outflow entirely — the worse of the two errors.
     const rows = projectRecurring({ recurring: [orphan], cardRules, today: d('2026-07-17'), until: d('2026-08-31') });
+    expect(rows.map((r) => r.paymentDate)).toEqual(['2026-07-25', '2026-08-25']);
+  });
+});
+
+const SALARY = 'salary' as AccountId;
+
+const paycheck: RecurringIncome = {
+  id: 'I1',
+  label: '급여',
+  incomeAccountId: SALARY,
+  depositAccountId: BANK,
+  amountMinor: 3000000n,
+  commodity: KRW,
+  cadence: { kind: 'monthly', dayOfMonth: 25 },
+  activeFrom: d('2020-01-01'),
+  activeTo: null,
+};
+
+describe('projectRecurringIncome', () => {
+  it('credits cash on the occurrence date', () => {
+    const rows = projectRecurringIncome({
+      incomes: [paycheck],
+      today: d('2026-07-17'),
+      until: d('2026-09-30'),
+    });
+    expect(rows.map((r) => [r.paymentDate, r.amountMinor])).toEqual([
+      ['2026-07-25', -3000000n],
+      ['2026-08-25', -3000000n],
+      ['2026-09-25', -3000000n],
+    ]);
+  });
+
+  it('does NOT project an income occurrence on or before today', () => {
+    // Today's paycheck is already in opening cash if posted; projecting it again
+    // invents money. Understating is the safer miss.
+    const rows = projectRecurringIncome({
+      incomes: [paycheck],
+      today: d('2026-07-25'),
+      until: d('2026-09-30'),
+    });
+    expect(rows.map((r) => r.paymentDate)).not.toContain('2026-07-25');
+    expect(rows.map((r) => r.paymentDate)).toEqual(['2026-08-25', '2026-09-25']);
+  });
+
+  it('honours activeFrom and activeTo', () => {
+    const ended: RecurringIncome = { ...paycheck, activeTo: d('2026-08-31') };
+    const rows = projectRecurringIncome({
+      incomes: [ended],
+      today: d('2026-07-17'),
+      until: d('2026-12-31'),
+    });
     expect(rows.map((r) => r.paymentDate)).toEqual(['2026-07-25', '2026-08-25']);
   });
 });

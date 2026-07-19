@@ -288,6 +288,47 @@ export const recurring = pgTable(
   ],
 );
 
+/**
+ * 정기수입. Same forecast shape as `recurring`, opposite direction: cash arrives
+ * in a deposit account on the occurrence date. No card-cycle branch — salary does
+ * not ride a billing cycle.
+ */
+export const recurringIncome = pgTable(
+  'recurring_income',
+  {
+    id: text('id').primaryKey(),
+    label: text('label').notNull(),
+    incomeAccountId: text('income_account_id')
+      .notNull()
+      .references(() => account.id),
+    depositAccountId: text('deposit_account_id')
+      .notNull()
+      .references(() => account.id),
+    amountMinor: bigint('amount_minor', { mode: 'bigint' }).notNull(),
+    commodity: text('commodity')
+      .notNull()
+      .references(() => commodity.code),
+    cadenceKind: text('cadence_kind').notNull(),
+    // -1 means the last day of the month (말일).
+    dayOfMonth: integer('day_of_month').notNull(),
+    // Only meaningful for 'yearly'.
+    month: integer('month'),
+    activeFrom: text('active_from').notNull(),
+    activeTo: text('active_to'),
+  },
+  (t) => [
+    index('recurring_income_by_deposit').on(t.depositAccountId),
+    check('recurring_income_amount_positive', sql`${t.amountMinor} > 0`),
+    check('recurring_income_cadence_enum', sql`${t.cadenceKind} IN ('monthly','yearly')`),
+    check('recurring_income_day_range', sql`${t.dayOfMonth} = -1 OR ${t.dayOfMonth} BETWEEN 1 AND 31`),
+    check('recurring_income_month_range', sql`${t.month} IS NULL OR ${t.month} BETWEEN 1 AND 12`),
+    check(
+      'recurring_income_yearly_needs_month',
+      sql`${t.cadenceKind} <> 'yearly' OR ${t.month} IS NOT NULL`,
+    ),
+  ],
+);
+
 export const fxRate = pgTable(
   'fx_rate',
   {

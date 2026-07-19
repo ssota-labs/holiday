@@ -11,8 +11,8 @@ history as is worth entering.
 2. **Accounts — offer the standard chart.** Propose the chart from the ledger
    `AGENTS.md` (§표준 차트: "이 표준 차트로 시작할까요?") and create what the
    user accepts, then their actual banks/cards/debts on top. Mark spendable
-   accounts `--cash`. Set card billing cycles with `holiday card add`, 할부 and
-   정기지출, loans — naming rules and the schedule traps are in the same file.
+   accounts `--cash`. Set card billing cycles with `holiday card add`, 할부,
+   정기지출, 정기수입, loans — naming rules and the schedule traps are in the same file.
 3. **Classification rules, before importing — do not skip this.** And seed them
    from the DATA, not from imagination: parse the raw file first (without
    importing), count payees by frequency, and bring the user the top of that

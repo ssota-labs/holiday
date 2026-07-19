@@ -5,7 +5,7 @@ import type { FxRate } from '../domain/fx.js';
 import type { DedupeAuthority } from '../domain/ingest.js';
 import type { Loan, LoanScheduleRow } from '../domain/loan.js';
 import type { Commodity, CommodityCode } from '../domain/commodity.js';
-import type { RecurringExpense } from '../domain/recurring.js';
+import type { RecurringExpense, RecurringIncome } from '../domain/recurring.js';
 import type { TxnId, ValidatedTxn } from '../domain/txn.js';
 
 /**
@@ -210,6 +210,7 @@ export interface LedgerRead {
   getInstallment(id: string): Promise<InstallmentWithRows | null>;
 
   listRecurring(filter?: { activeOn?: IsoDate }): Promise<readonly RecurringExpense[]>;
+  listRecurringIncome(filter?: { activeOn?: IsoDate }): Promise<readonly RecurringIncome[]>;
 
   listLoans(): Promise<readonly LoanWithSchedule[]>;
   getLoan(accountId: AccountId): Promise<LoanWithSchedule | null>;
@@ -333,6 +334,7 @@ export interface LedgerUow extends LedgerRead {
   /** Replaces the plan and its rows wholesale — a schedule is a forecast, not a journal. */
   upsertInstallment(plan: InstallmentPlan, rows: readonly InstallmentRow[]): Promise<void>;
   upsertRecurring(r: RecurringExpense): Promise<void>;
+  upsertRecurringIncome(r: RecurringIncome): Promise<void>;
   /** Replaces the loan and its whole schedule — a forecast is allowed to change. */
   upsertLoan(loan: Loan, rows: readonly LoanScheduleRow[]): Promise<void>;
 

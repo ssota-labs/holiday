@@ -65,7 +65,7 @@ export const catalog = defineCatalog(schema, {
         horizonDays: z.number().int().min(7).max(365).default(90).describe('how far forward to walk'),
       }),
       description:
-        'Will the cash survive the card bills, 할부 and 정기지출 that are already committed? ' +
+        'Will the cash survive the card bills, 할부, 정기지출 and 정기수입 that are already committed? ' +
         'Walks forward from cash accounts and shows where the balance goes negative, if it does. ' +
         'This is the single most useful block — show it when the user asks anything about affordability.',
     },

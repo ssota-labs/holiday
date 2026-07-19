@@ -100,5 +100,13 @@ export const MIGRATIONS: readonly InlinedMigration[] = [
     "statements": [
       "CREATE TABLE `rule` (\n\t`id` text PRIMARY KEY,\n\t`pattern` text NOT NULL,\n\t`match` text DEFAULT 'contains' NOT NULL,\n\t`category` text NOT NULL,\n\t`priority` integer DEFAULT 0 NOT NULL,\n\t`created_at` text NOT NULL,\n\tCONSTRAINT \"rule_match_kind\" CHECK(\"match\" IN ('contains', 'regex'))\n);"
     ]
+  },
+  {
+    "name": "20260718175054_classy_arclight",
+    "hash": "9d758f2b4a31b4b176b1fa57a664b36e12a7bccc78b4868b043be975f2c62285",
+    "statements": [
+      "CREATE TABLE `recurring_income` (\n\t`id` text PRIMARY KEY,\n\t`label` text NOT NULL,\n\t`income_account_id` text NOT NULL,\n\t`deposit_account_id` text NOT NULL,\n\t`amount_minor` integer NOT NULL,\n\t`commodity` text NOT NULL,\n\t`cadence_kind` text NOT NULL,\n\t`day_of_month` integer NOT NULL,\n\t`month` integer,\n\t`active_from` text NOT NULL,\n\t`active_to` text,\n\tCONSTRAINT `fk_recurring_income_income_account_id_account_id_fk` FOREIGN KEY (`income_account_id`) REFERENCES `account`(`id`),\n\tCONSTRAINT `fk_recurring_income_deposit_account_id_account_id_fk` FOREIGN KEY (`deposit_account_id`) REFERENCES `account`(`id`),\n\tCONSTRAINT `fk_recurring_income_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n\tCONSTRAINT \"recurring_income_amount_positive\" CHECK(\"amount_minor\" > 0),\n\tCONSTRAINT \"recurring_income_cadence_enum\" CHECK(\"cadence_kind\" IN ('monthly','yearly')),\n\tCONSTRAINT \"recurring_income_day_range\" CHECK(\"day_of_month\" = -1 OR \"day_of_month\" BETWEEN 1 AND 31),\n\tCONSTRAINT \"recurring_income_month_range\" CHECK(\"month\" IS NULL OR \"month\" BETWEEN 1 AND 12),\n\tCONSTRAINT \"recurring_income_yearly_needs_month\" CHECK(\"cadence_kind\" <> 'yearly' OR \"month\" IS NOT NULL)\n);",
+      "CREATE INDEX `recurring_income_by_deposit` ON `recurring_income` (`deposit_account_id`);"
+    ]
   }
 ];
