@@ -2,7 +2,7 @@
 title: us-tax-return
 description: 신고한 세금의 소득금액·과세표준을 장부에 남기고 싶다
 type: conceptual
-summary: 관측된 신고서 라인이 SoR에 append된다
+summary: 신고서 표지와 세액표 숫자를 장부에 사실로 남긴다
 id: us-tax-return
 ticker: us-015
 ---
@@ -11,19 +11,32 @@ ticker: us-015
 **I want** 신고·납부한 세금의 소득금액·과세표준·세액을 장부에 남기고 싶다  
 **So that** 연도별 세무 이력을 PDF 없이 조회할 수 있다
 
+### 무엇을 남기는가
+
+한 번의 신고마다 두 가지를 같이 저장한다. 자세한 칸 목록은
+[prd-tax-return-sor](/docs/planning/prds/prd-tax-return-sor)를 본다.
+
+1. **신고 표지** — 신고서 종류(종합소득세), 귀속연도, 신고일, 몇 번째 신고(최초/수정), 메모
+2. **세액표 숫자** — 소득금액, 과세표준, 산출세액, 세액공제, 기납부세액, 납부할세액 등
+   신고서에 **이미 적혀 있는 칸**의 값
+
+holiday는 이 숫자로 세금을 다시 계산하지 않는다. 신고서/홈택스에 보이는 값을
+그대로 받아 둔다.
+
 ### 수락 기준
 
-1. `tax return add`가 헤더(form·귀속연도·신고일·revision)와 라인(코드·금액/세율)을 원자적으로 저장한다
-2. 금액·세율은 신고서 관측값만 — CLI가 세액을 계산하거나 검증 공식으로 고치지 않는다
-3. `tax return show <year>`가 소득금액·과세표준·납부할세액 등 주요 키를 JSON으로 돌려준다
-4. 같은 `(form, tax_year, revision)` 재등록 → `duplicate_tax_return`
-5. `--amend`는 새 revision을 append하고 직전 current를 superseded로 표시한다
-6. 신고서 저장은 전표를 만들지 않는다 — 납부는 기존처럼 `txn add` + `Expenses:Tax:*`
+1. 표지와 세액표 숫자를 **한 번에** 저장한다. 표지만 남거나 숫자만 남는 중간 상태는 없다
+2. 저장하는 금액·세율은 **신고서에 찍힌 값만**이다. CLI가 세액을 계산하거나 “틀린 것 같다”며 고치지 않는다
+3. 귀속연도로 조회하면 소득금액·과세표준·납부할세액 등 주요 칸을 읽을 수 있다
+4. 같은 신고서 종류·같은 귀속연도·같은 차수를 다시 넣으면 **거절**한다 (실수로 두 번 넣는 것 방지)
+5. 수정신고는 이전 기록을 지우지 않는다. **새 차수를 추가**하고, 이전 차수는 “대체됨”으로 표시한다
+6. 신고서 저장만으로 통장/비용 **전표가 생기지 않는다**. 실제 납부는 기존처럼 `txn add`와 `Expenses:Tax:*`로 한다
+
+검증 링크(개발): [POLICY-018](/docs/domain/policy#POLICY-018)
 
 ### 추적
 
 - 기능: [tax](/docs/features/tax)
 - 스펙: [`tax return add`](/docs/spec/cli/tax/return-add) · [`list`](/docs/spec/cli/tax/return-list) · [`show`](/docs/spec/cli/tax/return-show)
-- 검증: POLICY-018
 - PRD: [prd-tax-return-sor](/docs/planning/prds/prd-tax-return-sor)
 - 구현계획: [plan-tax-return-sor](/docs/planning/plans/plan-tax-return-sor)
