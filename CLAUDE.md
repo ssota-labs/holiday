@@ -12,6 +12,10 @@
 | 이 레포의 코드를 고친다 | 이 파일 + `AGENTS.md` |
 | 사용자의 원장을 채팅에서 운전한다 | `plugins/claude-code/skills/holiday-cfo/SKILL.md` (+ 필요 시 `references/`) |
 
+코드를 고치는 세션은 `AGENTS.md`의 **개발 전 기획 게이트**를 먼저 적용한다. 필요한
+PRD·스펙·`ready` 구현계획이 base에 없으면 구현 파일을 수정하지 말고 기획 PR부터 만든다.
+기획을 올린 뒤에는 사용자 승인(또는 main 병합) 전까지 구현으로 넘어가지 않는다.
+
 `holiday-cfo`는 progressive disclosure다. 스킬이 트리거되면 `SKILL.md`만 항상 로드하고,
 `references/`는 작업이 요구할 때만 읽는다.
 
