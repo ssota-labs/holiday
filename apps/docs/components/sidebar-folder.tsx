@@ -15,6 +15,9 @@ import { cn } from '@/lib/cn';
  *
  * `<details>/<summary>` owns the toggle. Open/closed state is stored so
  * folders stay as the user left them across navigations and reloads.
+ *
+ * Index-only catalogs (no children) render as a plain link to the index page —
+ * no empty accordion.
  */
 
 const STORAGE_KEY = 'holiday-docs.sidebar-folders';
@@ -82,6 +85,38 @@ function FolderContent({ children }: { children: ReactNode }) {
     >
       {children}
     </div>
+  );
+}
+
+function IndexLink({
+  item,
+  indexActive,
+  inPath,
+  label,
+}: {
+  item: PageTree.Folder;
+  indexActive: boolean;
+  inPath: boolean;
+  label: string;
+}) {
+  const depth = useFolderDepth();
+  const href = item.index?.url;
+  if (!href) return null;
+
+  return (
+    <Link
+      href={href}
+      external={item.index?.external}
+      className={cn(itemClass, (inPath || indexActive) && 'bg-fd-primary/10 text-fd-primary')}
+      style={{ paddingInlineStart: getItemOffset(depth - 1) }}
+      data-active={Boolean(inPath || indexActive)}
+      title={label}
+    >
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        {item.icon}
+        {item.name}
+      </span>
+    </Link>
   );
 }
 
@@ -183,25 +218,30 @@ export function DocsSidebarFolder({
   const inPath = path.includes(item);
   const label = folderLabel(item.name);
   const indexActive = item.index ? isActivePath(item.index.url, pathname) : false;
+  const indexOnly = item.children.length === 0 && Boolean(item.index);
 
   return (
     <SidebarFolder collapsible={false} active={false}>
-      <PersistentDetails
-        item={item}
-        inPath={inPath}
-        indexActive={indexActive}
-        href={item.index?.url}
-        external={item.index?.external}
-        label={label}
-        header={
-          <>
-            {item.icon}
-            {item.name}
-          </>
-        }
-      >
-        {children}
-      </PersistentDetails>
+      {indexOnly ? (
+        <IndexLink item={item} indexActive={indexActive} inPath={inPath} label={label} />
+      ) : (
+        <PersistentDetails
+          item={item}
+          inPath={inPath}
+          indexActive={indexActive}
+          href={item.index?.url}
+          external={item.index?.external}
+          label={label}
+          header={
+            <>
+              {item.icon}
+              {item.name}
+            </>
+          }
+        >
+          {children}
+        </PersistentDetails>
+      )}
     </SidebarFolder>
   );
 }

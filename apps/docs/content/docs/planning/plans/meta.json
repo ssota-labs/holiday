@@ -5,6 +5,6 @@
     "plan-tax-return-sor"
   ],
   "collapsible": true,
-  "defaultOpen": true,
+  "defaultOpen": false,
   "pagesIndex": "index"
 }
