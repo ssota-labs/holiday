@@ -2,7 +2,8 @@
   "title": "구현계획",
   "pages": [
     "plan-docs-first-development",
-    "plan-tax-return-sor"
+    "plan-tax-return-sor",
+    "plan-release-tagged-deploys"
   ],
   "collapsible": true,
   "defaultOpen": false,

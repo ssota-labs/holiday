@@ -1,0 +1,38 @@
+---
+title: income check
+description: holiday income check 명령 계약
+type: reference
+summary: 저장된 정산이 법정 요율과 같은지 대사한다.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.2"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.2',
+      date: '2026-07-19',
+      summary: 'income source/settle/check — KR statutory withholding',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+관련 기능: [income](/docs/features/income)
+
+<CommandSpec
+  command="income check"
+  mutates={false}
+  summary="정산 라인·실수령을 법정 재계산과 비교한다. 어긋나면 exit 1."
+  signature={`holiday income check [label]`}
+  flags={[
+    { name: '[label]', type: 'string', kind: 'arg', description: '없으면 전체 source' },
+  ]}
+  exits={[
+    { code: 0, meaning: '전부 일치 (JSON 모드도 동일)' },
+    { code: 1, meaning: 'income_drift — 법정 계산과 불일치' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday income check --json`}
+/>

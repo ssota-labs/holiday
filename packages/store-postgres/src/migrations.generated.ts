@@ -127,5 +127,24 @@ export const MIGRATIONS: readonly InlinedMigration[] = [
       "ALTER TABLE \"recurring_income\" ADD CONSTRAINT \"recurring_income_deposit_account_id_account_id_fkey\" FOREIGN KEY (\"deposit_account_id\") REFERENCES \"account\"(\"id\");",
       "ALTER TABLE \"recurring_income\" ADD CONSTRAINT \"recurring_income_commodity_commodity_code_fkey\" FOREIGN KEY (\"commodity\") REFERENCES \"commodity\"(\"code\");"
     ]
+  },
+  {
+    "name": "20260719045502_naive_scalphunter",
+    "hash": "541a9ccee7a310269e630165bbab4c015a4b8be75e20b0a01d3404fbf62f38cc",
+    "statements": [
+      "CREATE TABLE \"income_settlement\" (\n\t\"id\" text PRIMARY KEY,\n\t\"source_id\" text NOT NULL,\n\t\"paid_on\" text NOT NULL,\n\t\"gross_minor\" bigint NOT NULL,\n\t\"net_minor\" bigint NOT NULL,\n\t\"commodity\" text NOT NULL,\n\t\"statute_as_of\" text NOT NULL,\n\t\"txn_id\" text,\n\t\"label\" text,\n\tCONSTRAINT \"income_settlement_gross_positive\" CHECK (\"gross_minor\" > 0)\n);",
+      "CREATE TABLE \"income_settlement_line\" (\n\t\"settlement_id\" text,\n\t\"seq\" integer,\n\t\"kind\" text NOT NULL,\n\t\"amount_minor\" bigint NOT NULL,\n\tCONSTRAINT \"income_settlement_line_pkey\" PRIMARY KEY(\"settlement_id\",\"seq\"),\n\tCONSTRAINT \"income_settlement_line_seq_positive\" CHECK (\"seq\" >= 1),\n\tCONSTRAINT \"income_settlement_line_amount_nonneg\" CHECK (\"amount_minor\" >= 0),\n\tCONSTRAINT \"income_settlement_line_kind_enum\" CHECK (\"kind\" IN ('income_tax_3','local_tax_0_3','vat_10','national_pension','health_insurance','long_term_care','employment_insurance','earned_income_tax','local_income_tax'))\n);",
+      "CREATE TABLE \"income_source\" (\n\t\"id\" text PRIMARY KEY,\n\t\"label\" text NOT NULL UNIQUE,\n\t\"income_account_id\" text NOT NULL,\n\t\"deposit_account_id\" text NOT NULL,\n\t\"regime\" text NOT NULL,\n\t\"commodity\" text NOT NULL,\n\t\"active_from\" text NOT NULL,\n\t\"active_to\" text,\n\tCONSTRAINT \"income_source_regime_enum\" CHECK (\"regime\" IN ('business_withholding','business_vat','salary','allowance'))\n);",
+      "CREATE INDEX \"income_settlement_by_source\" ON \"income_settlement\" (\"source_id\");",
+      "CREATE INDEX \"income_settlement_by_date\" ON \"income_settlement\" (\"paid_on\");",
+      "CREATE INDEX \"income_source_by_income\" ON \"income_source\" (\"income_account_id\");",
+      "ALTER TABLE \"income_settlement\" ADD CONSTRAINT \"income_settlement_source_id_income_source_id_fkey\" FOREIGN KEY (\"source_id\") REFERENCES \"income_source\"(\"id\") ON DELETE CASCADE;",
+      "ALTER TABLE \"income_settlement\" ADD CONSTRAINT \"income_settlement_commodity_commodity_code_fkey\" FOREIGN KEY (\"commodity\") REFERENCES \"commodity\"(\"code\");",
+      "ALTER TABLE \"income_settlement\" ADD CONSTRAINT \"income_settlement_txn_id_txn_id_fkey\" FOREIGN KEY (\"txn_id\") REFERENCES \"txn\"(\"id\");",
+      "ALTER TABLE \"income_settlement_line\" ADD CONSTRAINT \"income_settlement_line_settlement_id_income_settlement_id_fkey\" FOREIGN KEY (\"settlement_id\") REFERENCES \"income_settlement\"(\"id\") ON DELETE CASCADE;",
+      "ALTER TABLE \"income_source\" ADD CONSTRAINT \"income_source_income_account_id_account_id_fkey\" FOREIGN KEY (\"income_account_id\") REFERENCES \"account\"(\"id\");",
+      "ALTER TABLE \"income_source\" ADD CONSTRAINT \"income_source_deposit_account_id_account_id_fkey\" FOREIGN KEY (\"deposit_account_id\") REFERENCES \"account\"(\"id\");",
+      "ALTER TABLE \"income_source\" ADD CONSTRAINT \"income_source_commodity_commodity_code_fkey\" FOREIGN KEY (\"commodity\") REFERENCES \"commodity\"(\"code\");"
+    ]
   }
 ];

@@ -5,6 +5,12 @@ import type { FxRate } from '../domain/fx.js';
 import type { DedupeAuthority } from '../domain/ingest.js';
 import type { Loan, LoanScheduleRow } from '../domain/loan.js';
 import type { Commodity, CommodityCode } from '../domain/commodity.js';
+import type {
+  IncomeSettlement,
+  IncomeSettlementLine,
+  IncomeSettlementWithLines,
+  IncomeSource,
+} from '../domain/kr-income.js';
 import type { RecurringExpense, RecurringIncome } from '../domain/recurring.js';
 import type { TxnId, ValidatedTxn } from '../domain/txn.js';
 
@@ -212,6 +218,15 @@ export interface LedgerRead {
   listRecurring(filter?: { activeOn?: IsoDate }): Promise<readonly RecurringExpense[]>;
   listRecurringIncome(filter?: { activeOn?: IsoDate }): Promise<readonly RecurringIncome[]>;
 
+  listIncomeSources(filter?: { activeOn?: IsoDate }): Promise<readonly IncomeSource[]>;
+  getIncomeSource(idOrLabel: string): Promise<IncomeSource | null>;
+  listIncomeSettlements(filter?: {
+    sourceId?: string;
+    from?: IsoDate;
+    to?: IsoDate;
+  }): Promise<readonly IncomeSettlementWithLines[]>;
+  getIncomeSettlement(id: string): Promise<IncomeSettlementWithLines | null>;
+
   listLoans(): Promise<readonly LoanWithSchedule[]>;
   getLoan(accountId: AccountId): Promise<LoanWithSchedule | null>;
 
@@ -335,6 +350,12 @@ export interface LedgerUow extends LedgerRead {
   upsertInstallment(plan: InstallmentPlan, rows: readonly InstallmentRow[]): Promise<void>;
   upsertRecurring(r: RecurringExpense): Promise<void>;
   upsertRecurringIncome(r: RecurringIncome): Promise<void>;
+  upsertIncomeSource(s: IncomeSource): Promise<void>;
+  /** Replaces the settlement and its lines wholesale. */
+  upsertIncomeSettlement(
+    settlement: IncomeSettlement,
+    lines: readonly IncomeSettlementLine[],
+  ): Promise<void>;
   /** Replaces the loan and its whole schedule — a forecast is allowed to change. */
   upsertLoan(loan: Loan, rows: readonly LoanScheduleRow[]): Promise<void>;
 

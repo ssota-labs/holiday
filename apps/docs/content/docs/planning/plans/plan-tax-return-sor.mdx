@@ -2,7 +2,7 @@
 title: plan-tax-return-sor
 description: 세금 신고서 SoR를 도메인·스키마·CLI에 추가한다
 type: guide
-summary: tax_return 테이블, POLICY-018, holiday tax return add/list/show.
+summary: tax_return 테이블, POLICY-021, holiday tax return add/list/show.
 id: plan-tax-return-sor
 ticker: plan-002
 stage: ready
@@ -51,7 +51,7 @@ related:
 ## 구현 순서
 
 1. 도메인 타입·팩토리·불변식 (form/year/revision, line keys, 관측값만)
-2. POLICY-018 테스트 고정 후 policy.mdx 링크
+2. POLICY-021 테스트 고정 후 policy.mdx 링크
 3. SQLite/Postgres 스키마·마이그레이션 (`tax_return`, `tax_return_line`)
 4. port + `store-sql` 구현
 5. CLI `tax return add|list|show` (`--data-file` JSON)
@@ -87,5 +87,5 @@ related:
 ## 완료 조건
 
 - `holiday tax return show 2025 --json`이 소득금액·과세표준을 반환한다
-- POLICY-018이 `check:rules`를 통과한다
+- POLICY-021이 `check:rules`를 통과한다
 - 이 계획의 `stage`를 `done`으로 올릴 수 있다

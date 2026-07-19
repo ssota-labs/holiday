@@ -8,18 +8,21 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "test": "turbo run test",
+    "test": "node --test scripts/*.test.mjs && turbo run test",
     "typecheck": "turbo run typecheck",
     "lint": "eslint .",
-    "check:skills": "node scripts/check-skills-lock.mjs"
+    "lint:changed": "node scripts/lint-changed.mjs",
+    "check:skills": "node scripts/check-skills-lock.mjs",
+    "check:docs-first": "node scripts/check-docs-first.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "eslint": "^9.18.0",
+    "fast-check": "^3.23.2",
     "turbo": "^2.3.3",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0",
     "vitest": "^3.0.4",
-    "fast-check": "^3.23.2"
+    "yaml": "^2.9.0"
   }
 }

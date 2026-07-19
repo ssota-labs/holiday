@@ -95,6 +95,7 @@ is a self-contained file under `references/workflows/`. Scheduling is in
 - **Monthly** (1st) — `references/workflows/monthly.md` — assert, then `holiday close`.
 - **Simulate** — `references/workflows/simulate.md` — `cashflow --spend/--receive`.
 - **Ask** — `references/workflows/ask.md` — answer from the ledger; no market advice.
+- **KR income** — `references/workflows/kr-income.md` — statutory regimes; never invent 3.3%/보험요율.
 
 ## Recording from a screenshot
 

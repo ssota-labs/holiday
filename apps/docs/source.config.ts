@@ -43,6 +43,18 @@ export const docs = defineDocs({
       id: z.string().optional(),
       /** Short ticker for badges, e.g. `prd-001`. */
       ticker: z.string().optional(),
+      /** Lifecycle for specs and implementation plans. */
+      stage: z
+        .enum(['draft', 'accepted', 'ready', 'active', 'done', 'superseded'])
+        .optional(),
+      /** Determines which planning references a plan must carry. */
+      changeType: z.enum(['product', 'bugfix', 'maintenance']).optional(),
+      /** PRD ID implemented by a plan. */
+      prd: z.string().optional(),
+      /** Spec IDs implemented by a plan. */
+      specs: z.array(z.string()).optional(),
+      /** Repository paths an implementation plan permits changing. */
+      codeAreas: z.array(z.string()).optional(),
     }),
   },
   meta: { schema: metaSchema },
