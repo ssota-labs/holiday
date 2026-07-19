@@ -3,6 +3,7 @@
   "pages": [
     "add"
   ],
+  "pagesIndex": "index",
   "collapsible": true,
   "defaultOpen": false
 }

@@ -1,0 +1,74 @@
+---
+title: account
+description: 계정 명령 계약
+type: reference
+summary: 계정을 추가하고 목록을 조회한다.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.2.4"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.2.4',
+      date: '2026-07-19',
+      summary: 'account 명령 계약 통합',
+      ref: 'packages/cli/src/cli.ts',
+    },
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0/account/add`](/docs/spec/cli/0.1.0/account/add)와 [`list`](/docs/spec/cli/0.1.0/account/list)다.
+
+관련 기능: [accounts](/docs/features/accounts)
+
+| 명령 | 설명 |
+|---|---|
+| `account add` | 계정 코드를 추가한다. 타입은 코드 prefix에서 유도한다. |
+| `account list` | 계정 목록을 반환한다. |
+
+## account add
+
+<CommandSpec
+  command="account add"
+  mutates={true}
+  summary="계정 코드를 추가한다. 타입은 코드 prefix에서 유도한다."
+  signature={`holiday account add <code> [--commodity <code>] [--cash] [--non-monetary] [--placeholder] [--opened YYYY-MM-DD]`}
+  flags={[
+    { name: '<code>', type: 'string', kind: 'arg', required: true, description: 'Assets:Bank:KB:Checking 형태' },
+    { name: '--commodity', type: 'string', description: '생략 시 multi-commodity' },
+    { name: '--cash', type: 'boolean', default: 'false', description: '현금흐름 시작 잔액에 포함' },
+    { name: '--non-monetary', type: 'boolean', default: 'false' },
+    { name: '--placeholder', type: 'boolean', default: 'false' },
+    { name: '--opened', type: 'YYYY-MM-DD', default: 'today' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday account add Assets:Bank:KB:Checking --commodity KRW --cash --json`}
+/>
+
+## account list
+
+<CommandSpec
+  command="account list"
+  mutates={false}
+  summary="계정 목록을 반환한다."
+  signature={`holiday account list`}
+  flags={[]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday account list --json`}
+/>

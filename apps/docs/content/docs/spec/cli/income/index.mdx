@@ -1,10 +1,154 @@
 ---
 title: income
-description: 정기수입·수입 정산 명령
+description: 정기수입·수입 정산 명령 계약
 type: reference
-summary: add · list · source add · settle · check
+summary: 정기수입과 법정 공제 원천을 등록하고 정산·대사한다.
 ---
 
-[add](/docs/spec/cli/income/add) · [list](/docs/spec/cli/income/list) ·
-[source add](/docs/spec/cli/income/source-add) · [settle](/docs/spec/cli/income/settle) ·
-[check](/docs/spec/cli/income/check)
+<SpecVersion
+  spec="CLI"
+  version="0.2.4"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.2.4',
+      date: '2026-07-19',
+      summary: 'income 명령 계약 통합',
+      ref: 'packages/cli/src/cli.ts',
+    },
+    {
+      version: '0.1.2',
+      date: '2026-07-19',
+      summary: 'income source/settle/check — KR statutory withholding',
+      ref: 'packages/cli/src/cli.ts',
+    },
+    {
+      version: '0.1.1',
+      date: '2026-07-18',
+      summary: '정기수입 income add/list, cashflow에 투영',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다.
+
+관련 기능: [income](/docs/features/income)
+
+| 명령 | 설명 |
+|---|---|
+| `income add` | 정기수입을 등록한다. 입금 계정이 `--cash`여야 현금흐름에 잡힌다. |
+| `income list` | 활성 정기수입을 나열한다. |
+| `income source add` | 수입 원천과 법정 공제 regime을 등록한다. |
+| `income settle` | 지급일의 세전 총액으로 법정 공제 라인을 만들고 저장한다. |
+| `income check` | 정산 라인·실수령을 법정 재계산과 비교한다. 어긋나면 exit 1. |
+
+## income add
+
+<CommandSpec
+  command="income add"
+  mutates={true}
+  summary="정기수입을 등록한다. 입금 계정이 --cash여야 현금흐름에 잡힌다."
+  signature={`holiday income add <label> --income <code> --deposit <code> --amount <amount> [--day 1] [--yearly <month>] [--from] [--to]`}
+  flags={[
+    { name: '<label>', type: 'string', kind: 'arg', required: true },
+    { name: '--income', type: 'string', required: true, description: 'Income 계정' },
+    { name: '--deposit', type: 'string', required: true, description: '입금 asset (--cash 권장)' },
+    { name: '--amount', type: 'amount', required: true },
+    { name: '--day', type: 'number', default: '1', description: '-1 = 말일' },
+    { name: '--yearly', type: '1-12', description: '있으면 yearly cadence' },
+    { name: '--from', type: 'YYYY-MM-DD', default: 'today' },
+    { name: '--to', type: 'YYYY-MM-DD' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday income add "급여" --income Income:Salary --deposit Assets:Bank:KB:Checking --amount 3000000 --day 25 --json`}
+/>
+
+## income list
+
+<CommandSpec
+  command="income list"
+  mutates={false}
+  summary="활성 정기수입을 나열한다."
+  signature={`holiday income list`}
+  flags={[]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday income list --json`}
+/>
+
+## income source add
+
+<CommandSpec
+  command="income source add"
+  mutates={true}
+  summary="수입 원천과 법정 공제 regime을 등록한다."
+  signature={`holiday income source add <label> --income <code> --deposit <code> --regime <name> [--from] [--to]`}
+  flags={[
+    { name: '<label>', type: 'string', kind: 'arg', required: true },
+    { name: '--income', type: 'string', required: true, description: 'Income 계정' },
+    { name: '--deposit', type: 'string', required: true, description: '입금 asset' },
+    {
+      name: '--regime',
+      type: 'enum',
+      required: true,
+      description: 'business_withholding | business_vat | salary | allowance',
+    },
+    { name: '--from', type: 'YYYY-MM-DD', default: 'today' },
+    { name: '--to', type: 'YYYY-MM-DD' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday income source add "노벨라" --income Income:Business --deposit Assets:Bank:KB:Checking --regime business_withholding --json`}
+/>
+
+## income settle
+
+<CommandSpec
+  command="income settle"
+  mutates={true}
+  summary="지급일의 세전 총액으로 법정 공제 라인을 만들고 저장한다."
+  signature={`holiday income settle <label> --gross <amount> --date <date> [--earned-tax <amount>] [--post] [--narration]`}
+  flags={[
+    { name: '<label>', type: 'string', kind: 'arg', required: true },
+    { name: '--gross', type: 'amount', required: true, description: '세전 총액 (vat regime은 공급가)' },
+    { name: '--date', type: 'YYYY-MM-DD', required: true },
+    { name: '--earned-tax', type: 'amount', description: '갑근세 — salary 필수' },
+    { name: '--post', type: 'boolean', default: 'false', description: '표준 차트에 전표 기표' },
+    { name: '--narration', type: 'string' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '법정 검사 거부(LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday income settle "노벨라" --gross 13692720 --date 2026-07-15 --post --json`}
+/>
+
+## income check
+
+<CommandSpec
+  command="income check"
+  mutates={false}
+  summary="정산 라인·실수령을 법정 재계산과 비교한다. 어긋나면 exit 1."
+  signature={`holiday income check [label]`}
+  flags={[
+    { name: '[label]', type: 'string', kind: 'arg', description: '없으면 전체 source' },
+  ]}
+  exits={[
+    { code: 0, meaning: '전부 일치 (JSON 모드도 동일)' },
+    { code: 1, meaning: 'income_drift — 법정 계산과 불일치' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday income check --json`}
+/>

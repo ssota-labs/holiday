@@ -9,6 +9,7 @@ import { loader } from 'fumadocs-core/source';
 const INDEX_ONLY_FOLDER_URLS = new Set([
   '/docs/planning/prds',
   '/docs/development/plans',
+  '/docs/spec/cli',
 ]);
 const STORIES_FOLDER_URL = '/docs/planning/stories';
 const JOURNEYS_URL = '/docs/planning/stories/journeys';

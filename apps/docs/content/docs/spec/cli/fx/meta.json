@@ -5,6 +5,7 @@
     "list",
     "show"
   ],
+  "pagesIndex": "index",
   "collapsible": true,
   "defaultOpen": false
 }

@@ -1,0 +1,97 @@
+---
+title: fx
+description: 환율 기록·조회 명령 계약
+type: reference
+summary: add · list · show
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.2.4"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.2.4',
+      date: '2026-07-19',
+      summary: 'fx 도메인 명령 계약 통합',
+      ref: 'packages/cli/src/cli.ts',
+    },
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+관련 기능: [fx](/docs/features/fx)
+
+| 명령 | mutates | 요약 |
+|---|---|---|
+| [`fx add`](#fx-add) | yes | 환율을 기록한다. 이미 기표된 weight는 바꾸지 않는다. |
+| [`fx list`](#fx-list) | no | 등록된 환율 목록. |
+| [`fx show`](#fx-show) | no | 해당 일자에 해석될 환율과 근거를 보여준다. |
+
+## fx add
+
+<CommandSpec
+  command="fx add"
+  mutates={true}
+  summary="환율을 기록한다. 이미 기표된 weight는 바꾸지 않는다."
+  signature={`holiday fx add <base> <quote> <rate> --as-of <date> [--source manual]`}
+  flags={[
+    { name: '<base>', type: 'string', kind: 'arg', required: true },
+    { name: '<quote>', type: 'string', kind: 'arg', required: true },
+    { name: '<rate>', type: 'decimal', kind: 'arg', required: true },
+    { name: '--as-of', type: 'YYYY-MM-DD', required: true },
+    { name: '--source', type: 'string', default: 'manual' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday fx add USD KRW 1350.5 --as-of 2026-07-17 --json`}
+/>
+
+## fx list
+
+<CommandSpec
+  command="fx list"
+  mutates={false}
+  summary="등록된 환율 목록."
+  signature={`holiday fx list [--base] [--quote]`}
+  flags={[
+    { name: '--base', type: 'string' },
+    { name: '--quote', type: 'string' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday fx list --json`}
+/>
+
+## fx show
+
+<CommandSpec
+  command="fx show"
+  mutates={false}
+  summary="해당 일자에 해석될 환율과 근거를 보여준다."
+  signature={`holiday fx show <base> <quote> [--as-of]`}
+  flags={[
+    { name: '<base>', type: 'string', kind: 'arg', required: true },
+    { name: '<quote>', type: 'string', kind: 'arg', required: true },
+    { name: '--as-of', type: 'YYYY-MM-DD', default: 'today' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday fx show USD KRW --json`}
+/>

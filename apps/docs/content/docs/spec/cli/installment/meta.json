@@ -5,6 +5,7 @@
     "revise",
     "list"
   ],
+  "pagesIndex": "index",
   "collapsible": true,
   "defaultOpen": false
 }

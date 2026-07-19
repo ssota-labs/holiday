@@ -1,0 +1,119 @@
+---
+title: loan
+description: 대출 등록·조회·대사·상환 명령 계약
+type: reference
+summary: add · list · check · pay
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.2.4"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.2.4',
+      date: '2026-07-19',
+      summary: 'loan 도메인 명령 계약 통합',
+      ref: 'packages/cli/src/cli.ts',
+    },
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation CLI — init through verify/checkpoint',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+관련 기능: [loans](/docs/features/loans)
+
+| 명령 | mutates | 요약 |
+|---|---|---|
+| [`loan add`](#loan-add) | yes | 대출 부채 계정에 상환 스케줄을 부착한다. 원금 인출 기표는 별도. |
+| [`loan list`](#loan-list) | no | 대출과 잔여 원금을 나열한다. |
+| [`loan check`](#loan-check) | no | 스케줄 기대 잔액과 원장을 대사한다. 불일치 시 loan_drift(사람 모드). |
+| [`loan pay`](#loan-pay) | yes | 스케줄 기준 원리금 분할로 상환을 기표한다. 이자는 스케줄, 차액은 원금. |
+
+## loan add
+
+<CommandSpec
+  command="loan add"
+  mutates={true}
+  summary="대출 부채 계정에 상환 스케줄을 부착한다. 원금 인출 기표는 별도."
+  signature={`holiday loan add <code> --funding --interest --principal --rate --months --first-payment [--method annuity]`}
+  flags={[
+    { name: '<code>', type: 'string', kind: 'arg', required: true },
+    { name: '--funding', type: 'string', required: true },
+    { name: '--interest', type: 'string', required: true },
+    { name: '--principal', type: 'amount', required: true },
+    { name: '--rate', type: 'percent', required: true, description: '예: 4.2' },
+    { name: '--months', type: 'number', required: true },
+    { name: '--first-payment', type: 'YYYY-MM-DD', required: true },
+    { name: '--method', type: 'annuity|equal_principal|bullet|interest_only', default: 'annuity' },
+    { name: '--payment-day', type: 'number' },
+    { name: '--label', type: 'string' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday loan add Liabilities:Loans:KB --funding Assets:Bank:KB:Checking --interest Expenses:Interest:KB --principal 10000000 --rate 4.2 --months 36 --first-payment 2026-08-01 --json`}
+/>
+
+## loan list
+
+<CommandSpec
+  command="loan list"
+  mutates={false}
+  summary="대출과 잔여 원금을 나열한다."
+  signature={`holiday loan list`}
+  flags={[]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday loan list --json`}
+/>
+
+## loan check
+
+<CommandSpec
+  command="loan check"
+  mutates={false}
+  summary="스케줄 기대 잔액과 원장을 대사한다. 불일치 시 loan_drift(사람 모드)."
+  signature={`holiday loan check [code] [--as-of YYYY-MM-DD]`}
+  flags={[
+    { name: '[code]', type: 'string', kind: 'arg' },
+    { name: '--as-of', type: 'YYYY-MM-DD', default: 'today' },
+  ]}
+  exits={[
+    { code: 0, meaning: '대사 OK (또는 --json에서 drift를 데이터로 반환)' },
+    { code: 1, meaning: 'loan_drift (비 JSON 모드)' },
+    { code: 2, meaning: '없는 대출' },
+  ]}
+  example={`holiday loan check --json`}
+/>
+
+## loan pay
+
+<CommandSpec
+  command="loan pay"
+  mutates={true}
+  summary="스케줄 기준 원리금 분할로 상환을 기표한다. 이자는 스케줄, 차액은 원금."
+  signature={`holiday loan pay <code> --date <due> [--amount <actual>]`}
+  flags={[
+    { name: '<code>', type: 'string', kind: 'arg', required: true },
+    { name: '--date', type: 'YYYY-MM-DD', required: true, description: '납부하는 회차 일자' },
+    { name: '--amount', type: 'amount', description: '실제 현금 유출. 이자 미만이면 거부' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday loan pay Liabilities:Loans:KB --date 2026-08-01 --json`}
+/>

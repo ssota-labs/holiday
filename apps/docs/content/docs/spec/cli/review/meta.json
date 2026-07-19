@@ -5,6 +5,7 @@
     "accept",
     "reject"
   ],
+  "pagesIndex": "index",
   "collapsible": true,
   "defaultOpen": false
 }

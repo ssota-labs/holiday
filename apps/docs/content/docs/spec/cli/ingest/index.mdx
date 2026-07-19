@@ -1,0 +1,76 @@
+---
+title: ingest
+description: 거래 수집 제출·조회 명령 계약
+type: reference
+summary: submit · list
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.2.4"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.2.4',
+      date: '2026-07-19',
+      summary: 'ingest 도메인 명령 계약 통합',
+      ref: 'packages/cli/src/cli.ts',
+    },
+    {
+      version: '0.1.0',
+      date: '2026-07-17',
+      summary: 'foundation ingest submit',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
+
+관련 기능: [ingest](/docs/features/ingest)
+
+| 명령 | mutates | 요약 |
+|---|---|---|
+| [`ingest submit`](#ingest-submit) | yes | 파싱된 거래를 적재한다. 기본 draft. --post면 posted. OCR 없음. |
+| [`ingest list`](#ingest-list) | no | 수집 배치 목록을 본다. 동일 export 재수입 전에 확인한다. |
+
+## ingest submit
+
+<CommandSpec
+  command="ingest submit"
+  mutates={true}
+  summary="파싱된 거래를 적재한다. 기본 draft. --post면 posted. OCR 없음."
+  signature={`holiday ingest submit
+  (--data <json> | --data-file <path>)
+  [--source|--image <path>] [--idem-key <key>] [--post]`}
+  flags={[
+    { name: '--data', type: 'json', description: '인라인 submission JSON. --data-file과 정확히 하나' },
+    { name: '--data-file', type: 'path', description: '파일에서 JSON 읽기 (대량 수입)' },
+    { name: '--source', type: 'path', description: '원본 파일 해시. 동일 바이트 재수입 차단' },
+    { name: '--image', type: 'path', description: '--source 별칭 (캡쳐용)' },
+    { name: '--idem-key', type: 'string', description: '동일 키+요청이면 저장된 응답 재생' },
+    { name: '--post', type: 'boolean', default: 'false', description: 'review 건너뛰고 posted로 커밋' },
+  ]}
+  exits={[
+    { code: 0, meaning: '배치 적재(또는 idempotent replay)' },
+    { code: 1, meaning: 'duplicate_image / duplicate_external_ref / unbalanced' },
+    { code: 2, meaning: 'JSON·계정·idem·data/data-file 오류' },
+  ]}
+  example={`holiday ingest submit --data-file ./batch.json --source ./export.csv --idem-key run-1 --json`}
+/>
+
+## ingest list
+
+<CommandSpec
+  command="ingest list"
+  mutates={false}
+  summary="수집 배치 목록을 본다. 동일 export 재수입 전에 확인한다."
+  signature={`holiday ingest list`}
+  flags={[]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류' },
+  ]}
+  example={`holiday ingest list --json`}
+/>

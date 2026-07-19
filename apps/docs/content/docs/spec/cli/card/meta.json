@@ -4,6 +4,7 @@
     "add",
     "list"
   ],
+  "pagesIndex": "index",
   "collapsible": true,
   "defaultOpen": false
 }
