@@ -31,6 +31,38 @@ plugins/claude-code/     Claude Code 플러그인 (스킬만; CLI는 npx)
 plugins/codex/           Codex 플러그인 (스킬만; SKILL.md만 별도, references는 심링크)
 ```
 
+## 개발 전 기획 게이트
+
+`apps/docs`가 기획의 단일 진실이다. 구현 코드를 먼저 고치고 문서를 역기록하지 마라.
+절차·**작성 기준(비개발자 독자)** 은 `apps/docs/content/docs/planning/workflow.mdx`,
+기계 계약은 `apps/docs/content/docs/spec/development/docs-first-workflow.mdx`를 따른다.
+
+1. 작업을 시작하면 기존 PRD·스펙·구현계획이 요청을 충분히 설명하는지 먼저 확인한다.
+2. 새 기능·사용자 동작 변경(`product`)은 PRD + 스펙 + 구현계획이 필요하다.
+3. 기존 계약에 맞추는 버그 수정(`bugfix`)은 기존 PRD·스펙 링크 + 구현계획이 필요하다.
+4. 리팩터링·빌드·의존성(`maintenance`)은 구현계획이 필요하다. 관찰 가능한 계약도
+   바뀌면 스펙을 추가한다.
+5. 필요한 문서가 없으면 **구현 파일을 수정하지 않는다.** 기획 문서만 담은 PR을 먼저
+   만들고 계획을 `stage: ready`로 둔다.
+6. **기획 PR을 올린 뒤 구현으로 넘어가지 마라.** 사용자(또는 리뷰어)가 설계를
+   승인하거나 기획이 기본 브랜치에 병합될 때까지 멈춘다. “완성하라”는 Cloud 지시만으로
+   이 대기를 건너뛰지 않는다.
+7. 구현 브랜치의 base에는 준비된 계획(`stage: ready|active`)이 이미 있어야 한다.
+   같은 PR에 계획과 코드를 같이 넣지 마라. 구현 PR 본문에
+   `Plan: apps/docs/content/docs/planning/plans/plan-….mdx`를 적는다.
+8. 구현 중 범위나 계약이 달라지면 기획 PR로 문서를 먼저 갱신한다. 같은 내용을 새 ID로
+   복제하지 않는다.
+9. 구현과 검증이 끝나면 계획을 `done`으로 갱신한다.
+
+### 기획 문서 작성 (PRD / US / 기능 수락 기준)
+
+- **첫 독자는 기획자·비개발 팀원**이다. `append`·`header`·테이블명만으로 본문을 쓰지 마라.
+- 무엇을 저장·조회하는지 **사람 이름 + 예시 값** 표로 푼다.
+- 수락 기준은 제품에서 관찰 가능한 결과로 쓴다. POLICY ID·CLI 플래그는 링크로 부록화한다.
+- 템플릿: `apps/docs/templates/`. 절차 전문: `apps/docs/content/docs/planning/workflow.mdx`.
+
+docs-only 변경은 선행 계획이 없어도 된다. 그 밖의 일반 우회 표식은 없다.
+
 ## 명령
 
 ```bash
