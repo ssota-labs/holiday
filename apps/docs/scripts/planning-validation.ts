@@ -77,7 +77,7 @@ function classify(file: string, contentDir: string, frontmatter: Frontmatter): D
     return 'story';
   }
   if (rel.startsWith('development/plans/') && basename(file) !== 'index.mdx') return 'plan';
-  if (rel.startsWith('spec/') && asString(frontmatter.id)?.startsWith(PREFIX.spec)) return 'spec';
+  if (asString(frontmatter.id)?.toUpperCase().startsWith(PREFIX.spec)) return 'spec';
   return null;
 }
 
