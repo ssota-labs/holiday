@@ -60,6 +60,10 @@ related:
    - 제품명은 CLI 명령·패키지·저장소 경로처럼 **지시가 필요할 때만** 쓴다
 6. 구현 제약은 **별도 절**에 두고, 기획 본문과 섞지 않는다.
 7. CLI 플래그·JSON 키·POLICY ID는 스펙·정책 문서에 두고, PRD/US에서는 링크로만 연결한다.
+8. PRD/US **본문에 메타 안내를 넣지 않는다.**
+   - 나쁨: `기획/비개발자가 확인할 수 있는 기준:` / `구현 PR에서 확인할 게이트:`
+   - 좋음: 성공 지표·수락 기준 목록만 바로 쓴다
+   - 독자·리뷰 절차는 [이 workflow](/docs/planning/workflow)와 `AGENTS.md`에만 둔다
 
 템플릿: [`apps/docs/templates`](https://github.com/ssota-labs/holiday-cfo/tree/main/apps/docs/templates)
 좋은 예: [prd-tax-return-sor](/docs/planning/prds/prd-tax-return-sor)
