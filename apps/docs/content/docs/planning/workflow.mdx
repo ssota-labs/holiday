@@ -44,8 +44,12 @@ related:
 4. 수락 기준은 **관찰 가능한 결과**로 쓴다.
    - 나쁨: `헤더+라인 append (POLICY-018)`
    - 좋음: `신고 표지와 세액표 숫자(소득금액·과세표준·납부할세액)를 한 번에 저장한다`
-5. 구현 제약(bigint, 마이그레이션, 패키지 경로)은 **별도 절**에 두고, 기획 본문과 섞지 않는다.
-6. CLI 플래그·JSON 키·POLICY ID는 스펙·정책 문서에 두고, PRD/US에서는 링크로 연결한다.
+5. 제품명(`holiday`)을 문장 **주어로 반복하지 않는다.**
+   - 나쁨: `holiday는 세금을 …로만 다룬다` / `holiday가 계산하지 않는다`
+   - 좋음: `세금은 …로만 다룬다` / `세액을 다시 계산하지 않는다`
+   - 제품명은 CLI 명령·패키지·저장소 경로처럼 **지시가 필요할 때만** 쓴다
+6. 구현 제약(bigint, 마이그레이션, 패키지 경로)은 **별도 절**에 두고, 기획 본문과 섞지 않는다.
+7. CLI 플래그·JSON 키·POLICY ID는 스펙·정책 문서에 두고, PRD/US에서는 링크로 연결한다.
 
 템플릿: [`apps/docs/templates`](https://github.com/ssota-labs/holiday-cfo/tree/main/apps/docs/templates)
 좋은 예: [prd-tax-return-sor](/docs/planning/prds/prd-tax-return-sor)

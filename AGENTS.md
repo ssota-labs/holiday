@@ -63,6 +63,7 @@ plugins/codex/           Codex 플러그인 (스킬만; SKILL.md만 별도, refe
 - **첫 독자는 기획자·비개발 팀원**이다. `append`·`header`·테이블명만으로 본문을 쓰지 마라.
 - 무엇을 저장·조회하는지 **사람 이름 + 예시 값** 표로 푼다.
 - 수락 기준은 제품에서 관찰 가능한 결과로 쓴다. POLICY ID·CLI 플래그는 링크로 부록화한다.
+- 제품명(`holiday`)을 문장 주어로 반복하지 마라. CLI·경로에만 쓴다.
 - **필수:** im-not-ai (`humanize` / `humanize-korean`). 기획 한글 초안 → `/humanize` →
   반영 → 리뷰. 스킵 금지.
 - 템플릿: `apps/docs/templates/`. 절차 전문: `apps/docs/content/docs/planning/workflow.mdx`.
