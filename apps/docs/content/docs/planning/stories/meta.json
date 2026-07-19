@@ -12,7 +12,8 @@
     "us-fx",
     "us-close-assert",
     "us-cashflow-short",
-    "us-verify"
+    "us-verify",
+    "us-docs-first-development"
   ],
   "collapsible": true,
   "defaultOpen": false,

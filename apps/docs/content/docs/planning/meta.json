@@ -5,7 +5,8 @@
     "personas",
     "journeys",
     "prds",
-    "stories"
+    "stories",
+    "plans"
   ],
   "collapsible": true,
   "defaultOpen": true

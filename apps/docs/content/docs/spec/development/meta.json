@@ -1,9 +1,7 @@
 {
-  "title": "스펙",
+  "title": "개발 워크플로",
   "pages": [
-    "cli",
-    "data-model",
-    "development"
+    "docs-first-workflow"
   ],
   "collapsible": true,
   "defaultOpen": false

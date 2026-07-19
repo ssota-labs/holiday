@@ -1,0 +1,84 @@
+---
+title: PLAN-docs-first-development
+description: 문서 선행 개발 절차를 저장소 규칙과 CI로 강제한다
+type: guide
+summary: 기획 문서 모델, 검증기, PR 게이트, 에이전트 지침을 함께 적용한다.
+id: PLAN-docs-first-development
+stage: ready
+changeType: product
+prd: PRD-docs-first-development
+specs:
+  - SPEC-docs-first-workflow
+stories:
+  - US-docs-first-development
+codeAreas:
+  - apps/docs
+  - scripts
+  - .github
+  - AGENTS.md
+  - CLAUDE.md
+  - package.json
+  - pnpm-lock.yaml
+related:
+  - /docs/planning/prds/prd-docs-first-development
+  - /docs/spec/development/docs-first-workflow
+---
+
+## 목표
+
+PRD·스펙·구현계획이 기본 브랜치에 먼저 준비되지 않으면 코드 변경 PR이 통과하지 못하게
+한다. 규칙의 원본은 `AGENTS.md`, 기계 계약의 원본은 docs와 검증 스크립트로 둔다.
+
+## 영향 범위
+
+| 영역 | 변경 |
+|---|---|
+| `apps/docs` | frontmatter 계약, 템플릿, 기획 그래프 검증, 테스트 |
+| `scripts` | PR base SHA와 `Plan:` 참조 검증 |
+| `.github` | PR 템플릿과 required check 후보 워크플로 |
+| `AGENTS.md` | 모든 코딩 에이전트의 개발 전 기획 게이트 |
+| `CLAUDE.md` | Claude Code가 공통 게이트를 따르도록 명시 |
+
+## 구현 순서
+
+1. frontmatter에 문서 ID·단계·변경 유형·추적 필드를 추가한다.
+2. PRD·스펙·구현계획 템플릿과 작성 가이드를 추가한다.
+3. 전체 문서 그래프를 검사하는 `check:planning`을 구현한다.
+4. 코드 변경 PR이 base의 준비된 계획을 참조하는지 검사한다.
+5. 두 검증기의 정상·실패 경로 자동 테스트를 추가한다.
+6. PR 템플릿과 `pull_request` 워크플로를 추가한다.
+7. `AGENTS.md`를 규칙 원본으로 갱신하고 `CLAUDE.md`에는 공통 규칙 참조만 둔다.
+8. 전체 build·test·typecheck·lint를 실행한다.
+
+## 검증 계획
+
+### 자동 테스트
+
+- 유효한 PRD→스펙→스토리→계획 그래프 통과
+- 중복 ID와 누락 참조 실패
+- `ready` 계획이 `draft` 스펙을 참조하면 실패
+- 코드 변경인데 `Plan:`이 없으면 실패
+- 계획이 head에만 있고 base에는 없으면 실패
+- base에 `ready` 계획이 있으면 통과
+- docs-only 변경은 선행 검사 통과
+
+### 저장소 검증
+
+- `pnpm --filter @holiday-cfo/docs test`
+- `pnpm --filter @holiday-cfo/docs build`
+- `pnpm test`
+- `pnpm typecheck`
+- `pnpm lint`
+
+## 호환성과 롤백
+
+- 원장 데이터와 공개 CLI 계약은 바뀌지 않는다.
+- 기존 완료 PRD와 CLI 스펙은 새 필드를 강제로 채우지 않는다.
+- 검증기가 기존 문서를 오탐하면 PR 게이트를 required로 지정하기 전에 규칙을 좁힌다.
+- 롤백은 GitHub required check 해제 후 워크플로와 검증 스크립트를 되돌리는 방식이다.
+
+## 완료 조건
+
+- 구현 PR이 이 파일을 base 브랜치의 `ready` 계획으로 인식한다.
+- 문서 그래프와 선행 순서의 실패 사례가 자동 테스트로 고정된다.
+- 에이전트 지침, PR 템플릿, CI가 같은 변경 유형과 상태를 사용한다.

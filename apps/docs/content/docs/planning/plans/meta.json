@@ -1,8 +1,7 @@
 {
-  "title": "PRDs",
+  "title": "구현계획",
   "pages": [
-    "prd-0.1-foundation",
-    "prd-docs-first-development"
+    "plan-docs-first-development"
   ],
   "collapsible": true,
   "defaultOpen": true,

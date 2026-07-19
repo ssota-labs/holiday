@@ -1,0 +1,69 @@
+---
+title: 개발 선행 게이트
+description: PRD·스펙·구현계획을 코드보다 먼저 확정하는 저장소 계약
+type: reference
+summary: 구현 PR은 base 브랜치의 ready 계획을 참조해야 한다.
+id: SPEC-docs-first-workflow
+stage: accepted
+related:
+  - /docs/planning/prds/prd-docs-first-development
+  - /docs/planning/stories/us-docs-first-development
+  - /docs/planning/plans/plan-docs-first-development
+---
+
+## 문서 계약
+
+| 문서 | 책임 | 완료 상태 |
+|---|---|---|
+| PRD | 문제·목표·비목표·성공 기준 | `active` |
+| 스펙 | 관찰 가능한 동작·데이터·오류·호환성 | `accepted` |
+| 구현계획 | 영향 범위·구현 순서·검증·롤백 | `ready` |
+
+PRD와 스펙은 기존 문서가 현재 변경을 충분히 설명하면 재사용한다. 같은 내용을 새 ID로
+복제하지 않는다.
+
+## PR 계약
+
+### 기획 PR
+
+- `apps/docs/content/docs/**`의 기획 문서만 변경한다.
+- PRD·스펙·구현계획의 참조 그래프가 완전해야 한다.
+- 구현계획을 `ready`로 전환한 뒤 기본 브랜치에 먼저 병합한다.
+
+### 구현 PR
+
+- PR 본문의 `Plan:` 항목에 구현계획 파일 경로를 적는다.
+- 참조한 파일은 head가 아니라 base SHA에 존재해야 한다.
+- base의 구현계획은 `stage: ready` 또는 `active`여야 한다.
+- 구현 중 계약이 바뀌면 별도 기획 PR로 문서를 먼저 갱신한다.
+- 완료 시 같은 구현 PR에서 계획을 `done`으로 갱신할 수 있다.
+
+## 변경 유형
+
+`changeType`은 다음 중 하나다.
+
+- `product`: PRD·스펙·스토리·구현계획 필수
+- `bugfix`: 기존 PRD·스펙과 구현계획 필수
+- `maintenance`: 구현계획 필수, 스펙은 계약 변경 시에만 필요
+
+코드가 없는 docs-only PR은 구현계획 선행 검사를 받지 않는다.
+
+## 기계 검증
+
+저장소 검증기는 다음 조건을 실패로 처리한다.
+
+1. 문서 ID 중복
+2. 존재하지 않는 PRD·스펙·스토리 참조
+3. `ready` 계획이 준비되지 않은 문서를 참조
+4. 코드 변경 PR에 `Plan:` 누락
+5. 구현계획이 base SHA에는 없고 head에만 존재
+6. base의 구현계획이 `draft`
+
+문서 내용의 제품 판단은 자동 검증 대상이 아니다. 기계 검증은 구조와 선행 순서만
+보장한다.
+
+## 예외
+
+문서 자체의 변경과 오탈자 수정은 면제한다. 그 밖의 코드 변경에는 일반적인 우회 표식을
+두지 않는다. 긴급 변경이 필요하면 저장소 관리자가 required check를 명시적으로 해제하며,
+사유와 후속 기획 문서를 PR에 남긴다.
