@@ -29,6 +29,13 @@ import {
   type LoanWithSchedule,
   type RecurringExpense,
   type RecurringIncome,
+  type IncomeSource,
+  type IncomeSettlement,
+  type IncomeSettlementLine,
+  type IncomeSettlementWithLines,
+  type SettlementLineKind,
+  assertIncomeRegime,
+  checkIncomeSettlement,
   schedulePrincipal,
   assertCadence,
   assertCardCycleRule,
@@ -805,6 +812,167 @@ class SqlUow implements LedgerUow {
     });
   }
 
+  async listIncomeSources(filter?: { activeOn?: IsoDate }): Promise<readonly IncomeSource[]> {
+    const rows = (
+      await this.db.all<IncomeSourceRowRaw>('SELECT * FROM income_source ORDER BY label, id')
+    ).map(mapIncomeSource);
+    if (!filter?.activeOn) return rows;
+    return rows.filter((r) => isActiveOn(r, filter.activeOn!));
+  }
+
+  async getIncomeSource(idOrLabel: string): Promise<IncomeSource | null> {
+    const row = await this.db.get<IncomeSourceRowRaw>(
+      'SELECT * FROM income_source WHERE id = ? OR label = ?',
+      idOrLabel,
+      idOrLabel,
+    );
+    return row ? mapIncomeSource(row) : null;
+  }
+
+  async upsertIncomeSource(s: IncomeSource): Promise<void> {
+    assertIncomeRegime(s.regime);
+    const income = await this.getAccount(s.incomeAccountId);
+    if (!income) throw new Error(`holiday: no such account: ${s.incomeAccountId}`);
+    if (income.type !== 'income') {
+      throw new Error(
+        `holiday: ${income.code} is a ${income.type} account — an income source credits an income account`,
+      );
+    }
+    const deposit = await this.getAccount(s.depositAccountId);
+    if (!deposit) throw new Error(`holiday: no such account: ${s.depositAccountId}`);
+    if (deposit.type !== 'asset') {
+      throw new Error(
+        `holiday: ${deposit.code} is a ${deposit.type} account — settlements deposit to an asset`,
+      );
+    }
+    await this.db.run(
+      `INSERT INTO income_source (id, label, income_account_id, deposit_account_id, regime, commodity, active_from, active_to)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         label = excluded.label, income_account_id = excluded.income_account_id,
+         deposit_account_id = excluded.deposit_account_id, regime = excluded.regime,
+         commodity = excluded.commodity, active_from = excluded.active_from, active_to = excluded.active_to`,
+      s.id,
+      s.label,
+      s.incomeAccountId,
+      s.depositAccountId,
+      s.regime,
+      s.commodity,
+      s.activeFrom,
+      s.activeTo,
+    );
+    await this.#appendAudit('income_source_upsert', s.id, {
+      label: s.label,
+      regime: s.regime,
+    });
+  }
+
+  async listIncomeSettlements(filter?: {
+    sourceId?: string;
+    from?: IsoDate;
+    to?: IsoDate;
+  }): Promise<readonly IncomeSettlementWithLines[]> {
+    let sql = 'SELECT * FROM income_settlement';
+    const params: SqlValue[] = [];
+    const where: string[] = [];
+    if (filter?.sourceId) {
+      where.push('source_id = ?');
+      params.push(filter.sourceId);
+    }
+    if (filter?.from) {
+      where.push('paid_on >= ?');
+      params.push(filter.from);
+    }
+    if (filter?.to) {
+      where.push('paid_on <= ?');
+      params.push(filter.to);
+    }
+    if (where.length > 0) sql += ` WHERE ${where.join(' AND ')}`;
+    sql += ' ORDER BY paid_on DESC, id';
+    const rows = await this.db.all<IncomeSettlementRowRaw>(sql, ...params);
+    const out: IncomeSettlementWithLines[] = [];
+    for (const r of rows) {
+      out.push({ settlement: mapIncomeSettlement(r), lines: await this.#settlementLines(r.id) });
+    }
+    return out;
+  }
+
+  async getIncomeSettlement(id: string): Promise<IncomeSettlementWithLines | null> {
+    const r = await this.db.get<IncomeSettlementRowRaw>('SELECT * FROM income_settlement WHERE id = ?', id);
+    if (!r) return null;
+    return { settlement: mapIncomeSettlement(r), lines: await this.#settlementLines(id) };
+  }
+
+  async #settlementLines(settlementId: string): Promise<IncomeSettlementLine[]> {
+    return (
+      await this.db.all<{ seq: bigint; kind: string; amount_minor: bigint }>(
+        'SELECT * FROM income_settlement_line WHERE settlement_id = ? ORDER BY seq',
+        settlementId,
+      )
+    ).map((r) => ({
+      seq: toInt(r.seq),
+      kind: r.kind as SettlementLineKind,
+      amountMinor: toBigInt(r.amount_minor),
+    }));
+  }
+
+  async upsertIncomeSettlement(
+    settlement: IncomeSettlement,
+    lines: readonly IncomeSettlementLine[],
+  ): Promise<void> {
+    const source = await this.getIncomeSource(settlement.sourceId);
+    if (!source) throw new Error(`holiday: no such income source: ${settlement.sourceId}`);
+    if (settlement.commodity !== source.commodity) {
+      throw new Error(
+        `holiday: settlement commodity ${settlement.commodity} ≠ source commodity ${source.commodity}`,
+      );
+    }
+    // Enforce statutory lines before they touch storage — same gate as loan principal sum.
+    const check = checkIncomeSettlement({
+      regime: source.regime,
+      settlement,
+      lines,
+    });
+    if (!check.ok) {
+      throw new Error(`holiday: income settlement refuses statutory check — ${check.explanation}`);
+    }
+
+    await this.db.run(
+      `INSERT INTO income_settlement (id, source_id, paid_on, gross_minor, net_minor, commodity, statute_as_of, txn_id, label)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         source_id = excluded.source_id, paid_on = excluded.paid_on,
+         gross_minor = excluded.gross_minor, net_minor = excluded.net_minor,
+         commodity = excluded.commodity, statute_as_of = excluded.statute_as_of,
+         txn_id = excluded.txn_id, label = excluded.label`,
+      settlement.id,
+      settlement.sourceId,
+      settlement.paidOn,
+      settlement.grossMinor,
+      settlement.netMinor,
+      settlement.commodity,
+      settlement.statuteAsOf,
+      settlement.txnId,
+      settlement.label,
+    );
+    await this.db.run('DELETE FROM income_settlement_line WHERE settlement_id = ?', settlement.id);
+    for (const line of lines) {
+      await this.db.run(
+        `INSERT INTO income_settlement_line (settlement_id, seq, kind, amount_minor) VALUES (?, ?, ?, ?)`,
+        settlement.id,
+        line.seq,
+        line.kind,
+        line.amountMinor,
+      );
+    }
+    await this.#appendAudit('income_settlement_upsert', settlement.id, {
+      sourceId: settlement.sourceId,
+      grossMinor: settlement.grossMinor.toString(),
+      netMinor: settlement.netMinor.toString(),
+      lines: lines.length,
+    });
+  }
+
   async listLoans(): Promise<readonly LoanWithSchedule[]> {
     const loans = await this.db.all<LoanRowRaw>('SELECT * FROM loan ORDER BY account_id');
     // Sequential, not Promise.all: on SQLite the driver is one connection and
@@ -1457,6 +1625,56 @@ function mapRecurringIncome(r: RecurringIncomeRowRaw): RecurringIncome {
         : { kind: 'monthly', dayOfMonth: toInt(r.day_of_month) },
     activeFrom: r.active_from as IsoDate,
     activeTo: r.active_to as IsoDate | null,
+  };
+}
+
+interface IncomeSourceRowRaw {
+  id: string;
+  label: string;
+  income_account_id: string;
+  deposit_account_id: string;
+  regime: string;
+  commodity: string;
+  active_from: string;
+  active_to: string | null;
+}
+
+function mapIncomeSource(r: IncomeSourceRowRaw): IncomeSource {
+  return {
+    id: r.id,
+    label: r.label,
+    incomeAccountId: r.income_account_id as AccountId,
+    depositAccountId: r.deposit_account_id as AccountId,
+    regime: assertIncomeRegime(r.regime),
+    commodity: r.commodity as CommodityCode,
+    activeFrom: r.active_from as IsoDate,
+    activeTo: r.active_to as IsoDate | null,
+  };
+}
+
+interface IncomeSettlementRowRaw {
+  id: string;
+  source_id: string;
+  paid_on: string;
+  gross_minor: bigint;
+  net_minor: bigint;
+  commodity: string;
+  statute_as_of: string;
+  txn_id: string | null;
+  label: string | null;
+}
+
+function mapIncomeSettlement(r: IncomeSettlementRowRaw): IncomeSettlement {
+  return {
+    id: r.id,
+    sourceId: r.source_id,
+    paidOn: r.paid_on as IsoDate,
+    grossMinor: toBigInt(r.gross_minor),
+    netMinor: toBigInt(r.net_minor),
+    commodity: r.commodity as CommodityCode,
+    statuteAsOf: r.statute_as_of as IsoDate,
+    txnId: r.txn_id,
+    label: r.label,
   };
 }
 

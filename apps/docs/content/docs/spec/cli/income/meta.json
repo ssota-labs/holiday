@@ -1,5 +1,5 @@
 {
   "title": "income",
-  "pages": ["add", "list"],
+  "pages": ["add", "list", "source-add", "settle", "check"],
   "pagesIndex": "index"
 }

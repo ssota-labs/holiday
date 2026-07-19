@@ -73,6 +73,14 @@ import {
   listPendingReviews,
   rejectReview,
   verifyLedger,
+  assertIncomeRegime,
+  buildSettlementLines,
+  checkIncomeSettlement,
+  describeRegime,
+  describeLineKind,
+  type IncomeRegime,
+  type IncomeSource,
+  type IncomeSettlementLine,
 } from '@holiday-cfo/core';
 
 import { bakeDatasets, scaffold, scaffoldLedgerDocs } from './dash.js';
@@ -681,7 +689,9 @@ recurring
     note(`월 합계: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
   });
 
-const income = program.command('income').description('정기수입 — salary, retainers, rent received');
+const income = program
+  .command('income')
+  .description('정기수입·수입 정산 — 예측(recurring)과 대한민국 법정 공제(source/settle)');
 
 income
   .command('add <label>')
@@ -779,6 +789,309 @@ income
     if (result.length === 0) return note('no active recurring incomes.');
     note('');
     note(`월 합계: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
+  });
+
+const incomeSourceCmd = income.command('source').description('수입 원천 — 업체·regime(법정 공제 종류)');
+
+incomeSourceCmd
+  .command('add <label>')
+  .description('register an income source with a KR withholding regime')
+  .requiredOption('--income <code>', 'Income account it credits')
+  .requiredOption('--deposit <code>', 'asset account cash lands in')
+  .requiredOption(
+    '--regime <name>',
+    'business_withholding | business_vat | salary | allowance',
+  )
+  .option('--from <date>', 'active from', today())
+  .option('--to <date>', 'active until (omit for open-ended)')
+  .action(
+    async (
+      label: string,
+      o: { income: string; deposit: string; regime: string; from: string; to?: string },
+    ) => {
+      const ws = requireWorkspace();
+      const config = readConfig(ws);
+      const store = await openLedger(ws);
+      const regime = assertIncomeRegime(o.regime);
+      const id = nextUlid();
+
+      await store.unitOfWork(async (uow) => {
+        const incomeAcct = await uow.getAccount(o.income);
+        if (!incomeAcct) throw new UsageError(`no such account: ${o.income}`);
+        const deposit = await uow.getAccount(o.deposit);
+        if (!deposit) throw new UsageError(`no such account: ${o.deposit}`);
+        await uow.upsertIncomeSource({
+          id,
+          label,
+          incomeAccountId: incomeAcct.id,
+          depositAccountId: deposit.id,
+          regime,
+          commodity: config.functionalCurrency,
+          activeFrom: assertIsoDate(o.from),
+          activeTo: o.to ? assertIsoDate(o.to) : null,
+        });
+      });
+      await store.close();
+
+      out({ id, label, regime, income: o.income, deposit: o.deposit });
+      note(`${label}: ${describeRegime(regime)} → ${o.income}, 입금 ${o.deposit}.`);
+      note(`다음: holiday income settle ${JSON.stringify(label)} --gross <세전총액> --date <지급일>`);
+    },
+  );
+
+incomeSourceCmd
+  .command('list')
+  .description('income sources and their regimes')
+  .action(async () => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const now = assertIsoDate(today());
+    const result = await store.read(async (r) => {
+      const sources = await r.listIncomeSources({ activeOn: now });
+      const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
+      return sources.map((s) => ({
+        source: s,
+        income: accounts.get(s.incomeAccountId)?.code ?? '?',
+        deposit: accounts.get(s.depositAccountId)?.code ?? '?',
+      }));
+    });
+    await store.close();
+
+    if (jsonMode()) {
+      return out(result.map(({ source, income, deposit }) => ({ ...source, income, deposit })));
+    }
+    if (result.length === 0) return note('no income sources. Add one with `holiday income source add`.');
+    for (const { source, income, deposit } of result) {
+      note(
+        `${source.label.padEnd(20)} ${describeRegime(source.regime).padEnd(28)} ${income} → ${deposit}`,
+      );
+    }
+  });
+
+income
+  .command('settle <label>')
+  .description('compute statutory deductions for a payday and store the settlement')
+  .requiredOption('--gross <amount>', '세전 총액 (부가세 regime은 공급가액)')
+  .requiredOption('--date <date>', '지급일')
+  .option('--earned-tax <amount>', '갑근세(국세) — salary regime 필수')
+  .option('--post', '전표까지 기표 (기본 계정 차트 필요)', false)
+  .option('--narration <text>')
+  .action(
+    async (
+      label: string,
+      o: { gross: string; date: string; earnedTax?: string; post?: boolean; narration?: string },
+    ) => {
+      const ws = requireWorkspace();
+      const config = readConfig(ws);
+      const store = await openLedger(ws);
+      const paidOn = assertIsoDate(o.date);
+      const gross = amounts.parse(o.gross, config.functionalCurrency);
+
+      const result = await store.unitOfWork(async (uow) => {
+        const source = await uow.getIncomeSource(label);
+        if (!source) {
+          throw new UsageError(`no income source: ${label}. Add one with \`holiday income source add\`.`);
+        }
+        if (source.regime === 'salary' && o.earnedTax === undefined) {
+          throw new UsageError(
+            'salary regime needs --earned-tax <갑근세>. 간이세액표/명세서를 읽고 넣으세요 — 추측 금지.',
+          );
+        }
+        const earned = o.earnedTax
+          ? amounts.parse(o.earnedTax, source.commodity).minor
+          : undefined;
+        const built = buildSettlementLines({
+          regime: source.regime,
+          grossMinor: gross.minor,
+          paidOn,
+          ...(earned !== undefined ? { earnedIncomeTaxMinor: earned } : {}),
+        });
+
+        let txnId: string | null = null;
+        if (o.post) {
+          txnId = await postIncomeSettlement(uow, {
+            source,
+            paidOn,
+            grossMinor: gross.minor,
+            netMinor: built.netMinor,
+            lines: built.lines,
+            narration: o.narration ?? `${source.label} ${paidOn}`,
+            currency: config.functionalCurrency,
+          });
+        }
+
+        const id = nextUlid();
+        await uow.upsertIncomeSettlement(
+          {
+            id,
+            sourceId: source.id,
+            paidOn,
+            grossMinor: gross.minor,
+            netMinor: built.netMinor,
+            commodity: source.commodity,
+            statuteAsOf: built.statuteAsOf,
+            txnId,
+            label: o.narration ?? null,
+          },
+          built.lines,
+        );
+        return { id, source, built, txnId };
+      });
+      await store.close();
+
+      const money = (m: bigint) => amounts.format({ minor: m, commodity: result.source.commodity });
+      out({
+        id: result.id,
+        label: result.source.label,
+        regime: result.source.regime,
+        grossMinor: gross.minor.toString(),
+        netMinor: result.built.netMinor.toString(),
+        statuteAsOf: result.built.statuteAsOf,
+        txnId: result.txnId,
+        lines: result.built.lines.map((l) => ({
+          kind: l.kind,
+          amountMinor: l.amountMinor.toString(),
+        })),
+      });
+      note(
+        `${result.source.label}: 총액 ${money(gross.minor)} → 실수령 ${money(result.built.netMinor)} ` +
+          `(${describeRegime(result.source.regime)}, 법령 ${result.built.statuteAsOf})`,
+      );
+      for (const line of result.built.lines) {
+        note(`  ${describeLineKind(line.kind).padEnd(16)} ${money(line.amountMinor)}`);
+      }
+      if (result.txnId) {
+        note(`✓ 전표 ${result.txnId} — 잔액에 바로 반영됩니다.`);
+      } else {
+        note(`정산만 저장했습니다. 전표까지: 같은 명령에 --post`);
+      }
+    },
+  );
+
+income
+  .command('check [label]')
+  .description('stored settlements vs statutory KR rates')
+  .action(async (label: string | undefined) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const results = await store.read(async (r) => {
+      const sources = await r.listIncomeSources();
+      const wanted = label ? sources.filter((s) => s.label === label || s.id === label) : sources;
+      if (label && wanted.length === 0) throw new UsageError(`no income source: ${label}`);
+      const outCheck: {
+        label: string;
+        settlementId: string;
+        paidOn: string;
+        commodity: CommodityCode;
+        result: ReturnType<typeof checkIncomeSettlement>;
+      }[] = [];
+      for (const source of wanted) {
+        const settlements = await r.listIncomeSettlements({ sourceId: source.id });
+        for (const s of settlements) {
+          outCheck.push({
+            label: source.label,
+            settlementId: s.settlement.id,
+            paidOn: s.settlement.paidOn,
+            commodity: s.settlement.commodity,
+            result: checkIncomeSettlement({
+              regime: source.regime,
+              settlement: s.settlement,
+              lines: s.lines,
+            }),
+          });
+        }
+      }
+      return outCheck;
+    });
+    await store.close();
+
+    if (jsonMode()) {
+      return out(
+        results.map((r) => ({
+          label: r.label,
+          settlementId: r.settlementId,
+          paidOn: r.paidOn,
+          ok: r.result.ok,
+          expectedNetMinor: r.result.expectedNetMinor.toString(),
+          actualNetMinor: r.result.actualNetMinor.toString(),
+          deltaMinor: r.result.deltaMinor.toString(),
+          mismatched: r.result.mismatched.map((m) => ({
+            kind: m.kind,
+            expectedMinor: m.expectedMinor.toString(),
+            actualMinor: m.actualMinor.toString(),
+          })),
+          explanation: r.result.explanation,
+        })),
+      );
+    }
+    if (results.length === 0) return note('no settlements to check.');
+
+    let bad = 0;
+    for (const r of results) {
+      const money = (m: bigint) => amounts.format({ minor: m, commodity: r.commodity });
+      note(`${r.label}  ${r.paidOn}`);
+      if (r.result.ok) {
+        note(`  ✓ ${r.result.explanation}`);
+      } else {
+        bad += 1;
+        note(`  ⚠ ${r.result.explanation}`);
+        note(`    기대 실수령 ${money(r.result.expectedNetMinor)} / 저장 ${money(r.result.actualNetMinor)}`);
+        for (const m of r.result.mismatched) {
+          note(
+            `    ${describeLineKind(m.kind)}: 기대 ${money(m.expectedMinor)} ≠ ${money(m.actualMinor)}`,
+          );
+        }
+      }
+    }
+    if (bad > 0) throw new LedgerError('income_drift', `${bad} settlement(s) disagree with statute`);
+  });
+
+income
+  .command('settlements')
+  .description('list stored income settlements')
+  .option('--from <date>')
+  .option('--to <date>')
+  .action(async (o: { from?: string; to?: string }) => {
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const rows = await store.read(async (r) => {
+      const sources = new Map((await r.listIncomeSources()).map((s) => [s.id, s]));
+      const settlements = await r.listIncomeSettlements({
+        ...(o.from ? { from: assertIsoDate(o.from) } : {}),
+        ...(o.to ? { to: assertIsoDate(o.to) } : {}),
+      });
+      return settlements.map((s) => ({
+        ...s,
+        label: sources.get(s.settlement.sourceId)?.label ?? '?',
+        regime: sources.get(s.settlement.sourceId)?.regime ?? null,
+      }));
+    });
+    await store.close();
+
+    if (jsonMode()) {
+      return out(
+        rows.map((r) => ({
+          id: r.settlement.id,
+          label: r.label,
+          regime: r.regime,
+          paidOn: r.settlement.paidOn,
+          grossMinor: r.settlement.grossMinor.toString(),
+          netMinor: r.settlement.netMinor.toString(),
+          statuteAsOf: r.settlement.statuteAsOf,
+          txnId: r.settlement.txnId,
+          lines: r.lines.map((l) => ({ kind: l.kind, amountMinor: l.amountMinor.toString() })),
+        })),
+      );
+    }
+    if (rows.length === 0) return note('no settlements.');
+    for (const r of rows) {
+      const money = (m: bigint) => amounts.format({ minor: m, commodity: r.settlement.commodity });
+      note(
+        `${r.settlement.paidOn}  ${(r.label ?? '?').padEnd(16)} ` +
+          `총 ${money(r.settlement.grossMinor)} → 실 ${money(r.settlement.netMinor)}` +
+          (r.regime ? `  (${describeRegime(r.regime as IncomeRegime)})` : ''),
+      );
+    }
   });
 
 program
@@ -2426,6 +2739,119 @@ dash
 // component is. The block list lives in the template's AGENTS.md, which lands
 // next to spec.json in the project where the agent is actually reading. A script
 // keeps the two honest: pnpm --filter @holiday-cfo/cli check:catalog.
+
+/**
+ * Map a statutory settlement into a posted txn using the standard chart.
+ *
+ * - 사업소득 원천징수 → Assets:Receivable:Tax (기납부)
+ * - 갑근세·지방(근로) → Expenses:Tax:Withholding
+ * - 4대보험 근로자분 → Expenses:Insurance
+ * - 부가세 → Liabilities:Payable:Tax
+ */
+async function postIncomeSettlement(
+  uow: LedgerUow,
+  opts: {
+    source: IncomeSource;
+    paidOn: IsoDate;
+    grossMinor: bigint;
+    netMinor: bigint;
+    lines: readonly IncomeSettlementLine[];
+    narration: string;
+    currency: CommodityCode;
+  },
+): Promise<string> {
+  const need = async (code: string) => {
+    const a = await uow.getAccount(code);
+    if (!a) {
+      throw new UsageError(
+        `missing account ${code} for --post. Create the standard tax chart (see AGENTS.md) first.`,
+      );
+    }
+    return a.id;
+  };
+
+  const withholdingRecv = await need('Assets:Receivable:Tax');
+  const withholdingExp = await need('Expenses:Tax:Withholding');
+  const insuranceExp = await need('Expenses:Insurance');
+  const vatPayable = await need('Liabilities:Payable:Tax');
+
+  type Leg = { accountId: AccountId; minor: bigint };
+  const legs: Leg[] = [];
+
+  if (opts.source.regime === 'business_vat') {
+    legs.push({ accountId: opts.source.incomeAccountId, minor: -opts.grossMinor });
+    const vat = opts.lines.find((l) => l.kind === 'vat_10')?.amountMinor ?? 0n;
+    if (vat > 0n) legs.push({ accountId: vatPayable, minor: -vat });
+    legs.push({ accountId: opts.source.depositAccountId, minor: opts.netMinor });
+  } else {
+    legs.push({ accountId: opts.source.incomeAccountId, minor: -opts.grossMinor });
+    legs.push({ accountId: opts.source.depositAccountId, minor: opts.netMinor });
+    for (const line of opts.lines) {
+      if (line.amountMinor === 0n) continue;
+      legs.push({
+        accountId: accountForSettlementLine(line.kind, {
+          withholdingRecv,
+          withholdingExp,
+          insuranceExp,
+          vatPayable,
+        }),
+        minor: line.amountMinor,
+      });
+    }
+  }
+
+  const collapsed = new Map<AccountId, bigint>();
+  for (const leg of legs) {
+    collapsed.set(leg.accountId, (collapsed.get(leg.accountId) ?? 0n) + leg.minor);
+  }
+
+  const txn = Txn.create({
+    id: nextUlid() as TxnId,
+    date: opts.paidOn,
+    bookingCommodity: opts.currency,
+    payee: opts.source.label,
+    narration: opts.narration,
+    postings: [...collapsed.entries()]
+      .filter(([, m]) => m !== 0n)
+      .map(([accountId, minor]) => ({
+        accountId,
+        units: amounts.fromMinor(minor, opts.source.commodity),
+      })),
+  });
+  if (!txn.ok) throw new LedgerError('unbalanced', txn.error.map(describeTxnError).join('\n'));
+  await uow.appendTxn(txn.value, { status: 'posted' });
+  return txn.value.id;
+}
+
+function accountForSettlementLine(
+  kind: IncomeSettlementLine['kind'],
+  ids: {
+    withholdingRecv: AccountId;
+    withholdingExp: AccountId;
+    insuranceExp: AccountId;
+    vatPayable: AccountId;
+  },
+): AccountId {
+  switch (kind) {
+    case 'income_tax_3':
+    case 'local_tax_0_3':
+      return ids.withholdingRecv;
+    case 'earned_income_tax':
+    case 'local_income_tax':
+      return ids.withholdingExp;
+    case 'national_pension':
+    case 'health_insurance':
+    case 'long_term_care':
+    case 'employment_insurance':
+      return ids.insuranceExp;
+    case 'vat_10':
+      return ids.vatPayable;
+    default: {
+      const _e: never = kind;
+      throw new UsageError(`unhandled settlement line: ${_e}`);
+    }
+  }
+}
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);

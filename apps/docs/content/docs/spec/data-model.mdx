@@ -29,6 +29,7 @@ SoR는 로컬 `.holiday/ledger.db`(SQLite). Postgres 엔진은 동일 논리 스
 |---|---|---|
 | 사실 | txn, posting, fx_rate, assertion | 저널·테이블 |
 | 예측 | card, installment, recurring, recurring_income, loan schedules | 저널 밖 |
+| 정산(강제) | income_source, income_settlement(+line) | 저널 밖 — 법정 요율, 선택적 txn 링크 |
 | 파생 | balance, cashflow | 조회 시 집계 |
 
 ## 핵심 타입
@@ -44,6 +45,7 @@ SoR는 로컬 `.holiday/ledger.db`(SQLite). Postgres 엔진은 동일 논리 스
 | txn / posting | 저널. posting PK (txn_id, seq) |
 | period | 마감 구간 |
 | card, installment(+row), recurring, recurring_income, loan(+row) | 스케줄 |
+| income_source, income_settlement(+line) | KR 수입 정산 (regime·법정 공제) |
 | fx_rate | 환율 |
 | ingest_batch / ingest_item | draft 게이트 |
 | balance_assertion | 외부 대사 |

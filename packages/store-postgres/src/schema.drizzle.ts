@@ -329,6 +329,82 @@ export const recurringIncome = pgTable(
   ],
 );
 
+/**
+ * 수입 원천 — Income 계정에 붙는 대한민국 정산 regime.
+ * See sqlite schema for the design note.
+ */
+export const incomeSource = pgTable(
+  'income_source',
+  {
+    id: text('id').primaryKey(),
+    label: text('label').notNull().unique(),
+    incomeAccountId: text('income_account_id')
+      .notNull()
+      .references(() => account.id),
+    depositAccountId: text('deposit_account_id')
+      .notNull()
+      .references(() => account.id),
+    regime: text('regime').notNull(),
+    commodity: text('commodity')
+      .notNull()
+      .references(() => commodity.code),
+    activeFrom: text('active_from').notNull(),
+    activeTo: text('active_to'),
+  },
+  (t) => [
+    index('income_source_by_income').on(t.incomeAccountId),
+    check(
+      'income_source_regime_enum',
+      sql`${t.regime} IN ('business_withholding','business_vat','salary','allowance')`,
+    ),
+  ],
+);
+
+export const incomeSettlement = pgTable(
+  'income_settlement',
+  {
+    id: text('id').primaryKey(),
+    sourceId: text('source_id')
+      .notNull()
+      .references(() => incomeSource.id, { onDelete: 'cascade' }),
+    paidOn: text('paid_on').notNull(),
+    grossMinor: bigint('gross_minor', { mode: 'bigint' }).notNull(),
+    netMinor: bigint('net_minor', { mode: 'bigint' }).notNull(),
+    commodity: text('commodity')
+      .notNull()
+      .references(() => commodity.code),
+    statuteAsOf: text('statute_as_of').notNull(),
+    txnId: text('txn_id').references(() => txn.id),
+    label: text('label'),
+  },
+  (t) => [
+    index('income_settlement_by_source').on(t.sourceId),
+    index('income_settlement_by_date').on(t.paidOn),
+    check('income_settlement_gross_positive', sql`${t.grossMinor} > 0`),
+  ],
+);
+
+export const incomeSettlementLine = pgTable(
+  'income_settlement_line',
+  {
+    settlementId: text('settlement_id')
+      .notNull()
+      .references(() => incomeSettlement.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    kind: text('kind').notNull(),
+    amountMinor: bigint('amount_minor', { mode: 'bigint' }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.settlementId, t.seq] }),
+    check('income_settlement_line_seq_positive', sql`${t.seq} >= 1`),
+    check('income_settlement_line_amount_nonneg', sql`${t.amountMinor} >= 0`),
+    check(
+      'income_settlement_line_kind_enum',
+      sql`${t.kind} IN ('income_tax_3','local_tax_0_3','vat_10','national_pension','health_insurance','long_term_care','employment_insurance','earned_income_tax','local_income_tax')`,
+    ),
+  ],
+);
+
 export const fxRate = pgTable(
   'fx_rate',
   {

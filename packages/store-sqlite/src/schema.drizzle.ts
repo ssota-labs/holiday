@@ -333,6 +333,89 @@ export const recurringIncome = sqliteTable(
   ],
 );
 
+/**
+ * 수입 원천 — Income 계정에 붙는 대한민국 정산 regime.
+ *
+ * recurring_income이 "언제 얼마가 들어오나"(예측)라면, 여기는
+ * "그 수입에 어떤 법정 공제가 붙나"(강제). 같은 Income:Business에
+ * 노벨라·일그램처럼 여러 source가 붙을 수 있다.
+ */
+export const incomeSource = sqliteTable(
+  'income_source',
+  {
+    id: text('id').primaryKey(),
+    label: text('label').notNull().unique(),
+    incomeAccountId: text('income_account_id')
+      .notNull()
+      .references(() => account.id),
+    depositAccountId: text('deposit_account_id')
+      .notNull()
+      .references(() => account.id),
+    regime: text('regime').notNull(),
+    commodity: text('commodity')
+      .notNull()
+      .references(() => commodity.code),
+    activeFrom: text('active_from').notNull(),
+    activeTo: text('active_to'),
+  },
+  (t) => [
+    index('income_source_by_income').on(t.incomeAccountId),
+    check(
+      'income_source_regime_enum',
+      sql`${t.regime} IN ('business_withholding','business_vat','salary','allowance')`,
+    ),
+  ],
+);
+
+/**
+ * 회차별 수입 정산 — 총액·실수령·법정 요율 기준일.
+ * 라인은 income_settlement_line. 전표는 선택(txn_id).
+ */
+export const incomeSettlement = sqliteTable(
+  'income_settlement',
+  {
+    id: text('id').primaryKey(),
+    sourceId: text('source_id')
+      .notNull()
+      .references(() => incomeSource.id, { onDelete: 'cascade' }),
+    paidOn: text('paid_on').notNull(),
+    grossMinor: integer('gross_minor').notNull(),
+    netMinor: integer('net_minor').notNull(),
+    commodity: text('commodity')
+      .notNull()
+      .references(() => commodity.code),
+    statuteAsOf: text('statute_as_of').notNull(),
+    txnId: text('txn_id').references(() => txn.id),
+    label: text('label'),
+  },
+  (t) => [
+    index('income_settlement_by_source').on(t.sourceId),
+    index('income_settlement_by_date').on(t.paidOn),
+    check('income_settlement_gross_positive', sql`${t.grossMinor} > 0`),
+  ],
+);
+
+export const incomeSettlementLine = sqliteTable(
+  'income_settlement_line',
+  {
+    settlementId: text('settlement_id')
+      .notNull()
+      .references(() => incomeSettlement.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    kind: text('kind').notNull(),
+    amountMinor: integer('amount_minor').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.settlementId, t.seq] }),
+    check('income_settlement_line_seq_positive', sql`${t.seq} >= 1`),
+    check('income_settlement_line_amount_nonneg', sql`${t.amountMinor} >= 0`),
+    check(
+      'income_settlement_line_kind_enum',
+      sql`${t.kind} IN ('income_tax_3','local_tax_0_3','vat_10','national_pension','health_insurance','long_term_care','employment_insurance','earned_income_tax','local_income_tax')`,
+    ),
+  ],
+);
+
 export const fxRate = sqliteTable(
   'fx_rate',
   {

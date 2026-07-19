@@ -88,6 +88,7 @@ you need — each is a self-contained file. Schedule them via
 | **Monthly** | 1st | `references/workflows/monthly.md` — assert balances, then `holiday close` |
 | **Simulate** | a big decision | `references/workflows/simulate.md` — `cashflow --spend/--receive`, nothing written |
 | **Ask** | anytime | `references/workflows/ask.md` — answer from the ledger; compute, don't give market advice |
+| **KR income** | 수입·원천징수·4대보험 | `references/workflows/kr-income.md` — statutory regimes; never invent 3.3%/보험요율 |
 
 **Record directly with `holiday txn add`.** The review queue is for when you are
 genuinely unsure, not a default — the user asked not to approve every coffee, and a

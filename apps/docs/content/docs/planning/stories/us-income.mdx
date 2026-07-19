@@ -1,22 +1,25 @@
 ---
 title: US-income
-description: 급여·고정 수입을 등록하고 싶다
+description: 급여·외주 수입을 등록하고 법정 공제까지 맞추고 싶다
 type: conceptual
-summary: 미도래분만 투영되고 --cash 입금만 런웨이에 잡힌다
+summary: 정기수입 투영 + 업체별 regime 정산. 3.3%/부가세/4대보험은 CLI가 강제.
 ---
 
 **As a** 1인 사용자  
-**I want** 급여·고정 수입을 등록하고 싶다  
-**So that** 미도래분만 투영되고 `--cash` 입금만 런웨이에 잡힌다
+**I want** 업체별 수입을 등록하고 원천징수·4대보험·부가세를 맞추고 싶다  
+**So that** 미도래 실수령만 투영되고, 실제 지급은 법정 공제와 대사된다
 
 ### 수락 기준
 
 1. 오늘 이전 발생은 투영하지 않는다 (POLICY-017)
 2. 입금 계정이 `--cash`가 아니면 gap으로 알리고 런웨이에서 제외한다
+3. `business_withholding`은 3.3% (POLICY-018)
+4. `salary`는 `--earned-tax` 없이 거부 (POLICY-019)
+5. `income check`가 손편집 공제를 잡는다 (POLICY-020)
 
 ### 추적
 
 - 기능: [income](/docs/features/income)
-- 스펙: [`add`](/docs/spec/cli/income/add)
-- 검증: POLICY-017
+- 스펙: [`add`](/docs/spec/cli/income/add) · [`settle`](/docs/spec/cli/income/settle)
+- 검증: POLICY-017…020
 - PRD: [prd-0.1-foundation](/docs/planning/prds/prd-0.1-foundation)

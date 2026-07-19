@@ -1,0 +1,48 @@
+---
+title: income source add
+description: holiday income source add 명령 계약
+type: reference
+summary: 수입 원천에 대한민국 공제 regime을 붙인다.
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.1.2"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.1.2',
+      date: '2026-07-19',
+      summary: 'income source/settle/check — KR statutory withholding',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+관련 기능: [income](/docs/features/income)
+
+<CommandSpec
+  command="income source add"
+  mutates={true}
+  summary="수입 원천과 법정 공제 regime을 등록한다."
+  signature={`holiday income source add <label> --income <code> --deposit <code> --regime <name> [--from] [--to]`}
+  flags={[
+    { name: '<label>', type: 'string', kind: 'arg', required: true },
+    { name: '--income', type: 'string', required: true, description: 'Income 계정' },
+    { name: '--deposit', type: 'string', required: true, description: '입금 asset' },
+    {
+      name: '--regime',
+      type: 'enum',
+      required: true,
+      description: 'business_withholding | business_vat | salary | allowance',
+    },
+    { name: '--from', type: 'YYYY-MM-DD', default: 'today' },
+    { name: '--to', type: 'YYYY-MM-DD' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: '원장/도메인 거부 또는 내부 오류' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday income source add "노벨라" --income Income:Business --deposit Assets:Bank:KB:Checking --regime business_withholding --json`}
+/>

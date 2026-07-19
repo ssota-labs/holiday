@@ -140,13 +140,26 @@ Expenses:Uncategorized        # 분류 전 보관
 Equity:Opening                # 개시잔액의 상대 계정
 ```
 
-**세금은 전용 모듈이 없다 — 계정과 전표로 끝난다.** `holiday balance --account Expenses:Tax`
-(또는 하위)가 **지금까지 비용으로 잡은 세금 합**이다. 종류가 필요하면 하위만 나누고,
-합계는 부모 prefix로 본다.
+**수입 공제는 대한민국 법정 요율로 강제한다.** 업체마다
+`holiday income source add <라벨> --income … --deposit … --regime …`로 regime을
+붙이고, 지급일에 `holiday income settle <라벨> --gross <세전> --date …`가 공제를
+계산·저장한다. 요율은 CLI가 법령 기준으로 박는다 — 에이전트가 3.3%·4대보험을
+추측해 넣지 않는다. 상세·개정 절차는 스킬 `references/workflows/kr-income.md`.
 
-선납·환급 대기는 비용이 아니라 `Assets:Receivable:Tax`다. 통장에서 나갈 때 자산으로
-잡고, 확정·종결 때 `Expenses:Tax`로 옮긴다. 그래서 “통장에서 나간 금액”과
-“비용으로 인식한 세금”이 어긋날 수 있다 — 둘 다 맞고, 질문이 다르다.
+| regime | 강제 내용 |
+|---|---|
+| `business_withholding` | 사업소득 원천징수 3.3% (소득세 3% + 지방 10%) |
+| `business_vat` | 공급가액 기준 부가세 10% |
+| `salary` | 4대보험 근로자분 법정 계산 + `--earned-tax` 갑근세(간이세액/명세서) |
+| `allowance` | 공제 없음 |
+
+`--post`면 표준 차트에 기표한다: 사업소득 원천 → `Assets:Receivable:Tax`,
+갑근세 → `Expenses:Tax:Withholding`, 4대보험 → `Expenses:Insurance`, 부가세 →
+`Liabilities:Payable:Tax`. `holiday income check`가 저장분과 법정 계산을 대사한다.
+
+선납·환급 대기는 비용이 아니라 `Assets:Receivable:Tax`다. 확정·종결 때
+`Expenses:Tax`로 옮긴다. “통장에서 나간 금액”과 “비용으로 인식한 세금”은 질문이
+다르다.
 **두 Uncategorized 계정은 카테고리가 아니라 대기열이다.** 수집이 규칙에 안 걸린
 건을 대기(draft)로 파킹하는 곳 — 건강한 장부는 이곳을 비운다
 (`holiday rule add` → `holiday review apply-rules --accept`, 또는 대시보드에서
@@ -175,13 +188,20 @@ Equity:Opening                # 개시잔액의 상대 계정
   그날 출금, 카드면 그날은 빚만 생기고 현금은 카드 주기로 몇 주 뒤에 나간다.
   `--day -1`은 말일, `--yearly <월>`은 연 1회. 실제 청구되면 보통 전표로
   기록한다 — 이건 예측일 뿐이다.
-- **정기수입**: `holiday income add "급여" --income Income:Salary --deposit
+- **정기수입(예측)**: `holiday income add "급여" --income Income:Salary --deposit
   <통장> --amount 3000000 --day 25`. 입금일이 현금일이다. **`--deposit`은
   `--cash` 계정이어야** 현금흐름에 잡힌다 — 아니면 등록은 되지만 투영에서
-  빠지고 ⚠로 알린다. 실제 입금은 보통 전표로 기록한다.
+  빠지고 ⚠로 알린다. 금액은 **실수령(net)** 전망이다.
+- **수입 정산(법정 공제)**: `holiday income source add "버디파이" --income
+  Income:Salary --deposit <통장> --regime salary` 후 `holiday income settle
+  "버디파이" --gross 4000000 --earned-tax 400000 --date 2026-07-25 [--post]`.
+  외주·프리랜서는 `--regime business_withholding`, 세금계산서는
+  `business_vat`. 법이 바뀌면 CLI·스킬을 같이 올린다 — 에이전트가 요율을
+  바꾸지 않는다.
 - 확인: `holiday card list` / `installment list` / `recurring list` /
-  `income list`, 그리고 `holiday cashflow --until <날짜>`. 전망의 각 항목은
-  출처를 이름으로 밝힌다 ("넷플릭스 (2026-08-17 결제분)").
+  `income list` / `income source list` / `income check`, 그리고
+  `holiday cashflow --until <날짜>`. 전망의 각 항목은 출처를 이름으로 밝힌다
+  ("넷플릭스 (2026-08-17 결제분)").
 
 "이 대출 받으면?" 같은 what-if는 전표를 만들지 말고 전망에 접어 넣는다:
 `holiday cashflow --until 2027-06-30 --spend "2026-09-01 5000000 노트북"
