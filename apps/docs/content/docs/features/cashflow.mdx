@@ -1,22 +1,26 @@
 ---
 title: 현금흐름
-description: 런웨이와 SHORT
+description: 앞으로의 잔고를 날짜별로 보고, 부족 날을 안다
 type: guide
-summary: cash 계정 opening + 스케줄 투영(출·입). --spend/--receive 가정. 음수면 부족.
+summary: 현금 시작 잔액 + 스케줄 투영. 가정 유출·유입. 음수면 부족.
 related:
   - /docs/design/adr
   - /docs/planning/stories/us-cashflow-short
 ---
 
-제품의 payoff 명령. 카드·할부·정기(출·입)·대출을 날짜별로 쌓아 잔액을 본다.
+카드·할부·정기지출·정기수입·대출을 날짜별로 쌓아, **어느 날 통장이 버티는지**를
+본다. 장부에 이미 찍힌 잔액에서 시작해, 아직 안 온 일정만 앞으로 투영한다.
 
 ## 수락 기준
 
-1. opening = `--cash` 합
-2. POLICY-003/004/005/008/010을 지킨 투영
-3. balanceAfter가 음수면 부족(SHORT)
-4. reads-only (원장 불변)
-5. `--spend` / `--receive`는 원장을 건드리지 않는 가정 유출·유입
+1. 시작 잔액은 `--cash` 계정 합이다
+2. 카드·할부·정기·대출 투영이 정책을 지킨다
+   ([POLICY-003](/docs/domain/policy#POLICY-003) · [004](/docs/domain/policy#POLICY-004) ·
+   [005](/docs/domain/policy#POLICY-005) · [008](/docs/domain/policy#POLICY-008) ·
+   [010](/docs/domain/policy#POLICY-010))
+3. 날짜별 잔액이 음수면 **부족**으로 표시한다
+4. 조회만 한다 — 장부 숫자를 바꾸지 않는다
+5. `--spend` / `--receive`는 가정일 뿐이다. 전표를 만들지 않는다
 
 ## 다섯 스케줄 → 런웨이
 
@@ -80,7 +84,7 @@ related:
 
 `⚠ 부족`이 답이다. 잔액은 숫자 하나를 주지만 현금흐름은 **어느 날 터지는지**를 준다.
 
-## What-if는 원장을 건드리지 않는다
+## 가정은 장부를 건드리지 않는다
 
 "이 대출 받으면?", "집 사면?" 같은 가정은 **런웨이에 얹어서** 계산한다. 투기적 거래를
 넣었다 지우는 게 아니다 — `cashflow`가 가정을 직접 받는다.
@@ -91,7 +95,7 @@ holiday cashflow --until 2027-06-30 \
   --receive "2026-12-25 3000000 보너스"
 ```
 
-원장은 그대로다. `--spend` 없이 다시 돌리면 가정이 사라진다.
+장부는 그대로다. `--spend` 없이 다시 돌리면 가정이 사라진다.
 
 ## 스펙
 

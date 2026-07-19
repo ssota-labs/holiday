@@ -1,29 +1,29 @@
 ---
 title: 데이터 수집
-description: ingest submit → review (또는 --post)
+description: 파싱된 거래를 넣고, 사람이 승인한 뒤 잔액에 반영한다
 type: guide
-summary: OCR 없음. 기본은 draft. --post는 대량 수입용. 사람이 승인.
+summary: OCR 없음. 기본은 분류 대기. --post는 대량 수입용. 사람이 승인.
 related:
   - /docs/domain/policy
   - /docs/agent/skill
   - /docs/planning/stories/us-ingest-review
 ---
 
-에이전트/사람은 파싱된 JSON을 넘긴다. CLI는 OCR을 하지 않는다.
+은행·카드 내역을 **이미 파싱한 JSON**으로 넘긴다. CLI는 OCR을 하지 않는다.
 
-수집은 `status='draft'`인 **진짜 거래**를 쓴다(기본). 균형 규칙이 수집 시점에
-돌고, **불균형 항목은 만들 수조차 없다.** `--post`는 검토 큐를 건너뛰고 바로
-posted로 넣는다 — 대량 히스토리 수입용.
+기본은 **분류 대기(draft)** 전표다. 넣는 순간에도 균형 규칙은 돌아가서, 안 맞는
+항목은 만들 수조차 없다. `--post`는 검토 큐를 건너뛰고 바로 확정한다 — 과거
+내역을 한꺼번에 넣을 때용이다. 일상 흐름은 사람이 승인·반려한다.
 
 ## 수락 기준
 
-1. 기본 submit 결과는 pending draft (`--post`면 accepted/posted)
-2. source/image SHA · external_ref 중복은 hard-block
-3. reject 행 유지(dedup)
-4. accept 후 posted만 잔액에 포함
-5. close 게이트는 period 내 draft를 막는다
-6. `--data`와 `--data-file` 중 정확히 하나
-7. `--idem-key`로 재시도 안전 (에이전트는 사실상 필수)
+1. 기본 submit은 분류 대기로 남는다 (`--post`면 바로 확정)
+2. 같은 이미지/소스 해시·external_ref는 다시 넣지 못한다
+3. 반려한 행도 남겨 두어 중복을 기억한다
+4. 승인해 확정된 전표만 잔액에 들어간다
+5. 마감은 그 기간의 분류 대기가 있으면 막는다
+6. `--data`와 `--data-file` 중 하나만 쓴다
+7. `--idem-key`로 같은 요청을 안전하게 재시도한다
 
 ## 중복 판단
 
@@ -34,7 +34,7 @@ posted로 넣는다 — 대량 히스토리 수입용.
 | 자연키 | 경고만 |
 | ±3일 퍼지 | 경고만 |
 
-거부된 항목은 삭제하지 않는다 — 중복 기억이다.
+반려한 항목은 삭제하지 않는다 — 중복 기억이다.
 
 ## 스펙
 
@@ -49,7 +49,7 @@ posted로 넣는다 — 대량 히스토리 수입용.
 ## BYOC 팩스 경로 (벤더 비종속)
 
 은행/카드 **팩스 자동통지**는 SOLAPI FAX-RECEIVE 같은 가상팩스 → 사용자가 고른
-HTTPS 엔드포인트로 들어온다. holiday는 관리형 멀티테넌트 웹을 운영하지 않는다
+HTTPS 엔드포인트로 들어온다. 관리형 멀티테넌트 웹은 없다
 (`holiday deploy`가 스캐폴드만 한다).
 
 ```

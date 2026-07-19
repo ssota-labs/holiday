@@ -1,21 +1,37 @@
 ---
 title: 대출
-description: 상환 스케줄, pay, check
+description: 상환 일정을 두고, 실제 납부와 스케줄 차이를 잡는다
 type: guide
-summary: 스케줄과 원장 차이는 loan_drift.
+summary: 원금 합 불변. 미납·드리프트는 check. 거치 balloon 없음.
 ---
+
+주담대·신용대출의 **상환 스케줄**을 장부 밖에 둔다. 매달 낸 돈은 `pay`로
+기표하고, `check`가 스케줄 기대 잔액과 장부 부채가 어긋난 곳을 보여 준다.
+
+## 대출 한 건에 들어가는 정보
+
+| 항목 | 의미 |
+|---|---|
+| 원금·금리·기간 | 스케줄 생성 입력 |
+| 상환 방식 | 원리금균등 / 원금균등 / 만기일시 / 거치(이자만) |
+| 납부 | 실제 통장에서 나간 상환 |
+
+스케줄은 예측이다. 금리가 바뀌어도 과거 전표를 다시 쓰지 않는다.
 
 ## 수락 기준
 
-1. 원금 합 불변식 ([POLICY-012](/docs/domain/policy#POLICY-012))
-2. interest_only balloon 없음 ([POLICY-013](/docs/domain/policy#POLICY-013))
-3. 0% annuity 거부 ([POLICY-014](/docs/domain/policy#POLICY-014))
-4. half away from zero ([POLICY-015](/docs/domain/policy#POLICY-015))
-5. 미납·드리프트 감지 ([POLICY-011](/docs/domain/policy#POLICY-011))
+1. 상환 스케줄 원금 합 = 대출원금 ([POLICY-012](/docs/domain/policy#POLICY-012))
+2. 거치(interest_only)는 만기 일시상환을 자동으로 만들지 않는다
+   ([POLICY-013](/docs/domain/policy#POLICY-013))
+3. 연이율 0% 원리금균등은 거절한다 — 원금균등을 쓴다
+   ([POLICY-014](/docs/domain/policy#POLICY-014))
+4. 이자 반올림은 half away from zero ([POLICY-015](/docs/domain/policy#POLICY-015))
+5. 미납·스케줄과 장부 차이를 감지한다 ([POLICY-011](/docs/domain/policy#POLICY-011))
 
 ## 스펙
 
-[add](/docs/spec/cli/loan/add) · [pay](/docs/spec/cli/loan/pay) · [check](/docs/spec/cli/loan/check) · [list](/docs/spec/cli/loan/list)
+[add](/docs/spec/cli/loan/add) · [pay](/docs/spec/cli/loan/pay) · [check](/docs/spec/cli/loan/check) ·
+[list](/docs/spec/cli/loan/list)
 
 ## 스토리
 

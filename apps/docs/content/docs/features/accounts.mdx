@@ -1,30 +1,37 @@
 ---
 title: 계정
-description: 계정 코드, 현금 플래그, 잔액
+description: 자산·부채·비용 계정을 코드로 두고 잔액을 본다
 type: guide
-summary: Beancount형 코드. cash는 플래그(ADR-004). 잔액은 weight.
+summary: Beancount형 코드. 현금은 플래그. 잔액은 weight 합.
 related: ["/docs/planning/stories/us-accounts", "/docs/spec/cli/account/add"]
 ---
 
-차트의 기본 단위. 타입은 코드 prefix(Assets/Liabilities/…)에서 온다.
+장부의 기본 칸이다. `Assets:Bank:KB`처럼 코드로 계정을 만들고, 균형 잡힌 전표를
+넣으면 잔액이 쌓인다. 계정 종류(자산·부채·자본·수익·비용)는 코드 앞부분으로 정한다.
 
-## 할 수 있는 일
+## 계정 한 건에 들어가는 정보
 
-- `account add` / `list`
-- `txn add`로 균형 거래
-- `balance`로 weight 잔액 조회
+| 항목 | 의미 |
+|---|---|
+| 코드 | `Assets:…` / `Liabilities:…` 등. 앞부분이 종류 |
+| 현금 표시 | 통장처럼 런웨이 시작 잔액에 넣을지 (`--cash`) |
+| placeholder | 자리만 잡은 계정. 여기에 전표를 못 넣음 |
+
+잔액은 전표의 **weight**(장부가액) 합이다. 현금 여부는 코드 prefix가 아니라
+플래그로 본다 ([ADR-004](/docs/design/adr#ADR-004)).
 
 ## 수락 기준
 
-1. `--cash` 계정이 cashflow opening에 포함된다
-2. placeholder에는 posting 불가(트리거)
-3. 불균형 txn은 거부 ([POLICY-001](/docs/domain/policy#POLICY-001))
+1. `--cash`로 표시한 계정이 현금흐름 시작 잔액에 들어간다
+2. placeholder 계정에는 전표를 넣을 수 없다
+3. 차변·대변이 안 맞는 전표는 거절한다 ([POLICY-001](/docs/domain/policy#POLICY-001))
 
 ## 스펙
 
-- [account add](/docs/spec/cli/account/add) · [list](/docs/spec/cli/account/list)
-- [txn add](/docs/spec/cli/txn/add) · [balance](/docs/spec/cli/balance) · [init](/docs/spec/cli/init)
+[account add](/docs/spec/cli/account/add) · [list](/docs/spec/cli/account/list) ·
+[txn add](/docs/spec/cli/txn/add) · [balance](/docs/spec/cli/balance) · [init](/docs/spec/cli/init)
 
 ## 스토리
 
-[us-accounts](/docs/planning/stories/us-accounts) · [us-txn](/docs/planning/stories/us-txn) · [us-ledger-init](/docs/planning/stories/us-ledger-init)
+[us-accounts](/docs/planning/stories/us-accounts) · [us-txn](/docs/planning/stories/us-txn) ·
+[us-ledger-init](/docs/planning/stories/us-ledger-init)

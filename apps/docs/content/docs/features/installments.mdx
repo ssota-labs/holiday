@@ -1,22 +1,35 @@
 ---
 title: 할부
-description: 별도 부채 계정과 관측 수수료
+description: 구매 전액을 별도 부채로 두고, 회차별 현금 유출만 예측한다
 type: guide
-summary: Installment 계정 분리. 수수료는 관측값만.
+summary: Installment 계정 분리. 수수료는 명세서에 찍힌 값만.
 ---
 
-구매 시 전액 부채를 세우고, 스케줄로 현금 유출을 나눈다.
+할부 구매 시 **원금 전액**을 카드 일반 청구와 다른 부채 계정에 세운다. 현금흐름은
+회차 스케줄로만 나눈다 — 첫 청구에 원금 전액이 한꺼번에 잡히지 않는다.
+
+## 할부 한 건에 들어가는 정보
+
+| 항목 | 의미 |
+|---|---|
+| 부채 계정 | `Liabilities:Card:…:Installment` (일반 카드와 분리) |
+| 구매액·회차 | 원금 합이 구매액과 같아야 함 |
+| 수수료 | 명세서에 찍힌 관측값만. 추정·원금 합산 금지 |
+
+명세서가 바뀌면 `revise --data`로 덮어쓴다.
 
 ## 수락 기준
 
-1. 카드 일반 계정과 부채 분리 ([POLICY-003](/docs/domain/policy#POLICY-003))
-2. 원금 합 = 구매액 ([POLICY-007](/docs/domain/policy#POLICY-007))
-3. 수수료 관측만, 원금에 합치지 않음 ([POLICY-006](/docs/domain/policy#POLICY-006), [009](/docs/domain/policy#POLICY-009))
-4. `revise --data`로 명세서 덮어쓰기
+1. 할부 부채는 카드 일반 계정과 분리한다 ([POLICY-003](/docs/domain/policy#POLICY-003))
+2. 스케줄 원금 합 = 구매액 ([POLICY-007](/docs/domain/policy#POLICY-007))
+3. 수수료는 관측값만 받고, 원금에 합치지 않는다
+   ([POLICY-006](/docs/domain/policy#POLICY-006), [009](/docs/domain/policy#POLICY-009))
+4. `revise --data`로 명세서 내용을 덮어쓸 수 있다
 
 ## 스펙
 
-[add](/docs/spec/cli/installment/add) · [revise](/docs/spec/cli/installment/revise) · [list](/docs/spec/cli/installment/list)
+[add](/docs/spec/cli/installment/add) · [revise](/docs/spec/cli/installment/revise) ·
+[list](/docs/spec/cli/installment/list)
 
 ## 스토리
 

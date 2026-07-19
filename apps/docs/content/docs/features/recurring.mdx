@@ -1,14 +1,26 @@
 ---
 title: 정기지출
-description: 월세·구독 투영
+description: 월세·구독처럼 반복되는 유출을 앞으로만 투영한다
 type: guide
-summary: 미도래분만. 카드 funding은 결제일 현금.
+summary: 미도래분만. 카드로 내면 현금일은 청구 결제일.
 ---
+
+월세·넷플릭스처럼 **아직 안 온** 반복 지출만 현금흐름에 올린다. 오늘·과거분은
+이미 장부에 있다고 보고 다시 세지 않는다.
+
+## 정기지출 한 건에 들어가는 정보
+
+| 항목 | 의미 |
+|---|---|
+| 금액·주기 | 매달 얼마, 언제 |
+| 결제 수단 | 통장이면 발생일 현금 / 카드면 청구 결제일 현금 |
+| 메모 | 월세, 구독명 등 |
 
 ## 수락 기준
 
-1. today 이하 발생은 투영하지 않는다 ([POLICY-005](/docs/domain/policy#POLICY-005))
-2. 카드 funding이면 현금일은 청구 결제일 ([POLICY-010](/docs/domain/policy#POLICY-010))
+1. 오늘 이하 발생분은 투영하지 않는다 ([POLICY-005](/docs/domain/policy#POLICY-005))
+2. 카드로 내는 정기지출의 현금 유출일은 청구 결제일이다
+   ([POLICY-010](/docs/domain/policy#POLICY-010))
 
 ## 스펙
 
