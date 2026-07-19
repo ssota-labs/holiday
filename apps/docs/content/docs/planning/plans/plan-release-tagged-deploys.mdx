@@ -1,0 +1,68 @@
+---
+title: PLAN-release-tagged-deploys
+description: 사용자-facing 변경은 버전 bump와 v* 태그로 npm·플러그인에 배포한다
+type: guide
+summary: 릴리스 시 패키지·플러그인 버전을 맞추고 AGENTS.md에 태그 배포를 의무화한다.
+id: PLAN-release-tagged-deploys
+stage: ready
+changeType: maintenance
+codeAreas:
+  - AGENTS.md
+  - CLAUDE.md
+  - packages
+  - plugins
+related:
+  - /docs/planning/workflow
+  - /docs/spec/development/docs-first-workflow
+---
+
+## 목표
+
+스킬 사용자는 `npx @holiday-cfo/cli@latest`와 플러그인 매니페스트 버전만 본다.
+main 머지만으로는 `@latest`가 갱신되지 않으므로, 사용자-facing 기능을 넣은 뒤에는
+버전 bump + `v*` 태그 배포까지를 작업 완료 조건으로 고정한다.
+
+## 영향 범위
+
+| 영역 | 변경 |
+|---|---|
+| `packages/*/package.json` | public 패키지 버전을 태그(semver)와 일치 |
+| `plugins/*/.*-plugin/plugin.json` | 플러그인 버전을 같은 값으로 |
+| `AGENTS.md` | **기능 완료 = 태그 배포** 절차 |
+| `CLAUDE.md` | 동일 게이트를 Claude Code에 명시 |
+
+## 구현 순서
+
+1. 모든 public 패키지와 양쪽 plugin.json `version`을 동일 값으로 올린다.
+2. `node scripts/check-release-version.mjs vX.Y.Z`로 게이트를 통과시킨다.
+3. `AGENTS.md` / `CLAUDE.md`에 태그 배포 의무를 적는다.
+4. `release: vX.Y.Z — …` 커밋 후 `git tag vX.Y.Z && git push origin vX.Y.Z`.
+5. `.github/workflows/release.yml`이 npm publish를 수행하는지 확인한다.
+
+## 검증 계획
+
+### 자동 테스트
+
+- `node scripts/check-release-version.mjs vX.Y.Z`
+- release 워크플로 publish 성공
+
+### 수동 테스트
+
+- `npm view @holiday-cfo/cli version`이 태그 버전과 같다
+- `holiday income settle --help` 등 새 명령이 `@latest`에 보인다
+
+## 마이그레이션과 호환성
+
+- 원장 스키마·CLI 계약은 이 계획만으로는 바꾸지 않는다 (버전 메타만).
+- 이미 푸시한 태그는 수정하지 않는다.
+
+## 위험과 롤백
+
+- 태그/버전 불일치는 npm에 잘못된 버전이 실릴 수 있다 — publish 전 `check-release-version`이 막는다.
+- 롤백은 다음 패치 버전 태그로 수정본을 배포하는 방식이다 (npm unpublish 금지).
+
+## 완료 조건
+
+- [ ] 패키지·플러그인 버전이 태그와 일치한다
+- [ ] AGENTS.md에 태그 배포 의무가 있다
+- [ ] `v*` 태그가 npm publish를 통과했다
