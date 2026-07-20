@@ -8,13 +8,7 @@ import { notFound } from 'next/navigation';
 import { DocKind, docKindFromSlug } from '@/components/blocks/doc-kind';
 import { DocsInlineToc } from '@/components/docs-inline-toc';
 import { getMDXComponents } from '@/components/mdx';
-import { adrFooterItems, source } from '@/lib/source';
-
-function isAdrDetail(slug: string[] | undefined): boolean {
-  return (
-    slug?.[0] === 'development' && slug[1] === 'adr' && slug.length === 3
-  );
-}
+import { catalogFooterItems, catalogIndexLink, source } from '@/lib/source';
 
 export default async function Page(props: { params: Promise<{ slug?: string[] }> }) {
   const params = await props.params;
@@ -25,8 +19,8 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
   const kind = docKindFromSlug(params.slug);
   const ticker = typeof page.data.ticker === 'string' ? page.data.ticker : undefined;
   const toc = page.data.toc;
-  const footerItems = adrFooterItems(params.slug);
-  const showAdrIndexLink = isAdrDetail(params.slug);
+  const footerItems = catalogFooterItems(params.slug);
+  const indexLink = catalogIndexLink(params.slug);
 
   return (
     <DocsPage
@@ -34,13 +28,13 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
       full={page.data.full}
       footer={footerItems ? { items: footerItems } : undefined}
     >
-      {showAdrIndexLink ? (
+      {indexLink ? (
         <Link
-          href="/docs/development/adr"
+          href={indexLink.href}
           className="text-fd-muted-foreground hover:bg-fd-accent/50 hover:text-fd-accent-foreground -mt-1 inline-flex w-fit items-center gap-1 rounded-lg border px-2.5 py-1.5 text-sm no-underline transition-colors"
         >
           <ChevronLeft className="size-4 shrink-0" />
-          ADR
+          {indexLink.label}
         </Link>
       ) : null}
       <DocsTitle>

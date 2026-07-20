@@ -14,6 +14,22 @@ const INDEX_ONLY_FOLDER_URLS = new Set([
   '/docs/spec/cli',
 ]);
 
+/** Index-only catalogs that get a back link + sibling prev/next on detail pages. */
+const CATALOGS = [
+  { prefix: ['planning', 'prds'] as const, indexUrl: '/docs/planning/prds', label: 'PRD' },
+  {
+    prefix: ['planning', 'stories'] as const,
+    indexUrl: '/docs/planning/stories',
+    label: '유저 스토리',
+  },
+  {
+    prefix: ['development', 'plans'] as const,
+    indexUrl: '/docs/development/plans',
+    label: '구현계획',
+  },
+  { prefix: ['development', 'adr'] as const, indexUrl: '/docs/development/adr', label: 'ADR' },
+] as const;
+
 function normalizeUrl(url: string) {
   return url.length > 1 && url.endsWith('/') ? url.slice(0, -1) : url;
 }
@@ -36,30 +52,47 @@ export const source = loader({
   },
 });
 
-/** Prev/next footer cards among ADR siblings (hidden from the sidebar tree). */
-export function adrFooterItems(slug: string[] | undefined):
-  | {
-      previous?: { name: string; description?: string; url: string };
-      next?: { name: string; description?: string; url: string };
-    }
-  | undefined {
-  if (!slug || slug[0] !== 'development' || slug[1] !== 'adr' || slug.length !== 3) {
-    return undefined;
-  }
+function matchCatalog(slug: string[] | undefined) {
+  if (!slug) return undefined;
+  return CATALOGS.find(
+    (catalog) =>
+      slug.length === catalog.prefix.length + 1 &&
+      catalog.prefix.every((segment, i) => slug[i] === segment),
+  );
+}
 
+/** Back-to-index control above the title on catalog detail pages. */
+export function catalogIndexLink(
+  slug: string[] | undefined,
+): { href: string; label: string } | undefined {
+  const catalog = matchCatalog(slug);
+  if (!catalog) return undefined;
+  return { href: catalog.indexUrl, label: catalog.label };
+}
+
+export type CatalogFooterItems = {
+  previous?: { name: string; description?: string; url: string };
+  next?: { name: string; description?: string; url: string };
+};
+
+/** Prev/next footer cards among catalog siblings (hidden from the sidebar tree). */
+export function catalogFooterItems(slug: string[] | undefined): CatalogFooterItems | undefined {
+  const catalog = matchCatalog(slug);
+  if (!catalog || !slug) return undefined;
+
+  const depth = catalog.prefix.length;
   const siblings = source
     .getPages()
     .filter(
       (page) =>
-        page.slugs[0] === 'development' &&
-        page.slugs[1] === 'adr' &&
-        page.slugs.length === 3,
+        page.slugs.length === depth + 1 &&
+        catalog.prefix.every((segment, i) => page.slugs[i] === segment),
     )
     .sort((a, b) =>
-      (a.slugs[2] ?? '').localeCompare(b.slugs[2] ?? '', undefined, { numeric: true }),
+      (a.slugs[depth] ?? '').localeCompare(b.slugs[depth] ?? '', undefined, { numeric: true }),
     );
 
-  const index = siblings.findIndex((page) => page.slugs[2] === slug[2]);
+  const index = siblings.findIndex((page) => page.slugs[depth] === slug[depth]);
   if (index === -1) return undefined;
 
   const toItem = (page: (typeof siblings)[number]) => ({
