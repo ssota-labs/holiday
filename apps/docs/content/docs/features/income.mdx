@@ -19,6 +19,7 @@ summary: 정기수입은 실수령 예측. 정산은 3.3%·부가세·4대보험
 | 실수령액 | 통장에 찍힐 금액 (예측) |
 | 입금 계정 | 보통 `--cash` 통장. 아니면 런웨이에서 빠짐 |
 | 주기 | 매달·격주 등 |
+| 시작일 | 이 날부터의 회차만 전망에 넣는다. 첫 입금일에 맞춰도 된다 |
 
 ## 정산(regime)
 
@@ -35,10 +36,13 @@ summary: 정기수입은 실수령 예측. 정산은 3.3%·부가세·4대보험
 ## 수락 기준
 
 1. 오늘 이하 발생분은 투영하지 않는다 ([POLICY-017](/docs/domain/policy#POLICY-017))
-2. 입금 계정이 `--cash`가 아니면 런웨이에서 빼고 gap으로 알린다
-3. 사업소득 원천은 3.3%로 맞춘다 ([POLICY-018](/docs/domain/policy#POLICY-018))
-4. 급여 정산은 갑근세 입력 없이 끝낼 수 없다 ([POLICY-019](/docs/domain/policy#POLICY-019))
-5. 저장된 정산은 법정 계산과 일치한다 ([POLICY-020](/docs/domain/policy#POLICY-020))
+2. 시작일이 오늘보다 늦어도, 시작일 이후 미도래 회차는 현금흐름에 잡힌다
+   ([시작일 계약](/docs/domain/recurring-active-window))
+3. 시작일 전 주기일은 현금흐름에 잡히지 않는다
+4. 입금 계정이 `--cash`가 아니면 런웨이에서 빼고 gap으로 알린다
+5. 사업소득 원천은 3.3%로 맞춘다 ([POLICY-018](/docs/domain/policy#POLICY-018))
+6. 급여 정산은 갑근세 입력 없이 끝낼 수 없다 ([POLICY-019](/docs/domain/policy#POLICY-019))
+7. 저장된 정산은 법정 계산과 일치한다 ([POLICY-020](/docs/domain/policy#POLICY-020))
 
 ## 스펙
 

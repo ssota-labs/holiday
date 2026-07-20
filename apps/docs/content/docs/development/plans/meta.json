@@ -5,7 +5,8 @@
     "plan-tax-return-sor",
     "plan-release-tagged-deploys",
     "plan-document-skills-companion",
-    "plan-cashflow-card-bill-non-usage"
+    "plan-cashflow-card-bill-non-usage",
+    "plan-recurring-future-active-from"
   ],
   "collapsible": true,
   "defaultOpen": false,

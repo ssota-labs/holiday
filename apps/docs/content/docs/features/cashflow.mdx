@@ -22,8 +22,10 @@ related:
    결제·정정·개시·시스템 전표는 빼 둔다
    ([카드 청구액 구성](/docs/domain/cashflow-card-bill) · [POLICY-022](/docs/domain/policy#POLICY-022))
 4. 날짜별 잔액이 음수면 **부족**으로 표시한다
-5. 조회만 한다 — 장부 숫자를 바꾸지 않는다
-6. `--spend` / `--receive`는 가정일 뿐이다. 전표를 만들지 않는다
+5. 시작일이 오늘보다 늦은 정기수입·정기지출도, 시작일 이후 회차는 전망에
+   넣는다 ([시작일 계약](/docs/domain/recurring-active-window))
+6. 조회만 한다 — 장부 숫자를 바꾸지 않는다
+7. `--spend` / `--receive`는 가정일 뿐이다. 전표를 만들지 않는다
 
 ## 다섯 스케줄 → 런웨이
 

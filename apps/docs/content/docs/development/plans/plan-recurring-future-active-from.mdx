@@ -1,0 +1,100 @@
+---
+title: plan-recurring-future-active-from
+description: 시작일이 미래인 정기수입·정기지출이 현금흐름에 잡히게 한다
+type: guide
+summary: 투영 입력을 오늘 창이 아니라 전망 구간과 겹치는 스케줄로 고른다.
+id: plan-recurring-future-active-from
+ticker: plan-006
+stage: ready
+changeType: bugfix
+prd: prd-0.1-foundation
+specs:
+  - SPEC-recurring-active-window
+stories:
+  - us-income
+  - us-cashflow-short
+codeAreas:
+  - packages/core
+  - packages/cli
+  - apps/docs
+related:
+  - /docs/domain/recurring-active-window
+  - /docs/features/income
+  - /docs/features/cashflow
+  - /docs/domain/policy
+  - /docs/planning/prds/prd-0.1-foundation
+  - /docs/planning/stories/us-income
+  - /docs/planning/stories/us-cashflow-short
+---
+
+## 목표
+
+시작일을 첫 입금·출금일에 맞춰 두어도, 오늘 보는 현금흐름에 그 이후 회차가
+잡히게 한다. 시작일을 오늘로 당길 필요는 없다.
+
+계약: [SPEC-recurring-active-window](/docs/domain/recurring-active-window).
+
+## 영향 범위
+
+| 영역 | 변경 |
+|---|---|
+| `packages/core` `usecases/cashflow.ts` | 정기수입·정기지출을 `activeOn: asOf`로만 고르지 않는다. 전망 구간과 겹치면 넣는다 |
+| `packages/core` (도메인·포트, 필요 시) | 겹침 필터 헬퍼 또는 list API 확장 |
+| `packages/cli` `income list` · `recurring list` | 시작 예정 스케줄도 보이게 |
+| `packages/core` 테스트 | 시작일=미래 → 첫 회차만 잡힘, 시작일 전 주기일 제외 |
+| `apps/docs` 기능·정책 | 수락 기준·POLICY 링크 (구현 PR에서 Rule 테스트 연결) |
+
+## 구현 순서
+
+1. 스케줄이 전망 구간 `(asOf, until]`과 겹치는지 판별하는 조건을 고정한다.
+   대략 `activeFrom <= until` 이고 (`activeTo` 없음 또는 `activeTo > asOf`).
+2. `projectCashflow`가 정기수입·정기지출을 그 조건으로 모은다. 회차마다
+   쓰는 `isActiveOn`·`occurrence > today`는 그대로 둔다.
+3. `income list` / `recurring list`가 오늘 창 안 + 시작 예정(아직 시작 전,
+   미종료)을 함께 보여 준다.
+4. 테스트: 오늘=2026-07-20, 시작일=2026-08-25, 매월 25일 → 7/25 없음,
+   8/25·9/25 있음. 시작일=오늘이면 기존과 같다.
+5. 기능 문서 수락 기준을 스펙에 맞추고, 필요하면 POLICY 한 줄을 테스트에
+   링크한다.
+6. `pnpm --filter @holiday-cfo/core test` · docs `check:rules` ·
+   `check:planning`.
+
+## 검증 계획
+
+### 자동 테스트
+
+- 시작일이 전망 구간 안이면 그 날·이후 미도래 회차만 잡힌다
+- 시작일 전 주기일은 잡히지 않는다
+- 오늘 이하 발생분은 계속 빠진다 (POLICY-017)
+- 종료일이 지난 스케줄은 투영·목록에서 빠진다
+- 정기지출도 같은 입력 규칙을 쓴다
+
+### 수동 테스트 / 기획 체크
+
+1. 정기수입을 시작일 2026-08-25, 매월 25일로 등록한다 (오늘은 7월)
+2. 목록에 보인다
+3. 현금흐름에 8/25·9/25만 잡히고 7/25는 없다
+4. 대시보드와 CLI 숫자가 같다
+
+## 마이그레이션과 호환성
+
+- DB 마이그레이션 없음
+- 저장된 스케줄은 수정하지 않는다. 목록·현금흐름 표시만 달라질 수 있다
+- 시작일이 이미 오늘 이하인 스케줄은 숫자 변화가 없다
+
+## 위험과 롤백
+
+| 위험 | 대응 |
+|---|---|
+| 목록이 너무 길어짐 | 종료분만 숨기면 됨. 시작 예정은 소수 |
+| 겹침 조건을 너무 넓혀 종료 직후를 넣음 | `activeTo > asOf`로 제한, 테스트로 고정 |
+| list와 cashflow 규칙이 어긋남 | 같은 헬퍼를 쓰거나 수락 테스트를 공유 |
+
+롤백: `projectCashflow`와 list 필터를 되돌리면 된다. 원장 데이터 손상 없음.
+
+## 완료 조건
+
+- [ ] [SPEC-recurring-active-window](/docs/domain/recurring-active-window) 수락 기준이 테스트로 고정된다
+- [ ] `--from`을 첫 입금일에 둬도 그 이후 회차만 현금흐름에 잡힌다
+- [ ] 시작 예정 스케줄이 목록에 보인다
+- [ ] 이 계획을 `done`으로 갱신한다

@@ -3,7 +3,8 @@
   "pages": [
     "glossary",
     "policy",
-    "cashflow-card-bill"
+    "cashflow-card-bill",
+    "recurring-active-window"
   ],
   "collapsible": true,
   "defaultOpen": true
