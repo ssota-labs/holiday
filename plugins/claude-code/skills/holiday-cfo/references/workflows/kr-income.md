@@ -4,6 +4,9 @@
 (`packages/core`의 `KR_STATUTE`)가 강제하고, 이 파일이 언제 어떤 regime을
 쓰는지 정한다. 법이 바뀌면 **CLI 상수와 이 문서를 같은 PR에서** 올린다.
 
+4대보험·장기요양 **요율·자격·상하한 참고표**는
+[`kr-social-insurance.md`](kr-social-insurance.md)를 본다.
+
 ## 언제
 
 - 사용자가 업체별 수입(외주·급여·수당·세금계산서)을 정리할 때
@@ -52,7 +55,8 @@ holiday income settlements
 
 ## 2026 요율 (CLI와 동기)
 
-기준일 `2026-01-01` (`KR_STATUTE_AS_OF`).
+기준일 `2026-01-01` (`KR_STATUTE_AS_OF`). 사회보험 상세·사용자 부담·자격은
+[`kr-social-insurance.md`](kr-social-insurance.md).
 
 | 항목 | 근로자/납부자 | 비고 |
 |---|---|---|
@@ -70,5 +74,5 @@ holiday income settlements
 ## 법이 바뀌면
 
 1. `packages/core/src/domain/kr-income.ts`의 `KR_STATUTE_*` 갱신 + 테스트
-2. 이 파일의 표 갱신
+2. 이 파일과 [`kr-social-insurance.md`](kr-social-insurance.md) 요율 표 갱신
 3. `holiday income check`가 과거 정산을 깨지 않는지 — 정산 행의 `statute_as_of`로 당시 요율을 쓴다
