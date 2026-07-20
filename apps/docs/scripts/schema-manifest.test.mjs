@@ -49,7 +49,7 @@ test('selects the latest migration snapshot and emits a stable manifest', () => 
   assert.equal(readFileSync(generatedPath, 'utf8'), serializeSchemaManifest(first));
 });
 
-test('contains all current tables including tax return SoR', () => {
+test('contains all current tables including tax return and insurance SoR', () => {
   const manifest = generateSchemaManifest(repoRoot);
   const tableNames = manifest.tables.map((table) => table.name);
   const snapshotColumns = sourceSnapshot().ddl
@@ -60,10 +60,13 @@ test('contains all current tables including tax return SoR', () => {
     .flatMap((table) => table.columns.map((column) => `${table.name}.${column.name}`))
     .sort();
 
-  assert.equal(manifest.tables.length, 27);
+  assert.equal(manifest.tables.length, 30);
   assert.deepEqual(manifestColumns, snapshotColumns);
   assert.ok(tableNames.includes('tax_return'));
   assert.ok(tableNames.includes('tax_return_line'));
+  assert.ok(tableNames.includes('insurance_enrollment'));
+  assert.ok(tableNames.includes('insurance_contribution'));
+  assert.ok(tableNames.includes('insurance_contribution_line'));
 });
 
 test('contains every foreign-key edge from the source snapshot', () => {

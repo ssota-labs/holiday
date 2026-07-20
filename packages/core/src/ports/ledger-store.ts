@@ -20,7 +20,7 @@ import type {
   ValidatedTaxReturn,
 } from '../domain/tax.js';
 import type {
-  InsuranceEnrollmentFields,
+  InsuranceEnrollmentRecord,
   InsuranceScheme,
   ValidatedInsuranceEnrollment,
 } from '../domain/insurance-enrollment.js';
@@ -31,9 +31,6 @@ import type {
   YearMonth,
 } from '../domain/insurance-contribution.js';
 import type { SystemKind, TxnId, ValidatedTxn } from '../domain/txn.js';
-
-/** Enrollment row as stored (no close staging fields). */
-export type InsuranceEnrollment = Omit<InsuranceEnrollmentFields, 'closeId' | 'closeEndsOn'>;
 
 /**
  * A card's billing rule, attached to its liability account.
@@ -268,7 +265,7 @@ export interface LedgerRead {
   listInsuranceEnrollments(filter?: {
     scheme?: InsuranceScheme;
     asOf?: IsoDate;
-  }): Promise<readonly InsuranceEnrollment[]>;
+  }): Promise<readonly InsuranceEnrollmentRecord[]>;
 
   listInsuranceContributions(filter?: {
     yearMonth?: YearMonth;
@@ -417,7 +414,7 @@ export interface LedgerUow extends LedgerRead {
    * Append a validated enrollment. When `v.closeId` is set, closes that row
    * (sets ends_on) in the same transaction before insert.
    */
-  addInsuranceEnrollment(v: ValidatedInsuranceEnrollment): Promise<InsuranceEnrollment>;
+  addInsuranceEnrollment(v: ValidatedInsuranceEnrollment): Promise<InsuranceEnrollmentRecord>;
   /**
    * Append a validated contribution (header + lines) atomically.
    * When `v.supersedeId` is set, marks that row superseded in the same transaction.

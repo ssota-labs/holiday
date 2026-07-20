@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "latestMigration": "20260720021210_open_vindicator",
-    "snapshotPath": "packages/store-sqlite/migrations/20260720021210_open_vindicator/snapshot.json",
+    "latestMigration": "20260720093937_busy_puppet_master",
+    "snapshotPath": "packages/store-sqlite/migrations/20260720093937_busy_puppet_master/snapshot.json",
     "schemaSourcePath": "packages/store-sqlite/src/schema.drizzle.ts",
     "generatorPath": "apps/docs/scripts/generate-schema-manifest.mjs"
   },
@@ -1601,6 +1601,315 @@
           "name": "installment_row_by_date",
           "columns": [
             "payment_date"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "insurance_contribution",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "year_month",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "recorded_on",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "revision",
+          "physicalType": "integer",
+          "semanticType": "integer",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "commodity",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "note",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "source_path",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "source_sha256",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "insurance_contribution_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_insurance_contribution_commodity_commodity_code_fk",
+          "sourceTable": "insurance_contribution",
+          "sourceColumns": [
+            "commodity"
+          ],
+          "targetTable": "commodity",
+          "targetColumns": [
+            "code"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "NO ACTION"
+        }
+      ],
+      "checks": [
+        {
+          "name": "insurance_contribution_revision_positive",
+          "expression": "\"revision\" >= 1"
+        },
+        {
+          "name": "insurance_contribution_status_enum",
+          "expression": "\"status\" IN ('current','superseded')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "insurance_contribution_by_month",
+          "columns": [
+            "year_month"
+          ],
+          "unique": false
+        },
+        {
+          "name": "insurance_contribution_one_current",
+          "columns": [
+            "year_month"
+          ],
+          "unique": true,
+          "where": "\"insurance_contribution\".\"status\" = 'current'"
+        },
+        {
+          "name": "insurance_contribution_unique",
+          "columns": [
+            "year_month",
+            "revision"
+          ],
+          "unique": true
+        }
+      ]
+    },
+    {
+      "name": "insurance_contribution_line",
+      "columns": [
+        {
+          "name": "contribution_id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "kind",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "amount_minor",
+          "physicalType": "integer",
+          "semanticType": "i64",
+          "unit": "minor",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "insurance_contribution_line_pk",
+        "columns": [
+          "contribution_id",
+          "kind"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "fk_insurance_contribution_line_contribution_id_insurance_contribution_id_fk",
+          "sourceTable": "insurance_contribution_line",
+          "sourceColumns": [
+            "contribution_id"
+          ],
+          "targetTable": "insurance_contribution",
+          "targetColumns": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "CASCADE"
+        }
+      ],
+      "checks": [
+        {
+          "name": "insurance_contribution_line_amount_nonneg",
+          "expression": "\"amount_minor\" >= 0"
+        },
+        {
+          "name": "insurance_contribution_line_kind_enum",
+          "expression": "\"kind\" IN ('national_pension','health_insurance','long_term_care')"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "insurance_enrollment",
+      "columns": [
+        {
+          "name": "id",
+          "physicalType": "text",
+          "semanticType": "id",
+          "representation": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": true
+        },
+        {
+          "name": "scheme",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "starts_on",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "ends_on",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "note",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": true,
+          "default": null,
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "physicalType": "text",
+          "semanticType": "text",
+          "nullable": false,
+          "default": null,
+          "primaryKey": false
+        }
+      ],
+      "primaryKey": {
+        "name": "insurance_enrollment_pk",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [],
+      "checks": [
+        {
+          "name": "insurance_enrollment_date_order",
+          "expression": "\"ends_on\" IS NULL OR \"starts_on\" <= \"ends_on\""
+        },
+        {
+          "name": "insurance_enrollment_scheme_enum",
+          "expression": "\"scheme\" IN ('health','national_pension')"
+        },
+        {
+          "name": "insurance_enrollment_status_enum",
+          "expression": "\"status\" IN ('workplace','regional','voluntary')"
+        },
+        {
+          "name": "insurance_enrollment_voluntary_pension",
+          "expression": "NOT (\"status\" = 'voluntary' AND \"scheme\" != 'national_pension')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "insurance_enrollment_by_scheme",
+          "columns": [
+            "scheme"
+          ],
+          "unique": false
+        },
+        {
+          "name": "insurance_enrollment_by_starts",
+          "columns": [
+            "starts_on"
           ],
           "unique": false
         }
@@ -3485,6 +3794,32 @@
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_insurance_contribution_commodity_commodity_code_fk",
+      "sourceTable": "insurance_contribution",
+      "sourceColumns": [
+        "commodity"
+      ],
+      "targetTable": "commodity",
+      "targetColumns": [
+        "code"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "name": "fk_insurance_contribution_line_contribution_id_insurance_contribution_id_fk",
+      "sourceTable": "insurance_contribution_line",
+      "sourceColumns": [
+        "contribution_id"
+      ],
+      "targetTable": "insurance_contribution",
+      "targetColumns": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE"
     },
     {
       "name": "fk_loan_account_id_account_id_fk",

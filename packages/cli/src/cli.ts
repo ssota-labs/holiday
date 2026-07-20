@@ -1494,6 +1494,8 @@ enrollment
           `unknown --status ${JSON.stringify(o.status)}. Use workplace, regional, or voluntary.`,
         );
       }
+      const scheme = o.scheme;
+      const status = o.status;
       const startsOn = assertIsoDate(o.from);
       const endsOn = o.to !== undefined ? assertIsoDate(o.to) : null;
 
@@ -1501,11 +1503,11 @@ enrollment
       const store = await openLedger(ws);
       try {
         const row = await store.unitOfWork(async (uow) => {
-          const existing = await uow.listInsuranceEnrollments({ scheme: o.scheme });
+          const existing = await uow.listInsuranceEnrollments({ scheme });
           const validated = InsuranceEnrollment.create({
             id: nextUlid(),
-            scheme: o.scheme,
-            status: o.status,
+            scheme,
+            status,
             startsOn,
             endsOn,
             note: o.note ?? null,

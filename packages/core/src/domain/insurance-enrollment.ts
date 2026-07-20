@@ -38,6 +38,9 @@ export interface InsuranceEnrollmentFields {
 
 export type ValidatedInsuranceEnrollment = Validated & InsuranceEnrollmentFields;
 
+/** Stored / listed row — no close staging fields. */
+export type InsuranceEnrollmentRecord = Omit<InsuranceEnrollmentFields, 'closeId' | 'closeEndsOn'>;
+
 export type InsuranceEnrollmentError =
   | { readonly code: 'invalid_scheme'; readonly scheme: string }
   | { readonly code: 'invalid_status'; readonly status: string }

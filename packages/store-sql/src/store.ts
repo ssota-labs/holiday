@@ -57,7 +57,7 @@ import {
   type TaxReturnStatus,
   type TaxValueKind,
   type ValidatedTaxReturn,
-  type InsuranceEnrollment,
+  type InsuranceEnrollmentRecord,
   type InsuranceEnrollmentId,
   type InsuranceEnrollmentStatus,
   type InsuranceScheme,
@@ -1140,7 +1140,7 @@ class SqlUow implements LedgerUow {
   async listInsuranceEnrollments(filter?: {
     scheme?: InsuranceScheme;
     asOf?: IsoDate;
-  }): Promise<readonly InsuranceEnrollment[]> {
+  }): Promise<readonly InsuranceEnrollmentRecord[]> {
     const where: string[] = [];
     const params: SqlValue[] = [];
     if (filter?.scheme) {
@@ -1160,7 +1160,7 @@ class SqlUow implements LedgerUow {
     return mapped;
   }
 
-  async addInsuranceEnrollment(v: ValidatedInsuranceEnrollment): Promise<InsuranceEnrollment> {
+  async addInsuranceEnrollment(v: ValidatedInsuranceEnrollment): Promise<InsuranceEnrollmentRecord> {
     if (v.closeId !== null && v.closeEndsOn !== null) {
       const prev = await this.db.get<InsuranceEnrollmentRowRaw>(
         'SELECT * FROM insurance_enrollment WHERE id = ?',
@@ -2064,7 +2064,7 @@ interface InsuranceEnrollmentRowRaw {
   created_at: string;
 }
 
-function mapInsuranceEnrollment(r: InsuranceEnrollmentRowRaw): InsuranceEnrollment {
+function mapInsuranceEnrollment(r: InsuranceEnrollmentRowRaw): InsuranceEnrollmentRecord {
   return {
     id: r.id as InsuranceEnrollmentId,
     scheme: r.scheme as InsuranceScheme,
