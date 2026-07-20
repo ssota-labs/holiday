@@ -2,7 +2,7 @@
 title: tax
 description: 세금 신고서 추가·조회 명령 계약
 type: reference
-summary: return add · list · show
+summary: return add · list · show — 종합소득·부가세
 ---
 
 <SpecVersion
@@ -13,13 +13,14 @@ summary: return add · list · show
     {
       version: '0.2.4',
       date: '2026-07-19',
-      summary: 'tax return add/list/show — 신고서 SoR',
+      summary: 'tax return add/list/show — 신고서 SoR (종합소득·부가세)',
       ref: 'packages/cli/src/cli.ts',
     },
   ]}
 />
 
-> 이 페이지는 **latest**다.
+> 이 페이지는 **latest**다. 구현은 [plan-tax-return-sor](/docs/development/plans/plan-tax-return-sor)
+> 이후 릴리스에 들어간다. 아래는 목표 계약이다.
 
 관련 기능: [tax](/docs/features/tax)
 
@@ -27,7 +28,14 @@ summary: return add · list · show
 |---|---|---|
 | [`tax return add`](#tax-return-add) | yes | 관측된 세금 신고서 헤더·라인을 SoR에 append한다. 세액 공식 없음. |
 | [`tax return list`](#tax-return-list) | no | 저장된 세금 신고서 헤더를 나열한다. |
-| [`tax return show`](#tax-return-show) | no | 한 건의 신고서 헤더와 라인을 반환한다. 소득금액·과세표준 포함. |
+| [`tax return show`](#tax-return-show) | no | 한 건의 신고서 헤더와 라인을 반환한다. |
+
+## Forms / periods
+
+| `--form` | 의미 | `--period` |
+|---|---|---|
+| `kr_global_income` (기본) | 종합소득세 | 생략 시 `annual` (다른 값 거부) |
+| `kr_vat` | 부가가치세 | **필수** — `H1_provisional` · `H1_final` · `H2_provisional` · `H2_final` |
 
 ## tax return add
 
@@ -35,12 +43,13 @@ summary: return add · list · show
   command="tax return add"
   mutates={true}
   summary="관측된 세금 신고서 헤더·라인을 SoR에 append한다. 세액 공식 없음."
-  signature={`holiday tax return add --year --filed-on --data-file [--form kr_global_income] [--amend] [--note] [--source]`}
+  signature={`holiday tax return add --year --filed-on --data-file [--form kr_global_income|kr_vat] [--period] [--amend] [--note] [--source]`}
   flags={[
     { name: '--year', type: 'number', required: true, description: '귀속연도 YYYY' },
     { name: '--filed-on', type: 'YYYY-MM-DD', required: true, description: '신고일' },
     { name: '--data-file', type: 'path', required: true, description: '라인 JSON 파일' },
     { name: '--form', type: 'string', default: 'kr_global_income', description: '신고서 종류' },
+    { name: '--period', type: 'string', description: '과세기간. kr_vat 필수. kr_global_income은 annual' },
     { name: '--amend', type: 'boolean', description: '수정신고 — 새 revision append' },
     { name: '--note', type: 'string' },
     { name: '--source', type: 'path', description: '원본 파일 경로 — sha256 출처 기록' },
@@ -48,12 +57,12 @@ summary: return add · list · show
   exits={[
     { code: 0, meaning: '성공' },
     { code: 1, meaning: 'duplicate_tax_return · domain 거부 · LedgerError' },
-    { code: 2, meaning: '사용법 오류 (UsageError)' },
+    { code: 2, meaning: '사용법 오류 (UsageError) — 부가세 period 누락 포함' },
   ]}
   example={`holiday tax return add --year 2025 --filed-on 2026-06-22 --data-file filing.json --json`}
 />
 
-### `--data-file` 스키마
+### `--data-file` — 종합소득세 (`kr_global_income`)
 
 ```json
 {
@@ -90,10 +99,38 @@ summary: return add · list · show
 ```
 
 - 금액은 **소수 문자열**(기능통화 minor로 파싱). `number` 금지.
-- `tax_rate`는 퍼센트 문자열(`"15.0"`). 스케일드 bigint로 저장.
-- 키가 빠진 라인은 저장하지 않는다. `kr_global_income`의 `global_income` 컬럼에는
-  `income_amount`·`tax_base`·`payable_within_deadline`이 **필수**.
+- `tax_rate`는 퍼센트 문자열(`"15.0"`). `RATE_SCALE` 스케일드 bigint로 저장.
+- `global_income`에는 `income_amount`·`tax_base`·`payable_within_deadline`이 **필수**.
+
+### `--data-file` — 부가가치세 (`kr_vat`)
+
+```json
+{
+  "commodity": "KRW",
+  "columns": {
+    "vat": {
+      "taxable_supply": "48000000",
+      "output_tax": "4800000",
+      "input_tax": "1200000",
+      "payable_tax": "3600000",
+      "refundable_tax": "0",
+      "provisional_paid": "0",
+      "additional_tax": "0"
+    }
+  }
+}
+```
+
+- `vat`에는 `taxable_supply`·`output_tax`·`input_tax`가 **필수**.
+- `payable_tax`와 `refundable_tax` 중 **최소 하나** 필수.
 - CLI는 라인 간 산술 관계를 검증·수정하지 않는다 (관측 SoR).
+
+예:
+
+```bash
+holiday tax return add --form kr_vat --year 2025 --period H1_final \
+  --filed-on 2025-07-25 --data-file vat-h1.json --json
+```
 
 ## tax return list
 
@@ -101,10 +138,11 @@ summary: return add · list · show
   command="tax return list"
   mutates={false}
   summary="저장된 세금 신고서 헤더를 나열한다."
-  signature={`holiday tax return list [--form] [--year] [--all]`}
+  signature={`holiday tax return list [--form] [--year] [--period] [--all]`}
   flags={[
     { name: '--form', type: 'string', description: '신고서 종류 필터' },
     { name: '--year', type: 'number', description: '귀속연도 필터' },
+    { name: '--period', type: 'string', description: '과세기간 필터' },
     { name: '--all', type: 'boolean', description: 'superseded revision 포함. 기본은 current만' },
   ]}
   exits={[
@@ -120,11 +158,12 @@ summary: return add · list · show
 <CommandSpec
   command="tax return show"
   mutates={false}
-  summary="한 건의 신고서 헤더와 라인을 반환한다. 소득금액·과세표준 포함."
-  signature={`holiday tax return show <year> [--form kr_global_income] [--revision]`}
+  summary="한 건의 신고서 헤더와 라인을 반환한다."
+  signature={`holiday tax return show <year> [--form kr_global_income|kr_vat] [--period] [--revision]`}
   flags={[
     { name: '<year>', type: 'number', kind: 'arg', required: true, description: '귀속연도' },
     { name: '--form', type: 'string', default: 'kr_global_income' },
+    { name: '--period', type: 'string', description: 'kr_vat 필수. kr_global_income은 annual' },
     { name: '--revision', type: 'number', description: '생략 시 current(최신 non-superseded)' },
   ]}
   exits={[
@@ -137,11 +176,14 @@ summary: return add · list · show
 
 ### JSON 형태 (요약)
 
+종합소득:
+
 ```json
 {
   "id": "…",
   "form": "kr_global_income",
   "taxYear": 2025,
+  "period": "annual",
   "filedOn": "2026-06-22",
   "revision": 1,
   "status": "current",
@@ -151,6 +193,29 @@ summary: return add · list · show
       "income_amount": "22144107",
       "tax_base": "19793527",
       "payable_within_deadline": "1183276"
+    }
+  }
+}
+```
+
+부가세:
+
+```json
+{
+  "id": "…",
+  "form": "kr_vat",
+  "taxYear": 2025,
+  "period": "H1_final",
+  "filedOn": "2025-07-25",
+  "revision": 1,
+  "status": "current",
+  "commodity": "KRW",
+  "columns": {
+    "vat": {
+      "taxable_supply": "48000000",
+      "output_tax": "4800000",
+      "input_tax": "1200000",
+      "payable_tax": "3600000"
     }
   }
 }

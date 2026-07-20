@@ -66,16 +66,19 @@ summary: SQLite migration 8 기준. 25개 테이블과 41개 외래 키.
 `packages/store-sqlite/migrations/20260719045457_loose_sunspot/snapshot.json`이다.
 아래 표와 그래프는 이 스냅샷에서 생성된 manifest를 그대로 읽는다.
 
-현재 Drizzle 테이블은 **25개**다. `tax_return`과 `tax_return_line`은 계획 단계이며 현재
-스키마, 그래프, 스냅샷에 포함되지 않는다. SQLite 드라이버가 관리하는
-`__holiday_migrations`는 이름과 sha256을 기록하는 마이그레이션 원장으로, 25개 도메인
-Drizzle 테이블과 별도로 취급한다 ([POLICY-016](/docs/domain/policy#POLICY-016)).
+현재 Drizzle 테이블은 **25개**다. `tax_return`과 `tax_return_line`은
+[plan-tax-return-sor](/docs/development/plans/plan-tax-return-sor)의 **migration-9**
+계획이며 현재 스키마·그래프·스냅샷에 포함되지 않는다. 구현 후 27개·유니크 키
+`(form, tax_year, period, revision)`·form `kr_global_income`/`kr_vat`가 추가된다.
+SQLite 드라이버가 관리하는 `__holiday_migrations`는 이름과 sha256을 기록하는
+마이그레이션 원장으로, 25개 도메인 Drizzle 테이블과 별도로 취급한다
+([POLICY-016](/docs/domain/policy#POLICY-016)).
 
 ## 사실 / 예측 / 정산 / 파생
 
 | 종류 | 예 | 저장 |
 |---|---|---|
-| 사실 (fact) | `txn`, `posting`, `fx_rate`, `balance_assertion` | 저널과 관측 테이블 |
+| 사실 (fact) | `txn`, `posting`, `fx_rate`, `balance_assertion`, *(계획)* `tax_return` | 저널과 관측 테이블 |
 | 예측 (forecast) | `card`, `installment`, `recurring`, `recurring_income`, `loan`과 각 스케줄 행 | 저널 밖 |
 | 정산 (settlement) | `income_source`, `income_settlement`, `income_settlement_line` | 저널 밖, 선택적 `txn` 링크 |
 | 파생 (derived) | balance, cashflow | 저장하지 않고 조회 시 집계 |

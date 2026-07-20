@@ -18,7 +18,7 @@ related:
     {
       version: '0.2.4',
       date: '2026-07-19',
-      summary: 'tax return add/list/show — 신고서 SoR',
+      summary: 'tax return list — form/year/period 필터',
       ref: 'packages/cli/src/cli.ts',
     },
   ]}
@@ -32,10 +32,11 @@ related:
   command="tax return list"
   mutates={false}
   summary="저장된 세금 신고서 헤더를 나열한다."
-  signature={`holiday tax return list [--form] [--year] [--all]`}
+  signature={`holiday tax return list [--form] [--year] [--period] [--all]`}
   flags={[
     { name: '--form', type: 'string', description: '신고서 종류 필터' },
     { name: '--year', type: 'number', description: '귀속연도 필터' },
+    { name: '--period', type: 'string', description: '과세기간 필터' },
     { name: '--all', type: 'boolean', description: 'superseded revision 포함. 기본은 current만' },
   ]}
   exits={[

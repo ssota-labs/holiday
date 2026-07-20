@@ -2,7 +2,7 @@
 title: tax return show
 description: holiday tax return show 명령 계약
 type: reference
-summary: 한 건의 신고서 헤더와 라인을 반환한다. 소득금액·과세표준 포함.
+summary: 한 건의 신고서 헤더와 라인을 반환한다.
 id: SPEC-tax-return-show
 stage: accepted
 related:
@@ -18,24 +18,25 @@ related:
     {
       version: '0.2.4',
       date: '2026-07-19',
-      summary: 'tax return add/list/show — 신고서 SoR',
+      summary: 'tax return show — form/period/revision',
       ref: 'packages/cli/src/cli.ts',
     },
   ]}
 />
 
-> 이 페이지는 **latest**다.
+> 이 페이지는 **latest**다. JSON 예시는 [tax 인덱스](/docs/spec/cli/tax#tax-return-show)를 본다.
 
 관련 기능: [tax](/docs/features/tax)
 
 <CommandSpec
   command="tax return show"
   mutates={false}
-  summary="한 건의 신고서 헤더와 라인을 반환한다. 소득금액·과세표준 포함."
-  signature={`holiday tax return show <year> [--form kr_global_income] [--revision]`}
+  summary="한 건의 신고서 헤더와 라인을 반환한다."
+  signature={`holiday tax return show <year> [--form kr_global_income|kr_vat] [--period] [--revision]`}
   flags={[
     { name: '<year>', type: 'number', kind: 'arg', required: true, description: '귀속연도' },
     { name: '--form', type: 'string', default: 'kr_global_income' },
+    { name: '--period', type: 'string', description: 'kr_vat 필수. kr_global_income은 annual' },
     { name: '--revision', type: 'number', description: '생략 시 current(최신 non-superseded)' },
   ]}
   exits={[
@@ -43,26 +44,5 @@ related:
     { code: 1, meaning: 'not_found · LedgerError' },
     { code: 2, meaning: '사용법 오류' },
   ]}
-  example={`holiday tax return show 2025 --json`}
+  example={`holiday tax return show 2025 --form kr_vat --period H1_final --json`}
 />
-
-## JSON 형태 (요약)
-
-```json
-{
-  "id": "…",
-  "form": "kr_global_income",
-  "taxYear": 2025,
-  "filedOn": "2026-06-22",
-  "revision": 1,
-  "status": "current",
-  "commodity": "KRW",
-  "columns": {
-    "global_income": {
-      "income_amount": "22144107",
-      "tax_base": "19793527",
-      "payable_within_deadline": "1183276"
-    }
-  }
-}
-```

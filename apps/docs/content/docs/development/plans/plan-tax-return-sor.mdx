@@ -2,7 +2,7 @@
 title: plan-tax-return-sor
 description: 세금 신고서 SoR를 도메인·스키마·CLI에 추가한다
 type: guide
-summary: tax_return 테이블, POLICY-021, holiday tax return add/list/show.
+summary: tax_return/tax_return_line 마이그레이션, 종합소득·부가세 form, POLICY-021, tax return CLI.
 id: plan-tax-return-sor
 ticker: plan-002
 stage: ready
@@ -27,48 +27,330 @@ related:
   - /docs/planning/prds/prd-tax-return-sor
   - /docs/features/tax
   - /docs/spec/cli/tax#tax-return-add
-  - /docs/development/adr
+  - /docs/spec/data-model
+  - /docs/development/adr/adr-010
 ---
 
 ## 목표
 
-종합소득세 신고의 **표지**(종류·귀속연도·신고일·차수)와 **세액표 숫자**(소득금액·과세표준·납부할세액 등)를
-로컬 장부에 사실로 저장하고, CLI로 연도별 조회할 수 있게 한다.
-칸 목록·비개발 설명은 [prd-tax-return-sor](/docs/planning/prds/prd-tax-return-sor)가 기준이다.
+[prd-tax-return-sor](/docs/planning/prds/prd-tax-return-sor)의 표지·세액표 숫자를
+로컬 장부 SoR로 저장하고 CLI로 조회한다. 1차 form은 **종합소득세**
+(`kr_global_income`)와 **부가가치세**(`kr_vat`). 세액 공식 없음 (ADR-010).
 
 ## 영향 범위
 
 | 영역 | 변경 |
 |---|---|
 | `packages/core` | `domain/tax.ts` + 테스트, port에 `TaxReturn` CRUD |
-| `packages/store-sqlite` | drizzle 스키마 + 마이그레이션 append |
-| `packages/store-postgres` | 동일 논리 스키마 미러 |
+| `packages/store-sqlite` | drizzle 스키마 + **migration-9** append |
+| `packages/store-postgres` | 동일 논리 스키마 미러 (bigint 금액) |
 | `packages/store-sql` | `LedgerStore` 구현 |
-| `packages/cli` | `tax return add/list/show` |
-| `apps/docs` | 기능·정책·용어·데이터모델·ADR-008 |
-| 플러그인 | SKILL + references에 명령 언급, 장부 AGENTS 문구 갱신 |
+| `packages/cli` | `tax return add/list/show` (`--form`, `--period`) |
+| `apps/docs` | 기능·정책·용어·data-model·CLI 스펙 |
+| 플러그인 | SKILL + references에 명령 언급 |
+
+## 데이터 모델
+
+저널 밖 **사실** 테이블 2개. `txn`/`posting` FK 없음. 납부 전표와 연결하지 않는다.
+
+### 개념 매핑
+
+| 기획 용어 | 저장 |
+|---|---|
+| 신고 표지 | `tax_return` 한 행 |
+| 세액표 숫자 | `tax_return_line` N행 (`column_key` × `line_key`) |
+| 신고서 종류 | `form` |
+| 귀속연도 | `tax_year` |
+| 과세기간 | `period` (`annual` = 종합소득, 부가세는 기수 코드) |
+| 신고 차수 | `revision` (1부터) |
+| 대체됨 | `status = 'superseded'` / 유효 = `'current'` |
+
+### `form` / `period` 열거
+
+```
+form:
+  kr_global_income   # 종합소득세
+  kr_vat             # 부가가치세 (일반과세자)
+
+period (kr_global_income):
+  annual             # 고정. CLI에서 --period 생략 시 이 값
+
+period (kr_vat):
+  H1_provisional     # 1기 예정 (1–3)
+  H1_final           # 1기 확정 (1–6)
+  H2_provisional     # 2기 예정 (7–9)
+  H2_final           # 2기 확정 (7–12)
+```
+
+유니크 키: `(form, tax_year, period, revision)`.
+같은 키 재삽입 → `duplicate_tax_return`. `--amend`는 동일 `(form, tax_year, period)`의
+`current`를 `superseded`로 두고 `revision+1`을 append.
+
+### 라인 키 레지스트리 (도메인)
+
+금액은 기능통화 **minor `bigint`**. 세율은 `RATE_SCALE`(1e18) 스케일드 bigint.
+JSON 입력은 소수 문자열만 (`"22144107"`, `"15.0"`). `number` 금지.
+
+#### `kr_global_income` — column `global_income` (필수 키 ★)
+
+| line_key | value_kind | 의미 |
+|---|---|---|
+| `income_amount` ★ | amount | 소득금액 |
+| `income_deduction` | amount | 소득공제 |
+| `tax_base` ★ | amount | 과세표준 |
+| `tax_rate` | rate | 적용 세율 % |
+| `calculated_tax` | amount | 산출세액 |
+| `tax_reduction` | amount | 세액감면 |
+| `tax_credit` | amount | 세액공제 |
+| `determined_tax_global` | amount | 결정세액(종합) |
+| `determined_tax_separate` | amount | 결정세액(분리) |
+| `determined_tax_total` | amount | 결정세액 합계 |
+| `additional_tax` | amount | 가산세 등 |
+| `additional_tax_payable` | amount | 추가 납부 |
+| `total_tax` | amount | 총세액 |
+| `already_paid` | amount | 기납부세액 |
+| `net_tax` | amount | 차감납부 |
+| `payable_within_deadline` ★ | amount | 기한 내 납부할세액 |
+
+선택 column `rural_special`: `tax_base`, `tax_rate`, `calculated_tax`,
+`determined_tax_total`, `net_tax`, `payable_within_deadline` (필수 키 없음 —
+열이 있으면 관측값만).
+
+#### `kr_vat` — column `vat` (필수 키 ★)
+
+| line_key | value_kind | 의미 |
+|---|---|---|
+| `taxable_supply` ★ | amount | 과세 공급가액(과세표준) |
+| `output_tax` ★ | amount | 매출세액 |
+| `input_tax` ★ | amount | 매입세액(공제) |
+| `payable_tax` ★† | amount | 납부할세액 |
+| `refundable_tax` ★† | amount | 환급세액 |
+| `provisional_paid` | amount | 예정고지·기납부 |
+| `additional_tax` | amount | 가산세 |
+
+† `payable_tax`와 `refundable_tax` 중 **최소 하나** 필수. 둘 다 있어도 산술 검증하지 않음.
+
+미등록 `(form, column_key, line_key)` → domain 거부. 빠진 키는 행을 만들지 않음.
+
+### 논리 스키마 (Drizzle 대응)
+
+```
+tax_return
+  id              text PK
+  form            text NOT NULL
+  tax_year        integer NOT NULL          -- YYYY
+  period          text NOT NULL              -- 위 열거
+  filed_on        text NOT NULL              -- YYYY-MM-DD
+  revision        integer NOT NULL           -- >= 1
+  status          text NOT NULL              -- current | superseded
+  commodity       text NOT NULL → commodity.code
+  note            text NULL
+  source_path     text NULL
+  source_sha256   text NULL                  -- --source 파일 sha256
+  created_at      text NOT NULL              -- ISO-8601
+
+tax_return_line
+  return_id       text NOT NULL → tax_return.id ON DELETE CASCADE
+  column_key      text NOT NULL
+  line_key        text NOT NULL
+  value_kind      text NOT NULL              -- amount | rate
+  value_scaled    integer NOT NULL           -- SQLite integer / PG bigint
+  PRIMARY KEY (return_id, column_key, line_key)
+```
+
+CHECK / UNIQUE (저장 시점):
+
+- `tax_return_form_enum`: `form IN ('kr_global_income','kr_vat')`
+- `tax_return_period_enum`: `period IN ('annual','H1_provisional','H1_final','H2_provisional','H2_final')`
+- `tax_return_status_enum`: `status IN ('current','superseded')`
+- `tax_return_revision_positive`: `revision >= 1`
+- `tax_return_year_range`: `tax_year BETWEEN 2000 AND 2100`
+- `tax_return_unique`: **UNIQUE** `(form, tax_year, period, revision)`
+- form/period 조합은 **도메인**에서 강제:
+  - `kr_global_income` → `period = 'annual'`만
+  - `kr_vat` → `period ∈ {H1_*, H2_*}`만
+- `tax_return_line_value_kind_enum`: `value_kind IN ('amount','rate')`
+- 인덱스: `tax_return_by_year (tax_year)`, `tax_return_by_form_year (form, tax_year)`,
+  `tax_return_current (form, tax_year, period)` WHERE `status = 'current'` (SQLite partial
+  index 가능 시; 아니면 조회는 status 필터)
+
+한 `(form, tax_year, period)`에 `status='current'`는 **최대 1행** —
+도메인 + `addTaxReturn` 트랜잭션이 보장. DB partial unique는 SQLite/PG 모두 가능하면:
+
+```sql
+CREATE UNIQUE INDEX tax_return_one_current
+  ON tax_return (form, tax_year, period)
+  WHERE status = 'current';
+```
+
+## 마이그레이션
+
+현재 최신: `migration-8` = `20260719045457_loose_sunspot` (25 tables).
+**append only** — 기존 SQL 수정 금지 (POLICY-016).
+
+### SQLite — `packages/store-sqlite/migrations/<ts>_tax_return/migration.sql`
+
+폴더명은 drizzle-kit이 생성한 timestamp를 쓴다. 논리 내용은 아래와 동일해야 한다.
+
+```sql
+CREATE TABLE `tax_return` (
+  `id` text PRIMARY KEY,
+  `form` text NOT NULL,
+  `tax_year` integer NOT NULL,
+  `period` text NOT NULL,
+  `filed_on` text NOT NULL,
+  `revision` integer NOT NULL,
+  `status` text NOT NULL,
+  `commodity` text NOT NULL,
+  `note` text,
+  `source_path` text,
+  `source_sha256` text,
+  `created_at` text NOT NULL,
+  CONSTRAINT `fk_tax_return_commodity_commodity_code_fk`
+    FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),
+  CONSTRAINT "tax_return_form_enum"
+    CHECK("form" IN ('kr_global_income','kr_vat')),
+  CONSTRAINT "tax_return_period_enum"
+    CHECK("period" IN ('annual','H1_provisional','H1_final','H2_provisional','H2_final')),
+  CONSTRAINT "tax_return_status_enum"
+    CHECK("status" IN ('current','superseded')),
+  CONSTRAINT "tax_return_revision_positive" CHECK("revision" >= 1),
+  CONSTRAINT "tax_return_year_range" CHECK("tax_year" BETWEEN 2000 AND 2100)
+);
+--> statement-breakpoint
+CREATE TABLE `tax_return_line` (
+  `return_id` text NOT NULL,
+  `column_key` text NOT NULL,
+  `line_key` text NOT NULL,
+  `value_kind` text NOT NULL,
+  `value_scaled` integer NOT NULL,
+  CONSTRAINT `tax_return_line_pk` PRIMARY KEY(`return_id`, `column_key`, `line_key`),
+  CONSTRAINT `fk_tax_return_line_return_id_tax_return_id_fk`
+    FOREIGN KEY (`return_id`) REFERENCES `tax_return`(`id`) ON DELETE CASCADE,
+  CONSTRAINT "tax_return_line_value_kind_enum"
+    CHECK("value_kind" IN ('amount','rate'))
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `tax_return_unique`
+  ON `tax_return` (`form`, `tax_year`, `period`, `revision`);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `tax_return_one_current`
+  ON `tax_return` (`form`, `tax_year`, `period`)
+  WHERE `status` = 'current';
+--> statement-breakpoint
+CREATE INDEX `tax_return_by_year` ON `tax_return` (`tax_year`);
+--> statement-breakpoint
+CREATE INDEX `tax_return_by_form_year` ON `tax_return` (`form`, `tax_year`);
+```
+
+절차:
+
+1. `schema.drizzle.ts`에 테이블·check·index 추가
+2. `pnpm --filter @holiday-cfo/store-sqlite` 쪽에서 drizzle-kit generate (기존 워크플로)
+3. 생성된 SQL이 위 논리와 일치하는지 검수 (이름만 timestamp 차이)
+4. `migrations.generated.ts`는 생성물 — 손편집 금지
+5. data-model 문서의 SpecVersion history에 `migration-9` 항목 추가, 테이블 수 25→27
+6. `apps/docs/scripts/schema-manifest.test.mjs`의 “tax_return 없음” assert 제거/갱신
+
+### Postgres — `packages/store-postgres`
+
+동일 논리. 금액/스케일 열은 `bigint` (`value_scaled bigint NOT NULL`).
+CHECK·UNIQUE·partial unique index 동일. squash 이력이면 새 마이그레이션 파일에
+CREATE만 append.
+
+## 도메인·포트
+
+`packages/core/src/domain/tax.ts` (신규):
+
+- `TaxReturn.create(input)` → `ValidatedTaxReturn`
+  - form/period 조합, 필수 line keys, revision≥1, year 범위
+  - 라인 간 산술 검증 **없음**
+- `TaxReturn.amend(previous, input)` → 이전 id supersede + 새 revision
+- 에러 코드: `invalid_tax_form_period`, `missing_tax_lines`, `duplicate_tax_return`, …
+
+Port (`LedgerStore`):
+
+```
+addTaxReturn(v: ValidatedTaxReturn): Promise<TaxReturnRow>
+listTaxReturns(filter: { form?; year?; includeSuperseded? }): Promise<TaxReturnHeader[]>
+getTaxReturn(query: { form; year; period; revision? }): Promise<TaxReturnDetail | null>
+```
+
+`addTaxReturn`은 헤더+라인을 **한 트랜잭션**으로 insert. 헤더만/라인만 중간 상태 금지
+→ POLICY-021.
+
+## CLI
+
+| 명령 | 요지 |
+|---|---|
+| `tax return add` | `--year --filed-on --data-file [--form] [--period] [--amend] [--note] [--source]` |
+| `tax return list` | `[--form] [--year] [--period] [--all]` |
+| `tax return show` | `<year> [--form] [--period] [--revision]` |
+
+기본값: `--form kr_global_income`, `--period` 생략 시 form이 종합소득이면 `annual`,
+부가세면 **필수**(exit 2).
+
+부가세 `--data-file` 예:
+
+```json
+{
+  "commodity": "KRW",
+  "columns": {
+    "vat": {
+      "taxable_supply": "48000000",
+      "output_tax": "4800000",
+      "input_tax": "1200000",
+      "payable_tax": "3600000",
+      "refundable_tax": "0",
+      "provisional_paid": "0",
+      "additional_tax": "0"
+    }
+  }
+}
+```
+
+예:
+
+```bash
+holiday tax return add --form kr_vat --year 2025 --period H1_final \
+  --filed-on 2025-07-25 --data-file vat-h1.json --json
+
+holiday tax return show 2025 --form kr_vat --period H1_final --json
+```
+
+## POLICY-021
+
+`apps/docs/content/docs/domain/policy.mdx`에 추가:
+
+- 제목: 세금 신고서는 표지와 세액표를 한 번에 남긴다
+- 테스트: `packages/core/src/domain/tax.test.ts` (헤더+라인 atomic / 필수 키 /
+  form·period / amend supersede / 산술 미검증)
+- 결과: 관측 SoR만. 세액 재계산·전표 생성 없음.
 
 ## 구현 순서
 
-1. 도메인 타입·팩토리·불변식 (form/year/revision, line keys, 관측값만)
-2. POLICY-021 테스트 고정 후 policy.mdx 링크
-3. SQLite/Postgres 스키마·마이그레이션 (`tax_return`, `tax_return_line`)
-4. port + `store-sql` 구현
-5. CLI `tax return add|list|show` (`--data-file` JSON)
-6. 장부 템플릿 AGENTS.md·양쪽 SKILL 정합
-7. docs latest CLI 인덱스·data-model·glossary 갱신
+1. 도메인 타입·팩토리·라인 레지스트리·테스트 (POLICY-021 고정)
+2. policy.mdx `<Rule test=…>` 링크
+3. SQLite/Postgres 스키마 + migration-9 (위 DDL)
+4. port + `store-sql` 구현 + store-testkit 적합성 케이스
+5. CLI `tax return add|list|show`
+6. 장부 템플릿 AGENTS·양쪽 SKILL 정합
+7. docs: features/tax, CLI 스펙, data-model, glossary
 8. `pnpm build` · 관련 테스트 · `check:rules` · `holiday-plugin` skill check
 
 ## 검증 계획
 
 ### 자동 테스트
 
-- 유효한 종합소득세 라인 세트 저장·조회
-- 소득금액·과세표준 키 누락 시 domain 거부 (필수 키 집합)
-- duplicate `(form, year, revision)` 거부
-- amend → revision+1, 이전 status=superseded
-- 금액 bigint 라운드트립 (`2^53+1` 포함하지 않더라도 i64 경로 유지)
-- 세액 공식을 CLI/도메인이 적용하지 않음 (입력 ≠ 계산 결과여도 저장)
+- 종합소득: 필수 3키 저장·조회
+- 부가세: `H1_final` + 필수 키 저장·조회; `--period` 누락 거부
+- `kr_global_income` + `H1_final` 조합 거부
+- `kr_vat` + `annual` 거부
+- duplicate `(form, year, period, revision)` 거부
+- amend → revision+1, 이전 `superseded`, partial unique 유지
+- 금액 bigint 라운드트립; `tax_rate` → RATE_SCALE
+- 입력 산술이 틀려도 저장 (재계산 없음)
+- add가 txn/posting을 만들지 않음
 
 ### 저장소 검증
 
@@ -78,14 +360,24 @@ related:
 - `pnpm --filter docs run check:rules`
 - `pnpm build` · `pnpm typecheck` · `pnpm lint`
 
+### 기획 체크 (PRD 성공 지표)
+
+1. 종합소득 샘플 → show에 소득금액·과세표준·납부할세액
+2. 부가세 1기 확정 샘플 → show에 공급가액·매출·매입·납부할세액
+3. 동일 키 재삽입 거절
+4. amend 이력
+5. 전표 미생성
+
 ## 호환성과 롤백
 
-- 기존 원장은 마이그레이션으로 테이블만 추가 — 전표·스케줄 불변
-- 표준 차트 세금 계정 문구는 “전표 = 납부/비용, 신고서 = tax return”으로 갱신
-- 롤백은 마이그레이션을 되돌리지 않는다(POLICY-016). 기능 플래그 없이 CLI 명령만 제거하면 테이블은 남는다
+- 기존 원장은 테이블 추가만 — 전표·스케줄·income_settlement 불변
+- `income_source.regime = business_vat` 정산 라인과 **스키마 공유 없음**
+- 롤백은 마이그레이션 되돌리기 금지. CLI 명령 제거 시 테이블은 남는다
 
 ## 완료 조건
 
-- `holiday tax return show 2025 --json`이 소득금액·과세표준을 반환한다
-- POLICY-021이 `check:rules`를 통과한다
-- 이 계획의 `stage`를 `done`으로 올릴 수 있다
+- `holiday tax return show 2025 --json`이 종합소득 주요 칸을 반환
+- `holiday tax return show 2025 --form kr_vat --period H1_final --json`이 부가세 주요 칸을 반환
+- POLICY-021이 `check:rules` 통과
+- data-model에 `tax_return` / `tax_return_line` 반영 (27 tables)
+- 이 계획 `stage` → `done`
