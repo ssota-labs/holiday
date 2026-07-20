@@ -15,7 +15,7 @@
  * Run: pnpm --filter holiday-plugin check:skill
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const PLUGIN = resolve(import.meta.dirname, '..');
@@ -204,6 +204,71 @@ function main(): void {
     }
   }
 
+  // Document-skills companion (prd-004): project skills.sh install is the only
+  // default path; Anthropic skill bodies must not be vendored into the plugin.
+  const setupMd = join(SKILL, 'references', 'workflows', 'setup.md');
+  const setup = readFileSync(setupMd, 'utf8');
+  for (const skill of ['xlsx', 'pdf', 'docx', 'pptx'] as const) {
+    const re = new RegExp(
+      String.raw`npx skills add https://github\.com/anthropics/skills --skill ${skill} -y`,
+    );
+    if (!re.test(setup)) {
+      problems.push(
+        `skills/holiday-cfo/references/workflows/setup.md: missing project install for ${skill} (` +
+          `npx skills add https://github.com/anthropics/skills --skill ${skill} -y)`,
+      );
+    }
+  }
+  if (/\bnpx skills add\b[^\n]*\s-g\b/.test(setup) || /\bnpx skills add\b[^\n]*\s--global\b/.test(setup)) {
+    problems.push('setup.md: must not use global `-g` / `--global` as the default skills.sh install path');
+  }
+  if (/\/plugin install\s+document-skills@/i.test(setup) || /document-skills@anthropic/i.test(setup)) {
+    problems.push('setup.md: must not default to Claude marketplace `document-skills` install');
+  }
+
+  for (const host of [
+    join(PLUGIN, 'hooks', 'hooks.json'),
+    join(PLUGIN, '..', 'codex', 'hooks', 'hooks.json'),
+  ]) {
+    if (!existsSync(host)) {
+      problems.push(`${host}: missing SessionStart hooks.json for document-skills companion`);
+      continue;
+    }
+    const raw = readFileSync(host, 'utf8');
+    if (!raw.includes('SessionStart') || !raw.includes('update-document-skills.sh')) {
+      problems.push(`${host}: SessionStart must invoke update-document-skills.sh`);
+    }
+  }
+  for (const name of ['xlsx', 'pdf', 'docx', 'pptx'] as const) {
+    for (const root of [join(PLUGIN, 'skills'), join(PLUGIN, '..', 'codex', 'skills')]) {
+      const vendored = join(root, name);
+      if (existsSync(vendored)) {
+        problems.push(`${vendored}: Anthropic document skill body must not be vendored into the plugin`);
+      }
+      const underHoliday = join(root, 'holiday-cfo', name);
+      if (existsSync(underHoliday)) {
+        problems.push(`${underHoliday}: Anthropic document skill body must not be vendored into the plugin`);
+      }
+    }
+  }
+  // Codex shares the update script via symlink — broken links mean a half-deployed plugin.
+  const codexScript = join(PLUGIN, '..', 'codex', 'hooks', 'update-document-skills.sh');
+  const claudeScript = join(PLUGIN, 'hooks', 'update-document-skills.sh');
+  if (!existsSync(claudeScript)) {
+    problems.push(`${claudeScript}: missing soft-fail update script`);
+  }
+  if (!existsSync(codexScript)) {
+    problems.push(`${codexScript}: missing (expected symlink to Claude Code hooks script)`);
+  } else if (existsSync(claudeScript)) {
+    try {
+      if (realpathSync(codexScript) !== realpathSync(claudeScript)) {
+        problems.push(`${codexScript}: must resolve to the same file as ${claudeScript}`);
+      }
+    } catch {
+      problems.push(`${codexScript}: broken symlink`);
+    }
+  }
+
   if (problems.length > 0) {
     console.error(`✗ ${problems.length} problem(s) between the skill and the CLI:\n`);
     for (const p of problems) console.error(`  - ${p}`);
@@ -213,6 +278,7 @@ function main(): void {
 
   console.log(`✓ ${ok.length} command(s) referenced by the skill all exist, and nothing shipped is listed as missing.`);
   for (const c of ok.sort()) console.log(`  holiday ${c}`);
+  console.log('✓ document-skills companion setup + SessionStart hooks present; no vendored Anthropic skill trees.');
 }
 
 main();

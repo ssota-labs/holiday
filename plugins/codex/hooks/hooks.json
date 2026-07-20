@@ -1,0 +1,18 @@
+{
+  "description": "Refresh project-scoped document skills (xlsx/pdf/docx/pptx) on session start. Soft-fail; ledger cwd only. Codex may require trusting plugin hooks before this runs.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/update-document-skills.sh\"",
+            "timeout": 120,
+            "statusMessage": "Updating project document skills"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -82,7 +82,7 @@ you need — each is a self-contained file. Schedule them via
 
 | Workflow | When | Read |
 |---|---|---|
-| **Setup** | first session | `references/workflows/setup.md` — accounts, opening balances, CSV/Excel import, then offer to schedule the rest |
+| **Setup** | first session | `references/workflows/setup.md` — accounts, opening balances, project document skills (`npx skills add … -y`), CSV/Excel import, then offer to schedule the rest |
 | **Daily** | each morning | `references/workflows/daily.md` — record yesterday, show tomorrow's cash flow |
 | **Weekly** | Sunday | `references/workflows/weekly.md` — assets & liabilities, next week's cash flow, this week reviewed |
 | **Monthly** | 1st | `references/workflows/monthly.md` — assert balances, then `holiday close` |

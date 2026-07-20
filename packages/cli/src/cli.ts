@@ -92,7 +92,8 @@ import {
   type TaxPeriod,
 } from '@holiday-cfo/core';
 
-import { bakeDatasets, scaffold, scaffoldLedgerDocs } from './dash.js';
+import { bakeDatasets, scaffold } from './dash.js';
+import { scaffoldLedgerDocs } from './ledger-docs.js';
 import { scaffoldDeploy } from './deploy.js';
 import { INGEST_SUBMISSION, type IngestItemInput } from './ingest.js';
 import { type DeriveWeight, UsageError, parseLeg } from './legs.js';
@@ -151,6 +152,9 @@ program
     note(`장부를 만들었습니다: ${ws}`);
     if (docs.created.length > 0) {
       note(`에이전트 지침을 만들었습니다: ${docs.created.join(', ')} — 이 폴더에서 일하는 에이전트의 말투와 규칙입니다.`);
+    }
+    if (docs.created.some((p) => p.replaceAll('\\', '/').startsWith('.cursor/'))) {
+      note(`Cursor 세션 훅을 만들었습니다 — 문서 스킬(xlsx/pdf)을 이 장부 폴더 기준으로 soft-fail 갱신합니다.`);
     }
     note(`ledger.db는 커밋해 두세요. 이 저장소는 반드시 비공개(private)여야 합니다 — 당신의 돈입니다.`);
   });

@@ -89,7 +89,7 @@ The real uses are routines, not one-off commands. Read only the one you need —
 is a self-contained file under `references/workflows/`. Scheduling is in
 `references/automation.md`.
 
-- **Setup** — `references/workflows/setup.md` — accounts, opening balances, CSV/Excel import.
+- **Setup** — `references/workflows/setup.md` — accounts, opening balances, project document skills (`npx skills add … -y`), CSV/Excel import. Plugin SessionStart may refresh those skills with `npx skills update -p -y` after you trust plugin hooks.
 - **Daily** — `references/workflows/daily.md` — record yesterday, show tomorrow's cash flow.
 - **Weekly** (Sun) — `references/workflows/weekly.md` — assets & liabilities, next week, this week.
 - **Monthly** (1st) — `references/workflows/monthly.md` — assert, then `holiday close`.

@@ -27,11 +27,30 @@ history as is worth entering.
 4. **Opening balances.** For each asset/liability that already has a balance, post
    it against `Equity:Opening` dated the start point:
    `holiday txn add --date 2026-01-01 --leg "Assets:Bank:Shinhan 4310000 KRW" --leg "Equity:Opening -4310000 KRW"`.
-5. **History, if they have a file.** This is where you earn your keep — see below.
-6. **Confirm.** `holiday balance`, then `holiday assert` each account against what
+5. **Document skills (companion) — before any CSV/Excel/PDF import.** These are
+   Anthropic's format skills (`xlsx` / `pdf` / `docx` / `pptx`), installed into
+   **this ledger project** via skills.sh — not copied into the holiday-cfo
+   skill tree, and not a home-global (`-g`) or Claude marketplace default. From
+   the ledger project root:
+
+   ```bash
+   npx skills add https://github.com/anthropics/skills --skill xlsx -y
+   npx skills add https://github.com/anthropics/skills --skill pdf -y
+   npx skills add https://github.com/anthropics/skills --skill docx -y
+   npx skills add https://github.com/anthropics/skills --skill pptx -y
+   ```
+
+   That creates `.agents/skills/<name>/` and `skills-lock.json` in this folder.
+   Skip only when those already exist here. If the skills CLI offers agent
+   targets, include the current host (e.g. `-a claude-code`). SessionStart hooks
+   later run `npx skills update -p -y` (soft-fail) so this project stays current —
+   Codex may require trusting plugin hooks first; the install commands above still
+   work without trust.
+6. **History, if they have a file.** This is where you earn your keep — see below.
+7. **Confirm.** `holiday balance`, then `holiday assert` each account against what
    the user can see in their banking app. Assertions are the only check against the
    outside world; use them.
-7. **Offer automation.** Once the ledger is real, ask about scheduling the daily /
+8. **Offer automation.** Once the ledger is real, ask about scheduling the daily /
    weekly / monthly workflows — `../automation.md`.
 
 ## Importing a CSV or Excel export — you are the importer

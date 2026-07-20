@@ -40,7 +40,15 @@ codex plugin install holiday-cfo
 이거를 기반으로 holiday-cfo 플러그인을 세팅하고, 가계부를 만들어줘.
 ```
 
-플러그인은 스킬만 포함한다. 원장 CLI는 최초 실행 시 `npx @holiday-cfo/cli@latest`로 내려받는다.
+플러그인은 장부 스킬과 SessionStart 훅만 포함한다. 원장 CLI는 최초 실행 시
+`npx @holiday-cfo/cli@latest`로 내려받는다.
+
+엑셀·PDF·워드·슬라이드용 **문서 스킬**은 플러그인에 넣지 않는다. 셋업이 장부
+프로젝트 폴더에 skills.sh로 설치한다 (`npx skills add … -y`, `-g` 없음). 세션이
+열릴 때 같은 프로젝트만 `npx skills update -p -y`로 soft-fail 갱신한다. Cursor는
+`holiday init`이 쓰는 `.cursor/hooks.json`을 본다. Codex는 플러그인 훅
+trust가 필요할 수 있다. 계약:
+[문서 스킬 companion](apps/docs/content/docs/agent/document-skills-companion.mdx).
 
 이후 예시:
 
