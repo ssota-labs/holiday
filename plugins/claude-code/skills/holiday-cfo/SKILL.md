@@ -82,10 +82,10 @@ you need — each is a self-contained file. Schedule them via
 
 | Workflow | When | Read |
 |---|---|---|
-| **Setup** | first session | `references/workflows/setup.md` — accounts, opening balances, project document skills (`npx skills add … -y`), CSV/Excel import, then offer to schedule the rest |
-| **Daily** | each morning | `references/workflows/daily.md` — record yesterday, show tomorrow's cash flow |
-| **Weekly** | Sunday | `references/workflows/weekly.md` — assets & liabilities, next week's cash flow, this week reviewed |
-| **Monthly** | 1st | `references/workflows/monthly.md` — assert balances, then `holiday close` |
+| **Setup** | first session | `references/workflows/setup.md` — accounts, opening balances, project document skills (`npx skills add … -y`), CSV/Excel import, then register agreed rhythms with host schedule tools |
+| **Daily** | evening + morning | `references/workflows/daily.md` — evening: today’s 지출 내역 intake + today summary; morning: yesterday + today’s events (no intake) |
+| **Weekly** | Sun night + Mon morning | `references/workflows/weekly.md` — Sunday wrap + next week; Monday this-week briefing only |
+| **Monthly** | 27th + 1st | `references/workflows/monthly.md` — month-end prep; 1st close **proposal** only (no `close` before approval) |
 | **Simulate** | a big decision | `references/workflows/simulate.md` — `cashflow --spend/--receive`, nothing written |
 | **Ask** | anytime | `references/workflows/ask.md` — answer from the ledger; compute, don't give market advice |
 | **KR income** | 수입·원천징수·4대보험 | `references/workflows/kr-income.md` — statutory regimes; never invent 3.3%/보험요율 |
@@ -248,7 +248,7 @@ writes and your host auto-loads. If it is missing (an older ledger), re-run
 
 | File | Read it when |
 |---|---|
-| `references/automation.md` | Scheduling a workflow on this host (Claude Code / Cursor / Codex). |
+| `references/automation.md` | Six ledger rhythms — propose, register with `/schedule` (or host tools), verify list. |
 
 ## What this cannot do yet
 

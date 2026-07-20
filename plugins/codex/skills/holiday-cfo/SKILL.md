@@ -89,10 +89,10 @@ The real uses are routines, not one-off commands. Read only the one you need —
 is a self-contained file under `references/workflows/`. Scheduling is in
 `references/automation.md`.
 
-- **Setup** — `references/workflows/setup.md` — accounts, opening balances, project document skills (`npx skills add … -y`), CSV/Excel import. Plugin SessionStart may refresh those skills with `npx skills update -p -y` after you trust plugin hooks.
-- **Daily** — `references/workflows/daily.md` — record yesterday, show tomorrow's cash flow.
-- **Weekly** (Sun) — `references/workflows/weekly.md` — assets & liabilities, next week, this week.
-- **Monthly** (1st) — `references/workflows/monthly.md` — assert, then `holiday close`.
+- **Setup** — `references/workflows/setup.md` — accounts, opening balances, project document skills (`npx skills add … -y`), CSV/Excel import, then register agreed rhythms with Scheduled/Automations tools. Plugin SessionStart may refresh document skills with `npx skills update -p -y` after you trust plugin hooks.
+- **Daily** — `references/workflows/daily.md` — evening: today’s 지출 내역 intake + today summary; morning: yesterday + today’s events (no intake).
+- **Weekly** — `references/workflows/weekly.md` — Sunday night wrap + next week; Monday morning this-week briefing only.
+- **Monthly** — `references/workflows/monthly.md` — 27th prep; 1st close **proposal** only (no `close` before approval).
 - **Simulate** — `references/workflows/simulate.md` — `cashflow --spend/--receive`.
 - **Ask** — `references/workflows/ask.md` — answer from the ledger; no market advice.
 - **KR income** — `references/workflows/kr-income.md` — statutory regimes; never invent 3.3%/보험요율.
@@ -137,7 +137,7 @@ Read the one that matches the task, not upfront.
 
 | File | Read it when |
 |---|---|
-| `references/automation.md` | Scheduling a workflow (Codex Automations / `codex exec` + cron). |
+| `references/automation.md` | Six ledger rhythms — propose, register with Scheduled/Automations, verify list. |
 
 The **concepts** — ledger model, account naming, the standard chart, schedules,
 transfers, recipes — live in the ledger folder's own `AGENTS.md`, written by

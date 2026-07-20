@@ -50,8 +50,21 @@ history as is worth entering.
 7. **Confirm.** `holiday balance`, then `holiday assert` each account against what
    the user can see in their banking app. Assertions are the only check against the
    outside world; use them.
-8. **Offer automation.** Once the ledger is real, ask about scheduling the daily /
-   weekly / monthly workflows — `../automation.md`.
+8. **Register agreed rhythms (do not stop at a suggestion).** Once the ledger is
+   real (accounts + asserted balances), open `../automation.md` and:
+
+   1. Propose the six cadences (evening collect, morning report, Sunday night,
+      Monday morning, month-end preview, 1st close proposal) in a short table.
+   2. Collect yes/no per row — register **only** what they accept.
+   3. **Create them yourself** with the host tools (`/schedule` on Claude Code;
+      Scheduled/Automations on Codex). Local ledger → prefer local/Desktop
+      scheduling. Do not end with “직접 가서 만들어 주세요” alone.
+   4. Re-list schedules and confirm name + time in one line each.
+   5. If tools, login, or permissions fail: say why, then hand the matching
+      prompt blocks from `automation.md` for manual registration.
+
+   If older daily/weekly/monthly routines already exist, ask replace vs keep
+   before adding duplicates.
 
 ## Importing a CSV or Excel export — you are the importer
 
