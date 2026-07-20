@@ -3,7 +3,8 @@
   "pages": [
     "plan-docs-first-development",
     "plan-tax-return-sor",
-    "plan-release-tagged-deploys"
+    "plan-release-tagged-deploys",
+    "plan-document-skills-companion"
   ],
   "collapsible": true,
   "defaultOpen": false,

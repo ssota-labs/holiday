@@ -1,0 +1,28 @@
+---
+title: us-document-skills-companion
+id: us-document-skills-companion
+ticker: us-016
+description: 엑셀·PDF 같은 문서 스킬을 장부 옆에 깔고 세션마다 최신으로 맞추고 싶다
+type: conceptual
+summary: 첫 세션에 설치를 안내받고, 이후 세션은 이미 깐 문서 스킬을 자동으로 맞춘다
+---
+
+**As a** 채팅으로 장부를 돌리는 1인 사용자  
+**I want** 엑셀·PDF 같은 문서 스킬을 장부 플러그인 옆에 함께 두고, 세션이 열릴 때마다
+최신으로 맞추고 싶다  
+**So that** 은행 내보내기·신고서 파일을 읽을 때 호스트마다 따로 설치를 잊지 않고,
+어제와 다른 옛 스킬에 묶이지 않는다
+
+### 수락 기준
+
+1. 첫 세션(셋업)에서 문서 스킬을 아직 안 깔았으면, 설치 방법을 먼저 안내받는다
+2. Claude Code에서는 Anthropic 문서 스킬 마켓 플러그인 설치가 안내된다
+3. Cursor·Codex·Claude Code에서 세션을 열면, 이미 전역으로 깐 문서 스킬이
+   원격보다 오래됐으면 받아진다
+4. 갱신에 실패해도 장부 대화는 그대로 이어진다
+5. 장부 플러그인 안에 문서 스킬 원문 폴더가 복사되어 있지 않다
+
+### 추적
+
+- 스펙: [SPEC-document-skills-companion](/docs/agent/document-skills-companion)
+- PRD: [prd-document-skills-companion](/docs/planning/prds/prd-document-skills-companion)

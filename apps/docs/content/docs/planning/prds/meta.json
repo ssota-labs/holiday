@@ -3,7 +3,8 @@
   "pages": [
     "prd-0.1-foundation",
     "prd-docs-first-development",
-    "prd-tax-return-sor"
+    "prd-tax-return-sor",
+    "prd-document-skills-companion"
   ],
   "collapsible": true,
   "defaultOpen": false,

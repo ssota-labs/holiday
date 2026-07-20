@@ -1,0 +1,132 @@
+---
+title: 문서 스킬 companion
+description: Anthropic document-skills 설치 안내와 세션 시작 skills.sh 갱신 계약
+type: reference
+summary: 본문 벤더링 금지. Claude는 marketplace companion, 전 호스트는 전역 skills update.
+id: SPEC-document-skills-companion
+stage: accepted
+related:
+  - /docs/planning/prds/prd-document-skills-companion
+  - /docs/agent/skill
+  - /docs/development/adr/adr-009
+---
+
+## 범위
+
+장부 플러그인(`holiday-cfo`)이 **문서 형식 스킬을 companion으로 붙이는** 계약이다.
+원장 스키마·CLI 플래그는 바꾸지 않는다.
+
+대상 스킬(Anthropic `anthropics/skills`):
+
+| 스킬 | 역할 |
+|---|---|
+| `xlsx` | 스프레드시트 |
+| `pdf` | PDF |
+| `docx` | 워드 |
+| `pptx` | 슬라이드 |
+
+## 인터페이스
+
+### 1) 첫 설치 안내 (셋업 워크플로)
+
+`plugins/*/skills/holiday-cfo/references/workflows/setup.md` (및 SKILL.md에서
+셋업으로 연결되는 문구)에 companion 설치를 넣는다.
+
+**Claude Code — 우선 경로**
+
+```text
+/plugin marketplace add anthropics/skills
+/plugin install document-skills@anthropic-agent-skills
+```
+
+**전 호스트 — skills.sh 전역 (갱신 대상이 되려면 `-g`)**
+
+```bash
+npx skills add https://github.com/anthropics/skills --skill xlsx -g -y
+npx skills add https://github.com/anthropics/skills --skill pdf -g -y
+npx skills add https://github.com/anthropics/skills --skill docx -g -y
+npx skills add https://github.com/anthropics/skills --skill pptx -g -y
+```
+
+Claude는 마켓 설치와 skills.sh 전역 설치를 **둘 다** 안내할 수 있다.
+마켓 플러그인은 Claude UX에 맞고, skills.sh 전역 잠금(`~/.agents/.skill-lock.json`)이
+있어야 세션 시작 `skills update`가 문서 스킬을 추적한다.
+
+### 2) 세션 시작 갱신
+
+이미 전역으로 설치된 스킬만 대상으로 한다.
+
+```bash
+npx skills update -y
+```
+
+| 항목 | 계약 |
+|---|---|
+| 범위 | 전역 잠금 (`~/.agents/.skill-lock.json`). 프로젝트 `skills-lock.json`은 수정하지 않음 |
+| 실패 | exit non-zero여도 세션·대화를 차단하지 않음 (soft-fail) |
+| 타임아웃 | 호스트가 허용하는 합리적 상한(권장 ≤ 120s). 초과 시 중단·다음 세션 재시도 |
+| 미설치 | 잠금이 비어 있으면 no-op. 첫 설치 안내를 대체하지 않음 |
+| 부수효과 | 성공한 스킬의 해시·`updatedAt`이 전역 잠금에 다시 쓰임 |
+
+> 잠금 파일은 백그라운드 데몬이 아니다. **`skills update`가 돌 때만** 최신
+> 해시로 갱신된다. 세션 시작 훅이 그 명령을 호출하는 것이 “자동 업데이트”의
+> 실체다.
+
+### 3) 호스트별 훅 배치
+
+| 호스트 | 배치 | 명령 |
+|---|---|---|
+| Claude Code | `plugins/claude-code/hooks/hooks.json` → `SessionStart` | `npx skills update -y` (soft-fail) |
+| Codex | `plugins/codex/hooks/hooks.json` → `SessionStart` | 동일. 플러그인 훅 **trust** 필요할 수 있음 |
+| Cursor | `holiday init`이 쓰는 프로젝트 `.cursor/hooks.json`의 `sessionStart`, 또는 동등한 사용자/프로젝트 훅 | 동일 |
+
+공유 스크립트를 둘 경우 경로는 플러그인 루트 또는 CLI 템플릿 한곳만 소스로 삼고,
+호스트별 JSON은 그 스크립트를 가리킨다. Anthropic 스킬 **본문은 복사하지 않는다.**
+
+## 동작
+
+1. 셋업 중 에이전트는 문서 스킬 설치 상태를 확인한다(가능하면). 없으면 위 설치
+   안내를 import보다 먼저 한다.
+2. 이후 세션: 훅이 `npx skills update -y`를 실행한다.
+3. 원격 해시가 같으면 다운로드 없음. 다르면 해당 스킬만 재설치하고 전역 잠금을 갱신.
+4. 훅 실패·타임아웃·미설치는 무시하고 장부 스킬 흐름을 계속한다.
+
+## 데이터와 불변식
+
+| 사람이 읽는 이름 | 코드/경로 | 예시 |
+|---|---|---|
+| 전역 스킬 잠금 | `~/.agents/.skill-lock.json` | `skillFolderHash` per skill |
+| 모노레포 개발용 pin | 저장소 루트 `skills-lock.json` | CI `check:skills` — **세션 훅이 수정 금지** |
+| Claude companion 플러그인 | `document-skills@anthropic-agent-skills` | 호스트 플러그인 매니저가 갱신 |
+
+불변식:
+
+1. `plugins/*/skills/` 아래에 `xlsx`/`pdf`/`docx`/`pptx` 벤더 트리를 두지 않는다.
+2. 세션 훅은 프로젝트 `skills-lock.json`(모노레포 pin)을 rewrite하지 않는다.
+3. ADR-009와 같이 upstream 본문은 wrap·load만 하고 paste하지 않는다.
+
+## 오류
+
+| 상황 | 기대 |
+|---|---|
+| `npx`/네트워크 실패 | soft 기록(옵션), 세션 계속 |
+| 전역 스킬 없음 | no-op |
+| Codex 훅 untrusted | 훅 스킵. 셋업 안내로 수동 `skills update` 가능해야 함 |
+| Cursor가 `sessionStart`를 거절 | init/문서에 대체 등록법(또는 수동 update)을 남김 |
+
+## 호환성
+
+- CLI·원장 스키마·exit code 계약 불변
+- 플러그인 버전 bump는 훅·셋업 문구가 사용자-facing이면 릴리스 게이트 적용
+  (`AGENTS.md` 기능 완료 = 태그 배포)
+- 기존 장부 디렉터리: init 재실행 시 훅 파일이 없을 때만 생성(기존 파일
+  overwrite 금지 — init 관례와 동일)
+
+## 수락 기준
+
+1. setup 워크플로에 Claude marketplace companion 설치 문구가 있다
+2. setup에 skills.sh `-g -y` 네 스킬 설치가 있다
+3. Claude·Codex 플러그인에 soft-fail `SessionStart` → `npx skills update -y`가 있다
+4. Cursor용 `sessionStart`가 init 템플릿 또는 동등 문서로 제공된다
+5. 플러그인 tree에 Anthropic document skill 본문이 없다
+6. 모노레포 `pnpm check:skills`가 세션 훅 때문에 깨지지 않는다 (프로젝트 pin 미수정)
