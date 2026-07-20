@@ -1,0 +1,18 @@
+{
+  "balances": [],
+  "cashflow": {
+    "asOf": "1970-01-01",
+    "until": "1970-01-01",
+    "openingCashMinor": "0",
+    "commodity": "KRW",
+    "runway": [],
+    "gaps": []
+  },
+  "health": {
+    "ok": true,
+    "checked": 0,
+    "problems": [],
+    "head": null
+  },
+  "bakedAt": "1970-01-01T00:00:00.000Z"
+}

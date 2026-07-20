@@ -1,6 +1,6 @@
 // Loaded dynamically by main.ts, AFTER env.ts has patched process.emitWarning.
 // Do not make this the bin entry point — see the comment in main.ts.
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 
@@ -104,7 +104,7 @@ import {
   type YearMonth,
 } from '@holiday-cfo/core';
 
-import { bakeDatasets, scaffold } from './dash.js';
+import { bakeDatasets, dashLedgerPath, looksLikeLegacyVinextDash, scaffold } from './dash.js';
 import { scaffoldLedgerDocs } from './ledger-docs.js';
 import { scaffoldDeploy } from './deploy.js';
 import { INGEST_SUBMISSION, type IngestItemInput } from './ingest.js';
@@ -3404,23 +3404,25 @@ program
     note('WAL checkpointed. ledger.db is safe to commit.');
   });
 
-const dash = program.command('dash').description('대시보드 — 원장의 스냅샷을 굽고, 에이전트가 화면을 고른다');
+const dash = program.command('dash').description('대시보드 — fumadocs 화면과 원장 스냅샷');
 
 dash
   .command('init')
-  .description('scaffold a vinext dashboard next to the ledger')
+  .description('scaffold a fumadocs dashboard next to the ledger')
   .option('--dir <path>', 'where to write it', 'dash')
   .action(async (o: { dir: string }) => {
     const ws = requireWorkspace();
     const dest = resolve(process.cwd(), o.dir);
+    if (looksLikeLegacyVinextDash(dest)) {
+      note(
+        '⚠ 이전 vinext/`spec.json` dash가 있습니다. 자동 변환하지 않습니다 — 폴더를 옮기거나 비운 뒤 다시 init하고 MDX·대시보드 페이지를 이전하세요.',
+      );
+    }
     // The blocks are pinned to THIS CLI's version — see scaffold(). A dashboard
     // and the vocabulary it is written in are one release.
     const { created, skipped } = scaffold(dest, VERSION);
 
-    // Bake immediately. A scaffold whose first `pnpm dev` shows an empty page
-    // teaches the agent that the dashboard is broken, and it starts inventing
-    // fixes — usually by typing figures into spec.json, which is the one thing
-    // this design exists to prevent.
+    // Bake immediately. An empty first paint teaches agents to invent figures.
     const store = await openLedger(ws);
     const data = await bakeDatasets(store, {
       asOf: assertIsoDate(today()),
@@ -3428,22 +3430,30 @@ dash
       now: () => new Date().toISOString(),
     });
     await store.close();
-    writeFileSync(join(dest, 'src', 'data', 'ledger.json'), `${JSON.stringify(data, null, 2)}\n`);
+    const ledgerFile = dashLedgerPath(dest);
+    mkdirSync(dirname(ledgerFile), { recursive: true });
+    writeFileSync(ledgerFile, `${JSON.stringify(data, null, 2)}\n`);
 
     out({ dir: dest, created, skipped });
     note(`대시보드를 만들었습니다: ${dest}`);
     if (skipped.length > 0) note(`기존 파일은 그대로 두었습니다: ${skipped.join(', ')}`);
     note(`  cd ${o.dir} && pnpm install && pnpm dev`);
-    note(`레이아웃은 src/data/spec.json에서 고르세요. ledger.json은 직접 수정하지 말고 \`holiday dash data\`로 다시 굽습니다.`);
+    note(`메모는 content/docs MDX, 숫자는 /dashboard와 API입니다. data/ledger.json은 \`holiday dash data\`로만 다시 굽습니다.`);
   });
 
 dash
   .command('data')
-  .description('re-bake the snapshot the dashboard renders')
+  .description('re-bake the snapshot the dashboard renders (does not touch MDX)')
   .option('--dir <path>', 'the dashboard directory', 'dash')
   .option('--until <date>', 'projection horizon', addMonthsIso(today(), 3))
   .action(async (o: { dir: string; until: string }) => {
     const ws = requireWorkspace();
+    const dashDir = resolve(process.cwd(), o.dir);
+    if (looksLikeLegacyVinextDash(dashDir) && !existsSync(join(dashDir, 'data'))) {
+      throw new UsageError(
+        `legacy vinext dash at ${dashDir} — move it aside and run \`holiday dash init\` for the fumadocs template`,
+      );
+    }
     const store = await openLedger(ws);
     const data = await bakeDatasets(store, {
       asOf: assertIsoDate(today()),
@@ -3452,22 +3462,19 @@ dash
     });
     await store.close();
 
-    const dest = resolve(process.cwd(), o.dir, 'src', 'data', 'ledger.json');
-    if (!existsSync(dirname(dest))) {
-      throw new UsageError(`no dashboard at ${resolve(process.cwd(), o.dir)} — run \`holiday dash init\` first`);
+    const dest = dashLedgerPath(dashDir);
+    if (!existsSync(dashDir) || (!existsSync(dirname(dest)) && !existsSync(join(dashDir, 'app')))) {
+      throw new UsageError(`no dashboard at ${dashDir} — run \`holiday dash init\` first`);
     }
+    mkdirSync(dirname(dest), { recursive: true });
     writeFileSync(dest, `${JSON.stringify(data, null, 2)}\n`);
     if (jsonMode()) return out(data);
     note(`스냅샷을 구웠습니다: ${dest}`);
     note(`스냅샷은 그 시점의 사진입니다. 기록·수집·마감 후에는 다시 구워 주세요.`);
   });
 
-// No `dash catalog` command, on purpose. The catalog is a Zod object in
-// @holiday-cfo/blocks, and it imports @json-render/react — printing it from here
-// would drag React into a 423KB CLI bundle that has no business knowing what a
-// component is. The block list lives in the template's AGENTS.md, which lands
-// next to spec.json in the project where the agent is actually reading. A script
-// keeps the two honest: pnpm --filter @holiday-cfo/cli check:catalog.
+// No `dash catalog` command. The block list lives in the template's AGENTS.md
+// and @holiday-cfo/blocks Zod schemas — the CLI must not import React.
 
 /**
  * Map a statutory settlement into a posted txn using the standard chart.

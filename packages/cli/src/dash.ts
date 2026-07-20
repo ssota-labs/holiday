@@ -6,28 +6,21 @@ import { type IsoDate, projectCashflow } from '@holiday-cfo/core';
 import type { SqlLedgerStore } from '@holiday-cfo/store-sql';
 
 /**
- * `holiday dash` — scaffold a dashboard, and bake the snapshot it renders.
+ * `holiday dash` — scaffold a fumadocs dashboard, and bake the snapshot it renders.
  *
- * The split is the design, not an implementation detail:
+ *   dash init   copies a fumadocs (Next) app: MDX memos + /dashboard + API
+ *   dash data   rewrites ONLY data/ledger.json from the ledger
+ *   the agent   writes MDX / dashboard layout — never figures
  *
- *   dash init   writes a vinext project that reads two JSON files
- *   dash data   fills ONE of them, from the ledger
- *   the agent   fills the OTHER — the layout — and can put no figure in it
- *
- * The dashboard never opens ledger.db. That is what lets one build run both on a
- * laptop and on Codex Sites, which is Cloudflare underneath: no Node runtime, no
- * filesystem, no node:sqlite. A snapshot is the only thing that can cross that
- * line — and since Sites is OpenAI-hosted and this is the user's money, the only
- * thing that should.
+ * The dashboard never opens ledger.db. Local API routes shell the CLI; a deploy
+ * photo reads the bake only (ADR-008 / ADR-012).
  */
 
 /**
  * Where the templates live, relative to whatever is executing.
  *
- * Both layouts land on the same path, which is why it is written this way:
- *
- *   npm      dist/main.js      → ../templates/   (files: ["dist", "templates"])
- *   plugin   bin/holiday.mjs   → ../templates/   (copied there at bundle time)
+ *   npm      dist/main.js      → ../templates/
+ *   plugin   bin/holiday.mjs   → ../templates/
  */
 function templatesDir(): string {
   return fileURLToPath(new URL('../templates/', import.meta.url));
@@ -40,16 +33,30 @@ export interface DashDatasets {
   readonly bakedAt: string;
 }
 
+/** Path of the bake file inside a dash directory. */
+export function dashLedgerPath(dashDir: string): string {
+  return join(dashDir, 'data', 'ledger.json');
+}
+
+/**
+ * True when `dir` looks like a pre-ADR-012 vinext + spec.json dash.
+ * Used only for migration guidance — we do not auto-convert.
+ */
+export function looksLikeLegacyVinextDash(dashDir: string): boolean {
+  return (
+    existsSync(join(dashDir, 'src', 'data', 'spec.json')) ||
+    existsSync(join(dashDir, 'vite.config.ts')) ||
+    (existsSync(join(dashDir, 'package.json')) &&
+      readFileSync(join(dashDir, 'package.json'), 'utf8').includes('vinext'))
+  );
+}
+
 /**
  * Every figure the dashboard can show, read at ONE instant.
  *
  * One unitOfWork, not three reads. Baking balances, then cashflow, then verify
  * would let a write land in between and produce a page whose cards quietly
- * disagree — a balance from before and a runway from after, each individually
- * correct. Nobody would ever catch that by looking.
- *
- * It is a unitOfWork rather than a read only because `verify()` lives on the
- * write interface; nothing here writes. `holiday verify` does the same.
+ * disagree.
  */
 export async function bakeDatasets(
   store: SqlLedgerStore,
@@ -63,9 +70,7 @@ export async function bakeDatasets(
     const proj = await projectCashflow(uow, { asOf: opts.asOf, until: opts.until });
     const report = await uow.verify();
 
-    // i64 → decimal STRING, everywhere. JSON has no i64, and
-    // Number("9007199254740993") gives ...992. The blocks format the digits and
-    // never parse them back.
+    // i64 → decimal STRING, everywhere. JSON has no i64.
     return {
       balances: rows.map((b) => ({
         accountCode: codeOf.get(b.accountId) ?? b.accountId,
@@ -84,8 +89,6 @@ export async function bakeDatasets(
           balanceAfterMinor: p.balanceAfterMinor.toString(),
           items: p.items.map((i) => ({ kind: i.kind, label: i.label, amountMinor: i.amountMinor.toString() })),
         })),
-        // Shipped, not printed. The projection knows what it is NOT covering, and
-        // a dashboard that drops that turns "I don't know" into "you're fine".
         gaps: proj.gaps,
       },
       health: {
@@ -104,7 +107,7 @@ export interface ScaffoldResult {
   readonly skipped: readonly string[];
 }
 
-/** Copy the template into `dest`, pinning the block packages to this CLI's own version. */
+/** Copy the template into `dest`, pinning blocks/ui/CLI bridge to this CLI's version. */
 export function scaffold(dest: string, version: string): ScaffoldResult {
   const src = join(templatesDir(), 'dash');
   if (!existsSync(src)) {
@@ -117,8 +120,8 @@ export function scaffold(dest: string, version: string): ScaffoldResult {
   for (const entry of readdirSync(src)) {
     const to = join(dest, entry);
     if (existsSync(to)) {
-      // Never clobber. src/ holds spec.json, which is the agent's work, and
-      // ledger.json, which may be a fresher bake than the template placeholder.
+      // Never clobber. content/ and app/dashboard are the agent's work; data/ may
+      // hold a fresher bake than the template placeholder.
       skipped.push(entry);
       continue;
     }
@@ -126,14 +129,7 @@ export function scaffold(dest: string, version: string): ScaffoldResult {
     created.push(entry);
   }
 
-  // Pin exactly; do not range. `^0.1.0` would let a project scaffolded by CLI
-  // 0.1.0 pull blocks 0.2.0, whose catalog it has never seen — and a spec.json
-  // written against the old vocabulary then fails in the browser, which is the
-  // worst place to find out. The CLI and the blocks ship as one version or not
-  // at all. The same token sits in the API routes (the CLI bridge npx-pins
-  // itself), so the sweep covers every text file just copied. It runs BEFORE the
-  // gitignore rename below — `created` holds the names as copied, and a renamed
-  // entry made walkFiles stat a path that no longer existed.
+  // Pin exactly; do not range. Same token sits in package.json and API routes.
   for (const entry of created) {
     const root = join(dest, entry);
     if (!existsSync(root)) continue;
@@ -146,8 +142,7 @@ export function scaffold(dest: string, version: string): ScaffoldResult {
     }
   }
 
-  // npm silently refuses to publish a file named `.gitignore` inside a package,
-  // so the template carries it dotless and it is renamed on the way out.
+  // npm silently refuses to publish a file named `.gitignore` inside a package.
   const dotless = join(dest, 'gitignore');
   if (existsSync(dotless) && !existsSync(join(dest, '.gitignore'))) renameSync(dotless, join(dest, '.gitignore'));
 

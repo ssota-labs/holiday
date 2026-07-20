@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+@import '@holiday-cfo/ui/globals.css';
+
+@source '../content/**/*.mdx';
+@source '../components/**/*.tsx';
+@source '../app/**/*.tsx';
+@source '../../node_modules/@holiday-cfo/blocks/src/**/*.{ts,tsx}';

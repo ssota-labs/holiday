@@ -208,33 +208,31 @@ asked; scaffold if needed, start the dev server yourself, and point them at the
 never drains.
 
 ```bash
-holiday dash init          # writes ./dash — a vinext app, run anywhere
+holiday dash init          # writes ./dash — a fumadocs (Next) app
 cd dash && pnpm install && pnpm dev
 ```
 
-Two files drive it, and the split is not optional:
+Split is not optional:
 
-- `dash/src/data/ledger.json` — the **figures**. `holiday dash init` bakes it, and
-  `holiday dash data` re-bakes it. **You never touch this.**
-- `dash/src/data/spec.json` — the **layout**. This one is yours. Choose which
-  blocks appear and in what order.
+- `dash/data/ledger.json` — the **figures**. Baked by `holiday dash init` /
+  `holiday dash data`. **You never touch this.**
+- `dash/content/docs/**/*.mdx` — **memos / journal**. Yours.
+- `dash/app/dashboard/page.tsx` — **number cockpit** layout. Yours (block tags only).
 
-**Do not type a number into spec.json.** You cannot — no block prop accepts an
-amount. If a figure the user wants is not on screen, the fix is a block or a
-filter, never a literal. A wrong figure in a well-made card reads as authoritative,
-and this is the same rule as everywhere else here: you are the least reliable
-component, so the design gives you no way to put a number where it matters.
+**Do not type amounts into MDX props or as “current balance” copy.** No block prop
+accepts an amount. Body numbers are memos only — they do not sync with the
+snapshot. If a figure is missing, add a block or filter, never a literal.
 
-The blocks are listed in `dash/AGENTS.md`, which lands in the project. In short:
-`CashRunway` (the most useful — will the cash survive), `BalanceTable`,
-`LedgerHealth`, `Note`.
+Allowed tags are in `dash/AGENTS.md` (fumadocs + UI shell + 가계부 blocks). In
+short: `CashRunway`, `BalanceTable`, `LedgerHealth`, `CategorizeQueue`, `Note`.
+There is no `spec.json` / json-render path.
 
-The snapshot is a point in time. Re-run `holiday dash data` after every `txn add`,
-`ingest`, or `close` — a dashboard showing last week's balance is worse than none.
+Re-run `holiday dash data` after every `txn add`, `ingest`, or `close`. Local
+dev uses `/api/holiday/*` (CLI bridge); a deploy photo is read-only bake JSON.
+Only bake what the user will share — it is their money.
 
-To share it, the built site is static: it reads the baked JSON and opens ledger.db
-never, so it deploys to Codex Sites or any static host. Only bake what the user is
-willing to share — it is a snapshot of their money.
+Old vinext + `spec.json` dash: move it aside and re-`init`; do not expect
+auto-migration.
 
 ## Load these when you need them
 

@@ -1,128 +1,114 @@
-import { defineCatalog } from '@json-render/core';
-// The React schema: what a spec node looks like (type, props, children).
-// Ours is the CATALOG on top of it — which component types exist at all.
-// Imported from the /schema subpath, not the package root: the root barrel
-// pulls in the Renderer and its react-state context, which calls createContext at
-// load — fatal in a server/RSC environment (vinext prerenders there). The schema
-// entry depends only on @json-render/core, so a server component can evaluate this
-// catalog safely. Without this the dashboard renders client-side but its static
-// prerender is blank, which is exactly what Codex Sites ships.
-import { schema } from '@json-render/react/schema';
 import { z } from 'zod';
 
 /**
- * The vocabulary an agent may use to build a dashboard.
+ * The vocabulary an agent may use to build a dashboard or MDX page.
  *
- * Two decisions are baked in here, and both are load-bearing.
+ * Two decisions are load-bearing:
  *
- * **1. The nouns are 가계부, not shadcn.** The catalog does not expose Card, Grid
- * and Chart — it exposes CashRunway and LedgerHealth. A generic catalog means the
- * agent reassembles a dashboard from primitives every time, which is the thing we
- * are trying not to do: layouts drift, the same question gets a different answer
- * each session, and nothing is reviewable. shadcn is still underneath — the
- * registry builds every block out of it — but it is an implementation detail, one
- * layer down. Same lesson as the docs blocks: a closed vocabulary of domain nouns.
+ * **1. The nouns are 가계부, not shadcn.** The catalog exposes CashRunway and
+ * LedgerHealth — not a free-form Card/Grid kit. Layouts stay reviewable.
  *
- * **2. No prop here holds money.** Look for a z.number() below and there is none.
- * Props are FILTERS — an account prefix, a month, a limit. The agent can say
- * "show the Shinhan balance"; it cannot say "the Shinhan balance is ₩3,000,000".
- * Amounts come from the server reading ledger.db, through <DataProvider>.
+ * **2. No prop here holds money.** Look for a money field below and there is
+ * none. Props are FILTERS. Amounts come from <DataProvider> (API or bake).
  *
- * That is not a style preference. It is the same move as Txn.create() making an
- * unbalanced transaction unrepresentable, and assertEngineTier() making "Notion
- * is not a ledger" structural rather than a claim in a README. A model that can
- * type a number into a dashboard will eventually type the wrong one, and a wrong
- * number in a well-made card is worse than no card at all — it looks correct.
- * Zod is where that gets prevented, not code review.
+ * Schemas are `.strict()` so an `amount` / `balance` key fails loudly instead of
+ * being silently ignored. There is no json-render catalog — MDX and the
+ * dashboard page mount these components by name.
  */
+
 /** An account code prefix: `Assets`, `Assets:Bank`, `Assets:Bank:Shinhan`. */
 const accountPrefix = z
   .string()
   .regex(/^[A-Za-z][A-Za-z0-9-]*(:[A-Za-z0-9-]+)*$/, 'an account code, e.g. Assets:Bank:Shinhan');
 
-export const catalog = defineCatalog(schema, {
-  components: {
-    Dashboard: {
-      props: z.object({
-        title: z.string().describe('what question this dashboard answers, in the words the user used'),
-        asOf: z.string().optional().describe('ISO date the figures are as of'),
-      }),
-      slots: ['children'],
-      description: 'The page frame. Exactly one, at the root. Everything else goes inside it.',
-    },
+export const blockProps = {
+  Dashboard: z
+    .object({
+      title: z.string().describe('what question this dashboard answers, in the words the user used'),
+      asOf: z.string().optional().describe('ISO date the figures are as of'),
+    })
+    .strict(),
 
-    Row: {
-      props: z.object({
-        cols: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2),
-      }),
-      slots: ['children'],
-      description: 'A horizontal group of blocks. Use to put two or three related blocks side by side.',
-    },
+  Row: z
+    .object({
+      cols: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2),
+    })
+    .strict(),
 
-    CashRunway: {
-      props: z.object({
-        title: z.string().default('현금 런웨이'),
-        horizonDays: z.number().int().min(7).max(365).default(90).describe('how far forward to walk'),
-      }),
-      description:
-        'Will the cash survive the card bills, 할부, 정기지출 and 정기수입 that are already committed? ' +
-        'Walks forward from cash accounts and shows where the balance goes negative, if it does. ' +
-        'This is the single most useful block — show it when the user asks anything about affordability.',
-    },
+  CashRunway: z
+    .object({
+      title: z.string().default('현금 런웨이'),
+      horizonDays: z.number().int().min(7).max(365).default(90).describe('how far forward to walk'),
+    })
+    .strict(),
 
-    BalanceTable: {
-      props: z.object({
-        title: z.string().default('잔액'),
-        account: accountPrefix.optional().describe('restrict to a subtree, e.g. Assets:Bank'),
-        limit: z.number().int().min(1).max(50).default(20),
-      }),
-      description:
-        'Balances per account, each in its own commodity plus its KRW carrying value. ' +
-        'Filter with `account` — passing no filter shows everything and is rarely what is wanted.',
-    },
+  BalanceTable: z
+    .object({
+      title: z.string().default('잔액'),
+      account: accountPrefix.optional().describe('restrict to a subtree, e.g. Assets:Bank'),
+      limit: z.number().int().min(1).max(50).default(20),
+    })
+    .strict(),
 
-    LedgerHealth: {
-      props: z.object({
-        title: z.string().default('장부 상태'),
-      }),
-      description:
-        'Is the ledger trustworthy right now: audit chain intact, balance assertions passing, ' +
-        'drafts waiting for review. Show this when the user asks whether the books are right, ' +
-        'or before they act on any other number on the page.',
-    },
+  LedgerHealth: z
+    .object({
+      title: z.string().default('장부 상태'),
+    })
+    .strict(),
 
-    CategorizeQueue: {
-      props: z.object({
-        title: z.string().default('분류 대기'),
-        limit: z.number().int().min(1).max(50).default(20),
-      }),
-      description:
-        'Drafts waiting for a category, with one-click picks — the 가계부-app moment. ' +
-        'Interactive ONLY on the locally-running dash (it talks to the local CLI bridge); ' +
-        'on a deployed snapshot it degrades to a one-line notice. Show it near the top ' +
-        'whenever imports are in play.',
-    },
+  CategorizeQueue: z
+    .object({
+      title: z.string().default('분류 대기'),
+      limit: z.number().int().min(1).max(50).default(20),
+    })
+    .strict(),
 
-    Note: {
-      props: z.object({
-        body: z.string().describe('plain text. No figures — quote a block instead of retyping it.'),
-        tone: z.enum(['neutral', 'warning']).default('neutral'),
-      }),
-      description:
-        'A sentence of context around the blocks. Use for what the numbers do not say. ' +
-        'Do NOT restate a figure here: it will not update when the ledger does, and a stale ' +
-        'number next to a live one is how a dashboard starts lying.',
-    },
-  },
-  // Still no catalog actions — but the boundary got its first deliberate gate.
-  //
-  // CategorizeQueue is interactive: the USER clicks, the block calls the local
-  // CLI bridge, and the CLI runs the same review-accept path as ever. What has
-  // NOT changed is who holds the pen. The agent writing a spec still cannot wire
-  // an action or state a figure — the catalog exposes neither — so the only
-  // writes a dashboard can cause are clicks a human makes on their own machine,
-  // and the deployed snapshot cannot write at all (ADR-008).
-  actions: {},
-});
+  Note: z
+    .object({
+      body: z.string().describe('plain text. No figures — quote a block instead of retyping it.'),
+      tone: z.enum(['neutral', 'warning']).default('neutral'),
+    })
+    .strict(),
+} as const;
+
+export type BlockType = keyof typeof blockProps;
+
+/** Closed list of 가계부 block tags. Anything else is not part of the vocabulary. */
+export const BLOCK_TYPES = Object.keys(blockProps) as BlockType[];
+
+export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
+  Dashboard: 'The page frame. Use on the dashboard route; children are other blocks.',
+  Row: 'A horizontal group of blocks. Use to put two or three related blocks side by side.',
+  CashRunway:
+    'Will the cash survive the card bills, 할부, 정기지출 and 정기수입 that are already committed? ' +
+    'Walks forward from cash accounts and shows where the balance goes negative, if it does.',
+  BalanceTable:
+    'Balances per account, each in its own commodity plus its KRW carrying value. ' +
+    'Filter with `account` — passing no filter shows everything and is rarely what is wanted.',
+  LedgerHealth:
+    'Is the ledger trustworthy right now: audit chain intact, balance assertions passing. ' +
+    'Show this before other numbers on the page are believed.',
+  CategorizeQueue:
+    'Drafts waiting for a category, with one-click picks. Interactive ONLY on the locally-running ' +
+    'dash; on a deployed snapshot it degrades to a notice.',
+  Note:
+    'A sentence of context. Do NOT restate a figure: it will not update when the ledger does.',
+};
+
+/** Parse props for a known block. Rejects unknown keys (including amount fields). */
+export function parseBlockProps<T extends BlockType>(
+  type: T,
+  props: unknown,
+): z.infer<(typeof blockProps)[T]> {
+  // Zod 4 + strict generics: parse() widens across the union; assert per-key.
+  return blockProps[type].parse(props) as z.infer<(typeof blockProps)[T]>;
+}
+
+/** Agent-facing catalog shape (Zod schemas + descriptions). No renderer coupling. */
+export const catalog = {
+  components: blockProps,
+  descriptions: BLOCK_DESCRIPTIONS,
+  types: BLOCK_TYPES,
+} as const;
 
 export type DashCatalog = typeof catalog;

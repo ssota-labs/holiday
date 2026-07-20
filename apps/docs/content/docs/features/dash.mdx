@@ -26,11 +26,12 @@ related:
 로컬 미리보기에서만 분류 대기를 클릭으로 처리한다. 배포본은 읽기 전용이다
 ([ADR-008](/docs/development/adr/adr-008)).
 
-## 작성 모델 (계획)
+## 작성 모델
 
-vinext + JSON 배치 렌더러를 거두고, fumadocs 템플릿 + MDX + 대시보드
-라우트로 옮긴다
-([prd-dash-mdx-shell](/docs/planning/prds/prd-dash-mdx-shell),
+`holiday dash init`이 fumadocs 템플릿을 깐다. 메모는 MDX, 숫자 조종석은
+`/dashboard`, 로컬 API는 CLI를 셸로 부른다. json-render / `spec.json` 경로는
+없다 ([prd-dash-mdx-shell](/docs/planning/prds/prd-dash-mdx-shell),
+[SPEC-dash-mdx-shell](/docs/spec/dash-mdx-shell),
 [ADR-012](/docs/development/adr/adr-012)).
 
 ## 하지 않는 것

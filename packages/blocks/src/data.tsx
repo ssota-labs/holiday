@@ -12,12 +12,9 @@ import { createContext, useContext } from 'react';
  * `Number("9007199254740993")` silently gives ...992. Nothing in the blocks parses
  * one back — see money.ts, which formats the digits directly.
  *
- * **The agent does not fill this in; the CLI does.** The agent chooses which
- * blocks appear and in what order. It supplies no figures, because the catalog
- * gives it no prop that holds one. A model that can type a number into a
- * dashboard will eventually type the wrong one, and a wrong number in a well-made
- * card reads as authoritative — which is the one failure this whole project is
- * organised against.
+ * **The agent does not fill this in; the CLI / local API does.** The agent
+ * chooses which blocks appear (MDX tags or dashboard JSX). It supplies no
+ * figures, because the catalog gives it no prop that holds one.
  */
 export interface Datasets {
   /** `holiday --json balance` */

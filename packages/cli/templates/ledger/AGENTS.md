@@ -341,9 +341,9 @@ holiday txn add --date 2026-07-17 --narration "Wise 송금" \
 
 ## 대시보드
 
-`holiday dash init`이 `./dash`(vinext 앱)를 스캐폴딩하고, `holiday dash data`가
-숫자를 다시 굽는다. 파일 둘이 전부다: `src/data/ledger.json`(숫자 — **절대 손대지
-않는다**), `src/data/spec.json`(레이아웃 — 에이전트 몫). **spec에 숫자를 입력할
-수 없고, 입력하려 하지도 마라** — 카탈로그에 금액 prop이 없다. 스냅샷은 굽는
-시점에 고정된다 — `txn add`·수집·`close` 뒤에는 재베이크. 블록 목록은
-`dash/AGENTS.md`.
+`holiday dash init`이 `./dash`(fumadocs 앱)를 스캐폴딩하고, `holiday dash data`가
+`data/ledger.json` 숫자만 다시 굽는다(MDX·대시보드 소스는 덮지 않는다). 메모는
+`content/docs/**/*.mdx`, 숫자 조종석은 `/dashboard`. **금액 prop·“현재 잔액”
+문장으로 숫자를 다시 쓰지 마라** — 카탈로그에 금액 필드가 없다. 스냅샷은 굽는
+시점에 고정된다 — `txn add`·수집·`close` 뒤에는 재베이크. 허용 태그는
+`dash/AGENTS.md`. 옛 vinext/`spec.json` 폴더는 옆으로 옮기고 다시 init.

@@ -20,8 +20,7 @@ import { formatAmount } from './money.js';
  * a cockpit, the deployed dash is a photograph (ADR-008).
  *
  * Note what stays impossible: the AGENT still cannot put a figure or a write
- * anywhere. The catalog exposes no actions and no amount props; the only hands on
- * these buttons are the user's.
+ * action in MDX props. The only hands on these buttons are the user's.
  */
 
 interface PendingItem {

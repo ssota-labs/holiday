@@ -114,22 +114,17 @@ On the second, don't wait to be asked: scaffold if needed, start the dev server,
 point them at the 분류 대기 card (one click per decision, ⌥-click saves a rule).
 
 ```bash
-holiday dash init          # writes ./dash — a vinext app
+holiday dash init          # writes ./dash — a fumadocs (Next) app
 cd dash && pnpm install && pnpm dev
 ```
 
-Two files drive it:
+- `dash/data/ledger.json` — **figures** (CLI bake only).
+- `dash/content/docs/**/*.mdx` — **memos**.
+- `dash/app/dashboard/page.tsx` — **number cockpit**.
 
-- `dash/src/data/ledger.json` — the **figures**. Baked by the CLI. **Never yours.**
-- `dash/src/data/spec.json` — the **layout**. Yours: choose the blocks and order.
-
-**Do not type a number into spec.json** — no block prop accepts an amount. If a
-figure is missing, add a block or a filter, not a literal. Blocks are listed in
-`dash/AGENTS.md`. Re-bake with `holiday dash data` after any ledger change; the
-dashboard is a snapshot, not a live view.
-
-The built site is static — it reads the baked JSON and never opens ledger.db — so
-it deploys to Codex Sites. Bake only what the user will share; it is their money.
+**No amounts in MDX props** — blocks listed in `dash/AGENTS.md`. No `spec.json`.
+Re-bake with `holiday dash data` after ledger changes. Deploy photo = read-only
+bake; local APIs shell the CLI. Legacy vinext dash: re-`init`, do not auto-migrate.
 
 ## Load these when you need them
 
