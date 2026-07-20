@@ -1,0 +1,95 @@
+---
+title: plan-document-skills-companion
+description: 유저 장부 프로젝트에 skills.sh companion 설치 안내와 SessionStart 프로젝트 update 훅을 넣는다
+type: guide
+summary: 문서 스킬 본문은 벤더링하지 않고, 유저 프로젝트 cwd에 npx skills add/update -p만 붙인다.
+id: plan-document-skills-companion
+ticker: plan-004
+stage: ready
+changeType: product
+prd: prd-document-skills-companion
+specs:
+  - SPEC-document-skills-companion
+stories:
+  - us-document-skills-companion
+codeAreas:
+  - plugins/claude-code
+  - plugins/codex
+  - packages/cli
+  - apps/docs
+related:
+  - /docs/planning/prds/prd-document-skills-companion
+  - /docs/agent/document-skills-companion
+  - /docs/agent/skill
+  - /docs/development/adr/adr-009
+---
+
+## 목표
+
+[prd-document-skills-companion](/docs/planning/prds/prd-document-skills-companion)대로
+엑셀·PDF·워드·슬라이드 문서 스킬을 **유저 장부 프로젝트** companion으로 붙인다.
+본문 복사는 하지 않는다. 기본 설치는 `npx skills add … -y`(프로젝트), 세션 시작은
+`npx skills update -p -y`다. `-g`·Claude 마켓 플러그인은 기본 경로가 아니다.
+
+## 영향 범위
+
+| 영역 | 변경 |
+|---|---|
+| `plugins/claude-code/skills/holiday-cfo/` | setup에 프로젝트 skills.sh 설치 안내 |
+| `plugins/codex/skills/holiday-cfo/` | references 심링크면 Claude 쪽만; SKILL.md는 호스트별 |
+| `plugins/claude-code/hooks/` | `SessionStart` → soft-fail `npx skills update -p -y` (장부 cwd 가드) |
+| `plugins/codex/hooks/` | 동일 (trust 전제는 스펙·README에 명시) |
+| `packages/cli` init 템플릿 | Cursor `.cursor/hooks.json` `sessionStart` (없을 때만 생성) |
+| `apps/docs` | 본 기획·스펙 (이 PR). 구현 PR에서 skill 스펙 이력 갱신 |
+| `README.md` | companion 한 블록 (구현 PR) |
+
+## 구현 순서
+
+1. setup에 프로젝트 `npx skills add … -y` 네 스킬 안내만 넣는다 (`-g`/마켓 기본 경로 없음)
+2. 공유 갱신 스크립트 — cwd가 장부 프로젝트일 때만 `npx skills update -p -y`, soft-fail
+3. Claude Code `hooks/hooks.json` SessionStart 연결
+4. Codex `hooks/hooks.json` SessionStart 연결 + trust 안내
+5. `holiday init`이 Cursor `sessionStart` 훅을 비파괴로 쓰게 한다
+6. README·에이전트 스펙에 companion/훅을 짧게 반영
+7. 플러그인·패키지 버전 bump + 태그 배포 (사용자-facing)
+
+## 검증 계획
+
+### 자동 테스트
+
+- `pnpm --filter holiday-plugin test`
+- `pnpm check:skills` — holiday 모노레포 pin은 이 기능과 무관하게 유지
+- `pnpm --filter @holiday-cfo/docs check:planning`
+- init 스모크: scratch 장부 디렉터리에 hooks 생성, 재실행 시 overwrite 없음
+
+### 수동 테스트 / 기획 체크
+
+1. scratch 장부 폴더에서 셋업의 `npx skills add … -y` → `.agents/skills/` + `skills-lock.json` 생성
+2. 그 폴더에서 세션 재시작 → `skills update -p` no-op 또는 갱신 (전역 lock 불변)
+3. 네트워크 실패 시에도 장부 대화 계속
+4. holiday 모노레포 cwd에서는 update 가드가 스킵하거나, 개발 pin을 깨지 않음
+5. Codex: 훅 trust 전/후
+
+## 마이그레이션과 호환성
+
+- 원장 DB·마이그레이션 없음
+- 유저 프로젝트에 생기는 `.agents/skills/`·`skills-lock.json`은 사용자 저장소 자산
+- Anthropic 본문을 MIT 트리에 넣지 않음
+
+## 위험과 롤백
+
+| 위험 | 완화 |
+|---|---|
+| 매 세션 네트워크 지연 | soft + soft-fail; 최이면 다운로드 없음 |
+| Codex/Cursor 훅 미지원·untrusted | 셋업 수동 안내가 1차 경로 |
+| 모노레포에서 실수로 update | `.holiday/` 등 장부 마커 가드 |
+| “latest” 비결정성 | companion는 upstream latest 의도. 장부 계약은 holiday 버전 고정 |
+
+롤백: 훅·setup·init 템플릿만 되돌리면 된다. 원장 데이터 영향 없음.
+
+## 완료 조건
+
+1. [SPEC-document-skills-companion](/docs/agent/document-skills-companion) 수락 기준 전부 충족
+2. 양쪽 플러그인 훅 + setup 안내가 배포 태그에 포함
+3. `pnpm check:skills` 통과 (모노레포)
+4. 계획 stage → `done`

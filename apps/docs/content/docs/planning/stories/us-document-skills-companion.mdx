@@ -1,0 +1,29 @@
+---
+title: us-document-skills-companion
+id: us-document-skills-companion
+ticker: us-016
+description: 내 장부 폴더에 문서 스킬을 깔고 세션마다 최신으로 맞추고 싶다
+type: conceptual
+summary: 내 장부 프로젝트에 skills.sh로 설치하고, 그 폴더 세션이 열릴 때 자동으로 맞춘다
+---
+**As a** 채팅으로 장부를 돌리는 1인 사용자  
+**I want** 엑셀·PDF 같은 문서 스킬을 **내 장부 프로젝트 폴더**에 같이 두고,
+그 프로젝트에서 세션이 열릴 때마다 최신으로 맞추고 싶다  
+**So that** 은행 내보내기·신고서 파일을 읽을 때 설치를 빠뜨리지 않고,
+어제와 다른 옛 스킬에 묶이지 않으며, 장부마다 버전이 따로 맞는다
+
+### 수락 기준
+
+1. 첫 세션(셋업)에서 문서 스킬을 아직 안 깔았으면, **이 장부 폴더**에
+   skills.sh로 까는 방법을 먼저 안내받는다
+2. Claude Code·Cursor·Codex 모두 같은 **프로젝트** skills.sh 설치가 기본이다
+   (홈 전역 `-g`나 호스트 마켓 플러그인이 기본이 아니다)
+3. 그 장부 프로젝트에서 세션을 열면, 프로젝트에 깐 문서 스킬이
+   원격보다 오래됐으면 받아 온다
+4. 갱신에 실패해도 장부 대화는 그대로 이어진다
+5. 장부 플러그인 안에 문서 스킬 원문 폴더가 복사돼 있지 않다
+
+### 추적
+
+- 스펙: [SPEC-document-skills-companion](/docs/agent/document-skills-companion)
+- PRD: [prd-document-skills-companion](/docs/planning/prds/prd-document-skills-companion)
