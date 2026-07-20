@@ -35,8 +35,20 @@ function normalize(url: string) {
   return url.length > 1 && url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
-function isActivePath(href: string, pathname: string) {
-  return normalize(href) === normalize(pathname);
+/** Index page or any detail under that catalog (index-only folders hide children). */
+function isActiveOrUnder(href: string, pathname: string) {
+  const h = normalize(href);
+  const p = normalize(pathname);
+  return p === h || p.startsWith(`${h}/`);
+}
+
+function folderContainsPath(item: PageTree.Folder, pathname: string): boolean {
+  if (item.index?.url && isActiveOrUnder(item.index.url, pathname)) return true;
+  for (const child of item.children) {
+    if (child.type === 'folder' && folderContainsPath(child, pathname)) return true;
+    if (child.type === 'page' && isActiveOrUnder(child.url, pathname)) return true;
+  }
+  return false;
 }
 
 function folderLabel(name: ReactNode): string {
@@ -215,9 +227,11 @@ export function DocsSidebarFolder({
 }) {
   const path = useTreePath();
   const pathname = usePathname();
-  const inPath = path.includes(item);
+  const inTreePath = path.includes(item);
+  const underFolder = folderContainsPath(item, pathname);
+  const inPath = inTreePath || underFolder;
   const label = folderLabel(item.name);
-  const indexActive = item.index ? isActivePath(item.index.url, pathname) : false;
+  const indexActive = item.index ? isActiveOrUnder(item.index.url, pathname) : false;
   const indexOnly = item.children.length === 0 && Boolean(item.index);
 
   return (
