@@ -2,7 +2,7 @@
 title: income list
 description: holiday income list 명령 계약
 type: reference
-summary: 활성 정기수입을 나열한다.
+summary: 활성·시작 예정 정기수입을 나열한다.
 ---
 
 <SpecVersion
@@ -33,7 +33,7 @@ summary: 활성 정기수입을 나열한다.
 <CommandSpec
   command="income list"
   mutates={false}
-  summary="활성 정기수입을 나열한다."
+  summary="활성·시작 예정 정기수입을 나열한다. 시작 예정은 upcoming으로 구분한다."
   signature={`holiday income list`}
   flags={[]}
   exits={[

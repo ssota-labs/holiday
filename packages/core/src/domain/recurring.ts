@@ -129,6 +129,50 @@ export function isActiveOn(
   return r.activeTo === null || date <= r.activeTo;
 }
 
+/**
+ * Can this schedule still emit an occurrence in the open-closed horizon
+ * `(asOf, until]`?
+ *
+ * Cashflow must NOT require `asOf ∈ [activeFrom, activeTo]`. A retainer that
+ * starts next month is invisible today if the input filter asks "are you active
+ * *today*", even though every occurrence after `activeFrom` would pass
+ * `isActiveOn`. The horizon overlap is the right gate; per-occurrence
+ * `isActiveOn` still drops dates before the start.
+ *
+ * Ended on or before `asOf` (`activeTo <= asOf`) cannot produce a later
+ * occurrence, so it is out. See SPEC-recurring-active-window.
+ */
+export function overlapsHorizon(
+  r: { readonly activeFrom: IsoDate; readonly activeTo: IsoDate | null },
+  asOf: IsoDate,
+  until: IsoDate,
+): boolean {
+  if (r.activeFrom > until) return false;
+  if (r.activeTo !== null && r.activeTo <= asOf) return false;
+  return true;
+}
+
+/**
+ * Visible on `income list` / `recurring list`: in today's active window, or
+ * not yet started and not ended. Schedules whose end date is earlier than
+ * `asOf` stay hidden.
+ */
+export function isListedOn(
+  r: { readonly activeFrom: IsoDate; readonly activeTo: IsoDate | null },
+  asOf: IsoDate,
+): boolean {
+  if (r.activeTo !== null && r.activeTo < asOf) return false;
+  return isActiveOn(r, asOf) || r.activeFrom > asOf;
+}
+
+/** Start date is still in the future (and the schedule has not ended). */
+export function isUpcomingOn(
+  r: { readonly activeFrom: IsoDate; readonly activeTo: IsoDate | null },
+  asOf: IsoDate,
+): boolean {
+  return r.activeFrom > asOf && (r.activeTo === null || r.activeTo >= asOf);
+}
+
 export function describeCadence(c: Cadence): string {
   const day = c.dayOfMonth === -1 ? '말일' : `${c.dayOfMonth}일`;
   return c.kind === 'monthly' ? `매월 ${day}` : `매년 ${c.month}월 ${day}`;
