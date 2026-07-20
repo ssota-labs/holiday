@@ -1,0 +1,139 @@
+---
+title: plan-social-insurance-sor
+description: 사회보험 자격·직접 납부 SoR를 도메인·스키마·CLI에 추가한다
+type: guide
+summary: enrollment + contribution 마이그레이션, ADR-011, insurance enrollment/contribution CLI.
+id: plan-social-insurance-sor
+ticker: plan-007
+stage: ready
+changeType: product
+prd: prd-social-insurance-sor
+specs:
+  - SPEC-insurance-enrollment-add
+  - SPEC-insurance-enrollment-list
+  - SPEC-insurance-contribution-add
+  - SPEC-insurance-contribution-list
+  - SPEC-insurance-contribution-show
+stories:
+  - us-social-insurance
+codeAreas:
+  - packages/core
+  - packages/store-sqlite
+  - packages/store-postgres
+  - packages/store-sql
+  - packages/cli
+  - apps/docs
+  - plugins/claude-code
+  - plugins/codex
+related:
+  - /docs/planning/prds/prd-social-insurance-sor
+  - /docs/features/insurance
+  - /docs/spec/cli/insurance
+  - /docs/spec/data-model
+  - /docs/development/adr/adr-011
+---
+
+## 목표
+
+[prd-social-insurance-sor](/docs/planning/prds/prd-social-insurance-sor)의
+**자격 구간**과 **직접 납부 월 금액**을 로컬 장부 SoR로 저장·조회한다.
+직장 공제액은 넣지 않는다 (급여 정산). 요율 추정 없음 (ADR-011).
+
+## 영향 범위
+
+| 영역 | 변경 |
+|---|---|
+| `packages/core` | `domain/insurance-enrollment.ts`, `insurance-contribution.ts` + 테스트 |
+| `packages/store-sqlite` | drizzle + **새 마이그레이션 append** |
+| `packages/store-postgres` | 동일 논리 스키마 |
+| `packages/store-sql` | `LedgerStore` 구현 |
+| `packages/cli` | `insurance enrollment|contribution …` |
+| `apps/docs` | 기능·용어·data-model·CLI·정책 링크 |
+| 플러그인 | SKILL + references |
+
+## 데이터 모델
+
+저널 밖 사실. `txn` / `income_settlement` FK 없음.
+
+### 자격
+
+| 기획 용어 | 저장 |
+|---|---|
+| 자격 구간 | `insurance_enrollment` |
+| 보험 종류 | `scheme` (`health` \| `national_pension`) |
+| 자격 | `status` (`workplace` \| `regional` \| `voluntary`) |
+| 시작일·종료일 | `starts_on` / `ends_on` (NULL = 현재) |
+
+제약:
+
+- `voluntary`는 `national_pension`만
+- 같은 `scheme`에서 열린 구간(날짜 범위) 겹침 거부
+- `ends_on`이 있으면 `starts_on <= ends_on`
+
+### 직접 납부 월 금액
+
+| 기획 용어 | 저장 |
+|---|---|
+| 월 표지 | `insurance_contribution` |
+| 항목 금액 | `insurance_contribution_line` (`kind` × `amount_minor`) |
+| 부과연월 | `year_month` (`YYYY-MM`) |
+| 차수 | `revision` |
+
+```
+kind: national_pension | health_insurance | long_term_care
+```
+
+1차에서 `employment_insurance`는 넣지 않는다 (직접 납부 초점).
+유니크: `(year_month, revision)`. `--amend` → superseded + revision+1.
+라인 최소 1개, kind 중복 금지. 금액 ≥ 0 minor bigint.
+
+자격과 월 금액 **FK 강제 없음** (관측 두 층). 스킬·문서로
+“직접 납부 자격인 달에 contribution을 쓴다”만 안내.
+
+## 구현 순서
+
+1. ADR-011·용어집·data-model
+2. core: enrollment 겹침 검증 + contribution create/amend
+3. 마이그레이션 append (sqlite·postgres)
+4. store + testkit
+5. CLI enrollment add/list, contribution add/list/show
+6. 기능·스펙·플러그인 동기화
+7. POLICY 링크 + `check:rules`
+
+## 검증 계획
+
+### 자동 테스트
+
+- enrollment: 겹침 거부, voluntary×health 거부, 종료일 역전 거부
+- contribution: 빈 라인·kind 중복·amend superseded
+- CLI 라운드트립, 전표 미생성
+
+### 수동 / 기획 체크
+
+1. 건보 직장가입(종료 없음) 등록 → list
+2. 지역가입으로 전환(이전 구간 종료) → list에 두 구간
+3. 지역 달 월 금액 저장 → show
+4. 중복 month 거절, amend 이력
+5. txn 행 수 불변
+
+## 마이그레이션과 호환성
+
+- append-only. 기존 정산·세금 테이블 변경 없음
+- 금액은 기능통화 minor
+
+## 위험과 롤백
+
+| 위험 | 대응 |
+|---|---|
+| 급여 정산과 혼동 | Non-goal: 직장 공제액 미저장. 문서 표로 고정 |
+| 자격 없이 금액만 입력 | 허용(관측). 스킬이 자격 먼저 권고 |
+| 요율 계산 요청 | ADR-011 |
+
+롤백: 새 테이블만 비우면 기능 비활성과 동등. 마이그레이션 파일은 되돌리지 않음.
+
+## 완료 조건
+
+1. PRD 성공 지표 5항 CLI 재현
+2. `pnpm test` · `typecheck` · `check:planning` 통과
+3. `check:skill`이 새 명령 인식
+4. `stage: done` + 릴리스 태그에 CLI/스키마 포함

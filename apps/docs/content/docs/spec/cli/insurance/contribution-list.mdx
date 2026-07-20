@@ -1,0 +1,48 @@
+---
+title: insurance contribution list
+description: holiday insurance contribution list 명령 계약
+type: reference
+summary: 직접 납부 월 고지 표지를 나열한다.
+id: SPEC-insurance-contribution-list
+stage: accepted
+related:
+  - /docs/planning/prds/prd-social-insurance-sor
+  - /docs/features/insurance
+  - /docs/development/plans/plan-social-insurance-sor
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.4.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.4.0',
+      date: '2026-07-20',
+      summary: 'insurance contribution list',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 필터는 [insurance 인덱스](/docs/spec/cli/insurance#insurance-contribution-list)를 본다.
+
+관련 기능: [insurance](/docs/features/insurance)
+
+<CommandSpec
+  command="insurance contribution list"
+  mutates={false}
+  summary="월 고지 표지를 나열한다."
+  signature={`holiday insurance contribution list [--month] [--all]`}
+  flags={[
+    { name: '--month', type: 'YYYY-MM', description: '부과연월 필터' },
+    { name: '--all', type: 'boolean', description: 'superseded 포함' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 2, meaning: '사용법 오류' },
+  ]}
+  example={`holiday insurance contribution list --json`}
+/>
+
+기본은 `status=current`만 반환한다.

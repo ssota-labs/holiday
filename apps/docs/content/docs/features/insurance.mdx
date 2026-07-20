@@ -1,0 +1,66 @@
+---
+title: 사회보험
+description: 자격 이력과 직접 납부 월 금액을 사실로 보관
+type: guide
+summary: 자격은 기간으로, 직접 납부 보험료는 월별로. 요율 추정 없음. 전표·급여 정산과는 별개.
+---
+
+**사회보험 자격**과 직접 내야 하는 달의 **고지 금액**을 장부(로컬 DB)에 남긴다.
+직장 공제(급여 정산)나 통장 전표와는 **다른 기록**이다.
+
+## 두 층
+
+### 자격 구간
+
+| 항목 | 의미 |
+|---|---|
+| 보험 종류 | 건강보험 / 국민연금 |
+| 자격 | 직장가입자 · 지역가입자 · (연금) 임의가입 |
+| 시작일·종료일 | 종료 없음 = 현재까지 |
+| 메모 | 선택 |
+
+직장가입자라 개인 고지가 없어도 구간은 남긴다.
+
+### 직접 납부 월 금액
+
+지역가입·임의가입처럼 **내가 내는 달**에만 적는다.
+
+| 항목 | 의미 |
+|---|---|
+| 부과연월 | `YYYY-MM` |
+| 기록일·차수 | 옮겨 본 날 / 정정 이력 |
+| 항목 금액 | 국민연금 · 건강보험 · 장기요양 등 |
+
+칸·예시는 [prd-social-insurance-sor](/docs/planning/prds/prd-social-insurance-sor)에 있다.
+명령·플래그는 [`insurance`](/docs/spec/cli/insurance) 스펙을 본다.
+
+## 수락 기준
+
+1. 자격 구간을 저장·조회한다. 같은 보험의 열린 구간이 겹치면 거절한다
+2. 자격 변경 시 이전 구간을 닫고 새 구간을 열 수 있다
+3. 직접 납부 월 금액을 한 번에 저장한다
+4. 요율로 금액을 추정하지 않는다 — 고지서 숫자만
+5. 월 금액 정정은 새 차수, 이전은 “대체됨”
+6. 자격·월 금액 저장이 전표를 만들지 않는다
+7. 직장가입자 구간만으로도 자격 이력을 관리할 수 있다
+
+## 스펙
+
+[enrollment add](/docs/spec/cli/insurance#insurance-enrollment-add) ·
+[enrollment list](/docs/spec/cli/insurance#insurance-enrollment-list) ·
+[contribution add](/docs/spec/cli/insurance#insurance-contribution-add) ·
+[contribution list](/docs/spec/cli/insurance#insurance-contribution-list) ·
+[contribution show](/docs/spec/cli/insurance#insurance-contribution-show)
+
+## 스토리
+
+[us-social-insurance](/docs/planning/stories/us-social-insurance)
+
+## 다른 기록과의 관계
+
+| 질문 | 보는 곳 |
+|---|---|
+| 직장·지역 중 무엇이었나 | 자격 구간 |
+| 직접 낸 달 고지액 | 월 금액 |
+| 통장에서 나간 보험료 | 보험 비용·납부 전표 |
+| 급여에서 빠진 4대보험 | [수입 정산](/docs/features/income) |

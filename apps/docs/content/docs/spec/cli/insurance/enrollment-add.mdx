@@ -1,0 +1,54 @@
+---
+title: insurance enrollment add
+description: holiday insurance enrollment add 명령 계약
+type: reference
+summary: 사회보험 자격 구간을 append한다.
+id: SPEC-insurance-enrollment-add
+stage: accepted
+related:
+  - /docs/planning/prds/prd-social-insurance-sor
+  - /docs/features/insurance
+  - /docs/development/plans/plan-social-insurance-sor
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.4.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.4.0',
+      date: '2026-07-20',
+      summary: 'insurance enrollment add — 자격 구간',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 열거·겹침 규칙은 [insurance 인덱스](/docs/spec/cli/insurance#insurance-enrollment-add)를 본다.
+
+관련 기능: [insurance](/docs/features/insurance)
+
+<CommandSpec
+  command="insurance enrollment add"
+  mutates={true}
+  summary="사회보험 자격 구간을 append한다."
+  signature={`holiday insurance enrollment add --scheme --status --from [--to] [--note]`}
+  flags={[
+    { name: '--scheme', type: 'health|national_pension', required: true, description: '보험 종류' },
+    { name: '--status', type: 'workplace|regional|voluntary', required: true, description: '자격' },
+    { name: '--from', type: 'YYYY-MM-DD', required: true, description: '시작일' },
+    { name: '--to', type: 'YYYY-MM-DD', description: '종료일. 생략 시 열린 구간' },
+    { name: '--note', type: 'string' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: 'overlap · invalid_status_for_scheme · LedgerError' },
+    { code: 2, meaning: '사용법 오류' },
+  ]}
+  example={`holiday insurance enrollment add --scheme health --status workplace --from 2025-09-01 --json`}
+/>
+
+- `voluntary`는 `national_pension`만
+- 같은 scheme에서 날짜 구간 겹침 거부
+- 전표를 만들지 않는다

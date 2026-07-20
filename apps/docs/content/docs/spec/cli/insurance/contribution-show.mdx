@@ -1,0 +1,47 @@
+---
+title: insurance contribution show
+description: holiday insurance contribution show 명령 계약
+type: reference
+summary: 한 달 직접 납부 고지 표지와 라인을 반환한다.
+id: SPEC-insurance-contribution-show
+stage: accepted
+related:
+  - /docs/planning/prds/prd-social-insurance-sor
+  - /docs/features/insurance
+  - /docs/development/plans/plan-social-insurance-sor
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.4.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.4.0',
+      date: '2026-07-20',
+      summary: 'insurance contribution show',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 출력은 [insurance 인덱스](/docs/spec/cli/insurance#insurance-contribution-show)를 본다.
+
+관련 기능: [insurance](/docs/features/insurance)
+
+<CommandSpec
+  command="insurance contribution show"
+  mutates={false}
+  summary="한 달 고지 표지와 라인을 반환한다."
+  signature={`holiday insurance contribution show --month [--revision]`}
+  flags={[
+    { name: '--month', type: 'YYYY-MM', required: true, description: '부과연월' },
+    { name: '--revision', type: 'number', description: '생략 시 current' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: 'not_found' },
+    { code: 2, meaning: '사용법 오류' },
+  ]}
+  example={`holiday insurance contribution show --month 2026-03 --json`}
+/>

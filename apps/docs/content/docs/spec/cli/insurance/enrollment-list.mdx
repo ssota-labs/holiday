@@ -1,0 +1,46 @@
+---
+title: insurance enrollment list
+description: holiday insurance enrollment list 명령 계약
+type: reference
+summary: 사회보험 자격 구간을 나열한다.
+id: SPEC-insurance-enrollment-list
+stage: accepted
+related:
+  - /docs/planning/prds/prd-social-insurance-sor
+  - /docs/features/insurance
+  - /docs/development/plans/plan-social-insurance-sor
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.4.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.4.0',
+      date: '2026-07-20',
+      summary: 'insurance enrollment list',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 필터는 [insurance 인덱스](/docs/spec/cli/insurance#insurance-enrollment-list)를 본다.
+
+관련 기능: [insurance](/docs/features/insurance)
+
+<CommandSpec
+  command="insurance enrollment list"
+  mutates={false}
+  summary="자격 구간을 나열한다."
+  signature={`holiday insurance enrollment list [--scheme] [--as-of]`}
+  flags={[
+    { name: '--scheme', type: 'health|national_pension', description: '보험 필터' },
+    { name: '--as-of', type: 'YYYY-MM-DD', description: '이 날짜에 유효한 구간만' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 2, meaning: '사용법 오류' },
+  ]}
+  example={`holiday insurance enrollment list --scheme health --json`}
+/>
