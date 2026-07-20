@@ -2,7 +2,7 @@
 title: plan-scheduled-routines
 description: 여섯 정기 리듬 프롬프트를 스킬에 넣고 셋업이 호스트 도구로 등록하게 한다
 type: guide
-summary: automation·daily/weekly/monthly·setup을 스펙에 맞추고, Claude Code/Codex 등록을 도구로 강제한다. 월간은 말일 마감·1일 브리핑.
+summary: automation·daily/weekly/monthly·setup을 스펙에 맞추고, Claude Code/Codex 등록을 도구로 강제한다. 시작 슬롯은 모두 브리핑.
 id: plan-scheduled-routines
 ticker: plan-008
 stage: ready
@@ -27,18 +27,19 @@ related:
 ## 목표
 
 [prd-scheduled-routines](/docs/planning/prds/prd-scheduled-routines)대로
-매일 저녁 수집·매일 아침 리포트·주 2회·**말일 마감·1일 브리핑**을 문서·스킬에 고정하고,
+매일 저녁 수집·**아침·주간·월간 브리핑**·일요일 밤 정리·**말일 마감**을 문서·스킬에 고정하고,
 셋업 끝에서 Claude Code·Codex 에이전트가 **호스트 스케줄 도구로 직접** 등록하게 한다.
 
-월간은 주간과 같은 축이다: 말일=정리(마감 제안), 1일=브리핑. 27일 예고 슬롯은 쓰지 않는다.
+일·주·월 축은 같다: 정리(저녁 수집 / 일요일 밤 / 말일 마감) vs 브리핑(아침 / 월요일 / 1일).
+ID는 `daily-briefing`·`weekly-briefing`·`monthly-briefing`. 27일 예고 슬롯은 쓰지 않는다.
 
 ## 영향 범위
 
 | 영역 | 변경 |
 |---|---|
 | `plugins/claude-code/skills/holiday-cfo/references/automation.md` | 여섯 주기·프롬프트·호스트별 도구 등록 절차 |
-| `…/workflows/daily.md` | 저녁 수집 / 아침 리포트로 분리 |
-| `…/workflows/weekly.md` | 일요일 밤 / 월요일 아침으로 분리 |
+| `…/workflows/daily.md` | 저녁 수집 / **아침 브리핑** |
+| `…/workflows/weekly.md` | 일요일 밤 / **월요일 아침 브리핑** |
 | `…/workflows/monthly.md` | **말일 마감** / **1일 브리핑** |
 | `…/workflows/setup.md` | “제안만” → 동의 후 도구로 등록·확인 |
 | `plugins/*/skills/holiday-cfo/SKILL.md` | 워크플로 표·색인 문구 |
@@ -51,12 +52,13 @@ codex `references/`는 claude-code 심링크라 한 소스만 고친다.
 
 1. `automation.md`를 SPEC 주기 표·프롬프트 정본·Claude `/schedule`·Codex Automations
    도구 등록으로 교체. “Always ask first”는 유지하되, 동의 후 **직접 등록**을 의무화.
-   월간 ID는 `monthly-close`(말일)·`monthly-briefing`(1일). `monthly-preview` 문구는 제거.
+   시작 슬롯 ID는 `daily-briefing`·`weekly-briefing`·`monthly-briefing`.
+   `daily-report`·`weekly-open`·`monthly-preview` 문구는 제거.
 2. `daily.md` / `weekly.md` / `monthly.md`를 각 2슬롯 절차로 나눈다.
 3. `setup.md` 8번을: 주기 제안 → 동의 → 호스트 도구 호출 → 목록 확인 →
    실패 시 수동 프롬프트 인계 로 바꾼다.
 4. 양쪽 `SKILL.md` 워크플로 표·references 색인을 맞춘다.
-5. 장부 init 템플릿 `AGENTS.md` 리듬 절을 저녁 수집·아침 리포트·주/월 2회로 갱신.
+5. 장부 init 템플릿 `AGENTS.md` 리듬 절을 저녁 수집·아침/주간/월간 브리핑으로 갱신.
 6. `apps/docs` skill 스펙에 이력 한 줄·에이전트 nav에 scheduled-routines 링크.
 7. 사용자-facing 배포는 후속 릴리스 계획으로 버전 bump + `v*` 태그
    (이 구현 PR에 public package version을 넣지 않는다 — 스킬 문구·템플릿만).
@@ -74,9 +76,9 @@ codex `references/`는 claude-code 심링크라 한 소스만 고친다.
 1. scratch 장부 셋업 → 주기 일부만 동의 → Claude Code `/schedule list` 또는
    Codex Scheduled에 동의한 항목만 있는지
 2. 저녁 프롬프트 수동 실행 → 지출 내역(카드·현금·이체) 수집 후 오늘 요약, 내일·주간 전망 없음
-3. 아침 프롬프트 수동 실행 → 새 거래 질문 없이 어제/오늘 이벤트만
+3. 아침 브리핑 프롬프트 수동 실행 → 새 거래 질문 없이 어제/오늘 이벤트만
 4. 말일 프롬프트 → dry-run·제안만, 승인 전 close 없음
-5. 1일 브리핑 → close 시도 없음, 지난달·이번 달 보고만
+5. 1일·월요일 브리핑 → close/지난주 장문 재서술 없음, 보고만
 6. 스케줄 도구 실패 시 수동 프롬프트 인계
 
 ## 마이그레이션과 호환성
