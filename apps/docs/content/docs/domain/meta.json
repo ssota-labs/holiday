@@ -2,7 +2,8 @@
   "title": "도메인",
   "pages": [
     "glossary",
-    "policy"
+    "policy",
+    "cashflow-card-bill"
   ],
   "collapsible": true,
   "defaultOpen": true
