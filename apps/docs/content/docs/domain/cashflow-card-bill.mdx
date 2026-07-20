@@ -40,9 +40,9 @@ related:
 | 제외 | 판별 | 왜 |
 |---|---|---|
 | 카드대금 결제 | 같은 전표가 카드의 결제 통장(funding)을 건드림 | 이미 나갔거나 나갈 결제. 이용이 아님 ([POLICY-004](/docs/domain/policy#POLICY-004)) |
-| 정정 | 전표가 다른 전표를 가리킴 (`corrects_txn_id`) | 과거 실수를 되돌리는 줄. 청구주기 이용이 아님 |
-| 시스템 전표 | `system_kind`가 있음 (`opening_balance` · `closing_entry` · `fx_revaluation`) | 개시·마감·환산. 가맹점 이용이 아님 |
-| 자본 상대 | 카드 밖 다리가 **자본(Equity) 계정뿐** | 개시잔액·수기 정정에 흔함. 이용분으로 보이면 안 됨 |
+| 정정 | 전표가 다른 전표를 가리킴 (`corrects_txn_id`) | 과거 실수를 되돌리는 줄. 청구주기 이용이 아님 ([POLICY-022](/docs/domain/policy#POLICY-022)) |
+| 시스템 전표 | `system_kind`가 있음 (`opening_balance` · `closing_entry` · `fx_revaluation`) | 개시·마감·환산. 가맹점 이용이 아님 ([POLICY-022](/docs/domain/policy#POLICY-022)) |
+| 자본 상대 | 카드 밖 다리가 **자본(Equity) 계정뿐** | 개시잔액·수기 정정에 흔함. 이용분으로 보이면 안 됨 ([POLICY-022](/docs/domain/policy#POLICY-022)) |
 
 환불은 그대로 이용분을 줄인다. 결제와 같은 부호여도 상대가 비용·수익이면
 합에 남긴다 ([POLICY-004](/docs/domain/policy#POLICY-004)).

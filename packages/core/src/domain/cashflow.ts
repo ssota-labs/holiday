@@ -1,4 +1,4 @@
-import type { AccountCode, AccountId, IsoDate } from './account.js';
+import type { AccountCode, AccountId, AccountType, IsoDate } from './account.js';
 import { type CardCycleRule, billingDatesFor, cycleRangeFor, nextDay, upcomingBills } from './billing.js';
 import type { CommodityCode } from './commodity.js';
 import type { LoanScheduleRow } from './loan.js';
@@ -8,7 +8,7 @@ import {
   isActiveOn,
   occurrencesBetween,
 } from './recurring.js';
-import type { TxnId } from './txn.js';
+import type { SystemKind, TxnId } from './txn.js';
 
 /**
  * Cash flow projection.
@@ -37,8 +37,13 @@ export interface ProjectionPosting {
   readonly txnId: TxnId;
   readonly txnDate: IsoDate;
   readonly accountId: AccountId;
+  readonly accountType: AccountType;
   readonly weightMinor: bigint;
   readonly commodity: CommodityCode;
+  /** Non-null: this txn reverses another — not card usage (SPEC-cashflow-card-bill). */
+  readonly correctsTxnId: TxnId | null;
+  /** Non-null: opening / closing / FX — not merchant usage. */
+  readonly systemKind: SystemKind | null;
 }
 
 export interface ProjectedBill {
@@ -65,7 +70,9 @@ export interface ProjectedBill {
  *
  * They are told apart by the other side of the transaction: a payment's counter
  * leg is the funding account, a refund's is an expense. So transactions touching
- * the funding account are excluded, and everything else in the cycle counts.
+ * the funding account are excluded. Corrections, system txns (opening/closing/FX),
+ * and equity-only counterparts are excluded too — those are bookkeeping, not
+ * merchant usage (SPEC-cashflow-card-bill / POLICY-022).
  */
 export function projectCardBills(opts: {
   readonly cards: readonly CardForProjection[];
@@ -82,19 +89,29 @@ export function projectCardBills(opts: {
     else byTxn.set(p.txnId, [p]);
   }
 
+  const excludeFromBill = (txnId: TxnId, cardAccountId: AccountId, fundingAccountId: AccountId): boolean => {
+    const legs = byTxn.get(txnId) ?? [];
+    const head = legs[0];
+    if (!head) return true;
+    if (head.correctsTxnId != null) return true;
+    if (head.systemKind != null) return true;
+    if (legs.some((p) => p.accountId === fundingAccountId)) return true;
+    // Manual opening / untitled corrections often hit Equity without a corrects link.
+    const outside = legs.filter((p) => p.accountId !== cardAccountId);
+    if (outside.length > 0 && outside.every((p) => p.accountType === 'equity')) return true;
+    return false;
+  };
+
   const out: ProjectedBill[] = [];
 
   for (const card of cards) {
-    const isPayment = (txnId: TxnId): boolean =>
-      (byTxn.get(txnId) ?? []).some((p) => p.accountId === card.fundingAccountId);
-
     for (const bill of upcomingBills(today, until, card.rule)) {
       const range = cycleRangeFor(bill.closeDate, card.rule);
       let sum = 0n;
       for (const p of postings) {
         if (p.accountId !== card.accountId) continue;
         if (p.txnDate < range.from || p.txnDate > range.to) continue;
-        if (isPayment(p.txnId)) continue;
+        if (excludeFromBill(p.txnId, card.accountId, card.fundingAccountId)) continue;
         sum += p.weightMinor;
       }
       // Card postings are negative (they increase what you owe), so the cash

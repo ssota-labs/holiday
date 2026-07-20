@@ -58,6 +58,7 @@ import {
   type TaxValueKind,
   type ValidatedTaxReturn,
   Txn,
+  type SystemKind,
   type TxnId,
   type TxnQuery,
   type TxnStatus,
@@ -240,6 +241,8 @@ interface PostingRowRaw {
   memo: string | null;
   txn_date: string;
   txn_status: string;
+  system_kind: string | null;
+  corrects_txn_id: string | null;
 }
 
 class SqlUow implements LedgerUow {
@@ -454,7 +457,8 @@ class SqlUow implements LedgerUow {
     const t = await this.db.get<TxnRow>('SELECT * FROM txn WHERE id = ? AND sealed = 1', id);
     if (!t) return null;
     const rows = await this.db.all<PostingRowRaw>(
-      `SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status
+      `SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status,
+              t.system_kind, t.corrects_txn_id
        FROM posting p JOIN account a ON a.id = p.account_id JOIN txn t ON t.id = p.txn_id
        WHERE p.txn_id = ? ORDER BY p.seq`,
       id,
@@ -488,7 +492,8 @@ class SqlUow implements LedgerUow {
     const idParams: SqlValue[] = q.accountIds ? [...q.accountIds] : [];
 
     const rows = await this.db.all<PostingRowRaw>(
-      `SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status
+      `SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status,
+              t.system_kind, t.corrects_txn_id
        FROM posting p JOIN txn t ON t.id = p.txn_id JOIN account a ON a.id = p.account_id
        WHERE ${where}${accountWhere}${idWhere}
        ORDER BY t.date, t.id, p.seq`,
@@ -501,6 +506,8 @@ class SqlUow implements LedgerUow {
         txnId: r.txn_id as TxnId,
         txnDate: r.txn_date as IsoDate,
         txnStatus: r.txn_status as TxnStatus,
+        correctsTxnId: (r.corrects_txn_id as TxnId | null) ?? null,
+        systemKind: (r.system_kind as SystemKind | null) ?? null,
         seq: toInt(r.seq),
         accountId: r.account_id as AccountId,
         accountCode: r.account_code as AccountCode,
@@ -1598,7 +1605,8 @@ class SqlUow implements LedgerUow {
       };
     }
     const rows = await this.db.all<PostingRowRaw>(
-      `SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status
+      `SELECT p.*, a.code AS account_code, t.date AS txn_date, t.status AS txn_status,
+              t.system_kind, t.corrects_txn_id
        FROM posting p JOIN account a ON a.id = p.account_id JOIN txn t ON t.id = p.txn_id
        WHERE p.txn_id = ? ORDER BY p.seq`,
       txnId,

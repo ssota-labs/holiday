@@ -116,12 +116,17 @@ export async function projectCashflow(
 
   const postings: ProjectionPosting[] = [];
   for await (const p of r.streamPostings({ from: addMonthsIso(asOf, POSTING_WINDOW_MONTHS) })) {
+    const account = byId.get(p.accountId);
+    if (!account) continue;
     postings.push({
       txnId: p.txnId,
       txnDate: p.txnDate,
       accountId: p.accountId,
+      accountType: account.type,
       weightMinor: p.weightMinor,
       commodity: p.commodity,
+      correctsTxnId: p.correctsTxnId,
+      systemKind: p.systemKind,
     });
   }
 

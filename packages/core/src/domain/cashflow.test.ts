@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AccountCode, AccountId, IsoDate } from './account.js';
+import type { AccountCode, AccountId, AccountType, IsoDate } from './account.js';
 import type { CommodityCode } from './commodity.js';
-import type { TxnId } from './txn.js';
+import type { SystemKind, TxnId } from './txn.js';
 import {
   type CardForProjection,
   type ProjectionPosting,
@@ -14,7 +14,15 @@ import {
 const CARD = 'card-acct' as AccountId;
 const BANK = 'bank-acct' as AccountId;
 const DINING = 'dining-acct' as AccountId;
+const EQUITY = 'equity-acct' as AccountId;
 const KRW = 'KRW' as CommodityCode;
+
+const TYPE: Record<string, AccountType> = {
+  [CARD]: 'liability',
+  [BANK]: 'asset',
+  [DINING]: 'expense',
+  [EQUITY]: 'equity',
+};
 
 // 전월 15일~당월 14일 사용, 익월 1일 결제.
 const card: CardForProjection = {
@@ -26,20 +34,29 @@ const card: CardForProjection = {
 };
 
 let n = 0;
-const txn = (date: string, legs: readonly [AccountId, bigint][]): ProjectionPosting[] => {
+const txn = (
+  date: string,
+  legs: readonly [AccountId, bigint][],
+  meta: { readonly correctsTxnId?: TxnId | null; readonly systemKind?: SystemKind | null } = {},
+): ProjectionPosting[] => {
   const txnId = `T${n++}` as TxnId;
   return legs.map(([accountId, weightMinor]) => ({
     txnId,
     txnDate: date as IsoDate,
     accountId,
+    accountType: TYPE[accountId] ?? 'expense',
     weightMinor,
     commodity: KRW,
+    correctsTxnId: meta.correctsTxnId ?? null,
+    systemKind: meta.systemKind ?? null,
   }));
 };
 
 const purchase = (date: string, amount: bigint) => txn(date, [[DINING, amount], [CARD, -amount]]);
 const refund = (date: string, amount: bigint) => txn(date, [[DINING, -amount], [CARD, amount]]);
 const payment = (date: string, amount: bigint) => txn(date, [[CARD, amount], [BANK, -amount]]);
+/** Card − / Equity + — double-posting undo or untitled opening, without a corrects link. */
+const equityOffset = (date: string, amount: bigint) => txn(date, [[CARD, -amount], [EQUITY, amount]]);
 
 describe('projectCardBills', () => {
   it('puts a purchase on the bill that actually takes the cash', () => {
@@ -118,6 +135,63 @@ describe('projectCardBills', () => {
     });
     expect(bills).toHaveLength(1);
   });
+
+  it('excludes a linked correction from the card bill regardless of counter-leg', () => {
+    // POLICY-022: corrects_txn_id means bookkeeping undo, not merchant usage.
+    const original = purchase('2026-07-17', 50000n);
+    const correction = txn(
+      '2026-07-18',
+      [[CARD, 50000n], [DINING, -50000n]],
+      { correctsTxnId: original[0]!.txnId },
+    );
+    const bills = projectCardBills({
+      cards: [card],
+      postings: [...original, ...correction],
+      today: '2026-07-17' as IsoDate,
+      until: '2026-12-31' as IsoDate,
+    });
+    expect(bills).toHaveLength(1);
+    expect(bills[0]!.amountMinor).toBe(50000n);
+  });
+
+  it('excludes equity-only counter-leg postings from the card bill', () => {
+    // Repro: cycle has only Card − / Equity + (double-post undo without corrects link).
+    // That must not invent a multi-million bill line.
+    const bills = projectCardBills({
+      cards: [card],
+      postings: equityOffset('2026-07-18', 3_500_000n),
+      today: '2026-07-17' as IsoDate,
+      until: '2026-12-31' as IsoDate,
+    });
+    expect(bills).toHaveLength(0);
+  });
+
+  it('keeps merchant usage when an equity-only correction sits in the same cycle', () => {
+    const bills = projectCardBills({
+      cards: [card],
+      postings: [...purchase('2026-07-17', 12500n), ...equityOffset('2026-07-18', 3_500_000n)],
+      today: '2026-07-17' as IsoDate,
+      until: '2026-12-31' as IsoDate,
+    });
+    expect(bills).toHaveLength(1);
+    expect(bills[0]!.amountMinor).toBe(12500n);
+  });
+
+  it('excludes opening_balance system postings from the card bill', () => {
+    const opening = txn(
+      '2026-07-15',
+      [[CARD, -2_000_000n], [EQUITY, 2_000_000n]],
+      { systemKind: 'opening_balance' },
+    );
+    const bills = projectCardBills({
+      cards: [card],
+      postings: [...opening, ...purchase('2026-07-17', 12500n)],
+      today: '2026-07-17' as IsoDate,
+      until: '2026-12-31' as IsoDate,
+    });
+    expect(bills).toHaveLength(1);
+    expect(bills[0]!.amountMinor).toBe(12500n);
+  });
 });
 
 describe('cashRunway', () => {
@@ -137,12 +211,14 @@ describe('cashRunway', () => {
   });
 
   it('groups multiple cards landing on the same day', () => {
-    const other: CardForProjection = { ...card, accountId: 'card2' as AccountId, accountCode: 'Liabilities:Card:KB' as AccountCode, label: 'KB' };
+    const card2 = 'card2' as AccountId;
+    TYPE[card2] = 'liability';
+    const other: CardForProjection = { ...card, accountId: card2, accountCode: 'Liabilities:Card:KB' as AccountCode, label: 'KB' };
     const bills = projectCardBills({
       cards: [card, other],
       postings: [
         ...purchase('2026-07-10', 100n),
-        ...txn('2026-07-10', [[DINING, 200n], ['card2' as AccountId, -200n]]),
+        ...txn('2026-07-10', [[DINING, 200n], [card2, -200n]]),
       ],
       today: '2026-07-17' as IsoDate,
       until: '2026-12-31' as IsoDate,

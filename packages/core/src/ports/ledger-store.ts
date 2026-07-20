@@ -19,7 +19,7 @@ import type {
   TaxReturnHeader,
   ValidatedTaxReturn,
 } from '../domain/tax.js';
-import type { TxnId, ValidatedTxn } from '../domain/txn.js';
+import type { SystemKind, TxnId, ValidatedTxn } from '../domain/txn.js';
 
 /**
  * A card's billing rule, attached to its liability account.
@@ -108,6 +108,10 @@ export interface PostingRow {
   readonly txnId: TxnId;
   readonly txnDate: IsoDate;
   readonly txnStatus: TxnStatus;
+  /** From the txn row — needed so cashflow can drop corrections without N+1 getTxn. */
+  readonly correctsTxnId: TxnId | null;
+  /** From the txn row — opening / closing / FX are not card usage. */
+  readonly systemKind: SystemKind | null;
   readonly seq: number;
   readonly accountId: AccountId;
   readonly accountCode: AccountCode;
