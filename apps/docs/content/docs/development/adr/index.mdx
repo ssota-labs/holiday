@@ -7,19 +7,19 @@ summary: ADR 목록. accepted / locked / superseded.
 
 | | ID | Status | Date | 제목 |
 |---|---|---|---|---|
-| <DocKind kind="ADR" ticker="adr-001" /> | [adr-001](/docs/development/adr/adr-001) | `locked` | 2026-07-17 | 환율이 아니라 상대금액으로 균형을 잡는다 |
-| <DocKind kind="ADR" ticker="adr-002" /> | [adr-002](/docs/development/adr/adr-002) | `accepted` | 2026-07-17 | JSONL 저널을 버리고 SQLite를 원장으로, 감사는 해시 체인으로 |
-| <DocKind kind="ADR" ticker="adr-003" /> | [adr-003](/docs/development/adr/adr-003) | `accepted` | 2026-07-17 | 이율은 스케일드 bigint. float도 decimal.js도 아니다 |
-| <DocKind kind="ADR" ticker="adr-004" /> | [adr-004](/docs/development/adr/adr-004) | `accepted` | 2026-07-17 | 현금은 계정 플래그다. 코드 접두어가 아니다 |
-| <DocKind kind="ADR" ticker="adr-005" /> | [adr-005](/docs/development/adr/adr-005) | `accepted` | 2026-07-17 | 스키마는 drizzle-kit. 쿼리는 우리 것 |
-| <DocKind kind="ADR" ticker="adr-006" /> | [adr-006](/docs/development/adr/adr-006) | `accepted` | 2026-07-17 | 스토어는 하나. 방언만 갈라진다 |
-| <DocKind kind="ADR" ticker="adr-007" /> | [adr-007](/docs/development/adr/adr-007) | `accepted` | 2026-07-18 | CLI는 npm으로 배포한다. 플러그인에 번들을 커밋하지 않는다 |
-| <DocKind kind="ADR" ticker="adr-008" /> | [adr-008](/docs/development/adr/adr-008) | `accepted` | 2026-07-18 | 로컬 dash는 조종석, 배포 dash는 사진 |
-| <DocKind kind="ADR" ticker="adr-009" /> | [adr-009](/docs/development/adr/adr-009) | `accepted` | 2026-07-18 | BYOC 멀티타깃 — 벤더 SDK는 템플릿에만, D1은 적합성 전 engine 금지 |
-| <DocKind kind="ADR" ticker="adr-010" /> | [adr-010](/docs/development/adr/adr-010) | `accepted` | 2026-07-19 | 세금 신고서는 저널 밖 사실 테이블 — 세액 공식 없음 |
+| <DocKind kind="ADR" ticker="adr-001" /> | [adr-001](/docs/development/adr/adr-001) | <AdrStatus status="locked" /> | 2026-07-17 | 환율이 아니라 상대금액으로 균형을 잡는다 |
+| <DocKind kind="ADR" ticker="adr-002" /> | [adr-002](/docs/development/adr/adr-002) | <AdrStatus status="accepted" /> | 2026-07-17 | JSONL 저널을 버리고 SQLite를 원장으로, 감사는 해시 체인으로 |
+| <DocKind kind="ADR" ticker="adr-003" /> | [adr-003](/docs/development/adr/adr-003) | <AdrStatus status="accepted" /> | 2026-07-17 | 이율은 스케일드 bigint. float도 decimal.js도 아니다 |
+| <DocKind kind="ADR" ticker="adr-004" /> | [adr-004](/docs/development/adr/adr-004) | <AdrStatus status="accepted" /> | 2026-07-17 | 현금은 계정 플래그다. 코드 접두어가 아니다 |
+| <DocKind kind="ADR" ticker="adr-005" /> | [adr-005](/docs/development/adr/adr-005) | <AdrStatus status="accepted" /> | 2026-07-17 | 스키마는 drizzle-kit. 쿼리는 우리 것 |
+| <DocKind kind="ADR" ticker="adr-006" /> | [adr-006](/docs/development/adr/adr-006) | <AdrStatus status="accepted" /> | 2026-07-17 | 스토어는 하나. 방언만 갈라진다 |
+| <DocKind kind="ADR" ticker="adr-007" /> | [adr-007](/docs/development/adr/adr-007) | <AdrStatus status="accepted" /> | 2026-07-18 | CLI는 npm으로 배포한다. 플러그인에 번들을 커밋하지 않는다 |
+| <DocKind kind="ADR" ticker="adr-008" /> | [adr-008](/docs/development/adr/adr-008) | <AdrStatus status="accepted" /> | 2026-07-18 | 로컬 dash는 조종석, 배포 dash는 사진 |
+| <DocKind kind="ADR" ticker="adr-009" /> | [adr-009](/docs/development/adr/adr-009) | <AdrStatus status="accepted" /> | 2026-07-18 | BYOC 멀티타깃 — 벤더 SDK는 템플릿에만, D1은 적합성 전 engine 금지 |
+| <DocKind kind="ADR" ticker="adr-010" /> | [adr-010](/docs/development/adr/adr-010) | <AdrStatus status="accepted" /> | 2026-07-19 | 세금 신고서는 저널 밖 사실 테이블 — 세액 공식 없음 |
 
 ## 상태
 
-- `accepted`: 바뀔 수 있음
-- `locked`: 과거를 다시 쓰는 마이그레이션 없이는 못 바꿈
-- `superseded`: 다른 결정으로 대체됨
+- <AdrStatus status="accepted" /> 바뀔 수 있음
+- <AdrStatus status="locked" /> 과거를 다시 쓰는 마이그레이션 없이는 못 바꿈
+- <AdrStatus status="superseded" /> 다른 결정으로 대체됨
