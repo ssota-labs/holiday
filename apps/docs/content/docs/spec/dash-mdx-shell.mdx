@@ -1,0 +1,165 @@
+---
+title: Dash fumadocs 셸
+description: 사용자 dash는 fumadocs 앱. MDX·대시보드 라우트·API·UI/블록 등록. json-render 없음.
+type: reference
+summary: fumadocs 테마 + UI 셸 + blocks를 MDX/대시보드에 등록. 숫자는 API·bake.
+id: SPEC-dash-mdx-shell
+stage: accepted
+related:
+  - /docs/planning/prds/prd-dash-mdx-shell
+  - /docs/development/adr/adr-008
+  - /docs/development/adr/adr-012
+  - /docs/features/dash
+---
+
+## 범위
+
+사용자 프로젝트의 **장부 화면(dash)** 작성·렌더·데이터 계약이다. 원장 스키마와
+복식 규칙은 바꾸지 않는다.
+
+이 스펙이 고르는 것:
+
+1. `holiday dash init`이 까는 앱은 **fumadocs(Next)** 다. 기본 컴포넌트·테마를
+   따른다.
+2. **`@holiday-cfo/ui` 셸**과 **`@holiday-cfo/blocks`** 를 대시보드 라우트에서
+   쓰고, 둘 다 MDX 전역 레지스트리에 등록한다.
+3. **json-render / `spec.json` 은 제거**한다. 배치는 MDX와 대시보드 페이지다.
+4. 숫자는 **API**(로컬: CLI 셸)와 배포용 **bake 스냅샷**으로만 읽는다.
+5. [ADR-008](/docs/development/adr/adr-008) 조종석/사진 경계를 유지한다.
+
+대상 cwd: 플러그인·CLI를 쓰는 **유저 장부 프로젝트**의 `dash/`(또는
+`--dir`). `apps/docs` 모노레포 문서 사이트는 범위 밖이다.
+
+## 인터페이스
+
+### 앱 골격 (템플릿)
+
+| 층 | 경로(예시) | 역할 |
+|---|---|---|
+| fumadocs content | `content/**/*.mdx` | 메모·회고·기록 |
+| 대시보드 라우트 | `app/dashboard/page.tsx` (또는 동등) | 숫자 조종석 |
+| MDX 레지스트리 | `components/mdx.tsx`의 `getMDXComponents()` | 닫힌 태그 어휘 |
+| UI 셸 | `@holiday-cfo/ui` | 대시보드·등록된 UI 칸 |
+| 가계부 블록 | `@holiday-cfo/blocks` | CashRunway 등 |
+| API | `app/api/holiday/*/route.ts` | CLI 프록시 (로컬) |
+| bake 스냅샷 | `data/ledger.json` (또는 동등) | 배포 사진·오프라인 읽기 |
+
+패키지 pin: `@holiday-cfo/blocks` / `@holiday-cfo/ui` / CLI는 **같은 릴리스
+버전**. fumadocs·Next는 템플릿이 고정 범위를 선언한다(문서 사이트와 메이저를
+맞출 필요는 있으나, 사용자 dash가 `apps/docs`를 의존하지는 않는다).
+
+### MDX 등록 어휘
+
+페이지는 칸을 import하지 않는다. 레지스트리 이름만 태그로 쓴다.
+
+| 그룹 | 등록 대상 | 비고 |
+|---|---|---|
+| fumadocs 기본 | Card, Cards, Callout, Files 등 템플릿이 고른 기본 집합 | fumadocs-ui 기본 |
+| UI 셸 칸 | 대시보드에 필요한 `@holiday-cfo/ui` 일부 (예: Card, Table, Badge…) | 금액 prop 없음. 레이아웃·표기용 |
+| 가계부 블록 | `CashRunway`, `BalanceTable`, `LedgerHealth`, `CategorizeQueue`, `Note`, `Row` 등 | 필터 prop만. 금액·action prop 없음 |
+
+목록 밖 타입은 **렌더하지 않고 실패**한다(조용한 빈 카드 금지).
+
+문서 전용 블록(`Rule`, `SchemaTable`, `CommandSpec` 등)은 장부 dash 어휘에
+넣지 않는다.
+
+### CLI (관찰 가능)
+
+| 명령 | 역할 |
+|---|---|
+| `holiday dash init [--dir dash]` | fumadocs 템플릿 복사, 패키지 버전 pin, 첫 bake, API 스캐폴드 |
+| `holiday dash data [--dir dash] [--until <date>]` | 스냅샷만 다시 bake. **사용자 MDX·대시보드 소스를 덮지 않는다** |
+
+### API (로컬 조종석)
+
+로컬 `next dev` / Node 서버가 있을 때만 동작한다. dash는 `ledger.db`를 직접
+열지 않는다. 라우트는 CLI를 셸로 부른다.
+
+| 사람이 읽는 이름 | 경로(예시) | 방법 | CLI 대응(개념) |
+|---|---|---|---|
+| 숫자 묶음 | `/api/holiday/snapshot` | GET | bake와 동등한 잔액+현금흐름+건강 (또는 bake 파일 제공) |
+| 분류 대기 목록 | `/api/holiday/pending` | GET | review list + account list |
+| 분류 승인 | `/api/holiday/categorize` | POST | review accept (+ 선택 rule add) 후 재 bake |
+
+응답 금액 필드는 **십진 문자열**. JSON `number`로 보내지 않는다.
+
+배포(정적 export 또는 서버 없는 호스트): 쓰기 API 없음. 읽기는 bake 스냅샷.
+분류 클릭은 실패·안내로 접힌다.
+
+### 대시보드 라우트
+
+- fumadocs 테마 안에서 **별 페이지**로 둔다 (사이드바 링크 또는 동등 네비).
+- UI 셸 + 가계부 블록으로 구성한다. json-render `Renderer` / `spec.json` 없음.
+- 데이터는 로컬에서 API, 배포에서 bake 스냅샷(동일 스키마).
+
+## 동작
+
+1. **메모 읽기:** content MDX → 레지스트리 칸만 마운트 → 가계부 블록은
+   API/스냅샷 컨텍스트에서 숫자 읽기.
+2. **대시보드:** `/dashboard`가 블록을 배치하고 동일 데이터 소스를 쓴다.
+3. **갱신:** 장부 변경 후 `holiday dash data` 및/또는 API가 CLI를 다시 호출.
+   MDX 트리는 그대로.
+4. **로컬 쓰기:** 분류 대기 클릭 → POST API → CLI → 재 bake/재조회.
+5. **배포:** 읽기 전용. 쓰기 실패가 보안 경계.
+
+### 숫자 리터럴 금지 (강제)
+
+- 가계부 블록·UI 칸 props에 금액 필드가 없다 (타입/스키마로 거부).
+- 본문 마크다운의 숫자 문장은 **메모**일 뿐 스냅샷과 동기화되지 않는다.
+- 에이전트 안내: 금액을 페이지에 다시 쓰지 말 것.
+- (구현 단계 권장) 본문 통화형 리터럴 lint 경고. 수락 최소선은 **권위 있는
+  숫자 UI로 승격되지 않는 것**.
+
+## 데이터와 불변식
+
+1. 스냅샷 bake·snapshot API는 한 묶음으로 잔액·현금흐름·verify를 읽는다
+   (`unitOfWork` 동등).
+2. `cashflow.gaps`(부족 구간)를 화면이 버려 “여유 있음”으로 보이게 하지 않는다.
+3. dash는 `ledger.db`를 직접 열지 않는다.
+4. CLI와 `@holiday-cfo/blocks` / `@holiday-cfo/ui` 버전은 같은 릴리스 태그로 pin.
+5. 템플릿에 `@json-render/*` 의존이 없다. blocks 패키지도 json-render를
+   런타임 필수로 남기지 않는다(제거 또는 내부 잔존 금지 — 관찰 가능 계약은
+   “MDX/대시보드 등록 컴포넌트”).
+
+스냅샷 필드(사람 이름 → 코드 키):
+
+| 이름 | 키 | 예시 |
+|---|---|---|
+| 잔액 목록 | `balances[]` | `accountCode`, `commodity`, `unitsMinor`, `weightMinor` (문자열) |
+| 현금흐름 | `cashflow` | opening, runway rows, **gaps** |
+| 건강 | `health` | verify + audit head |
+| 구운 시각 | `bakedAt` | ISO 시각 |
+
+## 오류
+
+| 상황 | 기대 |
+|---|---|
+| 알 수 없는 MDX 칸 타입 | 빌드 또는 런타임에서 실패(빈 카드 아님) |
+| 스냅샷/API 없음 | init/data 또는 로컬 서버를 안내하는 명확한 실패 |
+| 배포에서 분류 클릭 | 쓰기 불가 안내, 장부 불변 |
+| 구 `spec.json`만 있는 폴더 | 마이그레이션 안내(MDX/대시보드로 이전). json-render 경로 없음 |
+
+## 호환성
+
+- **채택:** fumadocs 사용자 dash + MDX + 대시보드 라우트 + API + UI/블록 등록.
+- **제거:** json-render 기반 `spec.json` 정본 배치.
+- **이전:** 기존 vinext+spec.json dash는 한 메이저(또는 명시 마이그레이션)에서
+  새 템플릿으로 안내·변환한다. 세부 단계는 구현계획.
+- **배포:** Next 정적 export 또는 동등한 읽기 전용 산출을 목표로 한다. Codex
+  Sites/vinext 전제였던 경로는 이 스펙에서 **재정의**한다 — 사진은 “서버 없는
+  읽기 전용 산출물”이면 되고, vinext 런타임 유지가 필수는 아니다.
+
+관련 결정: [ADR-012](/docs/development/adr/adr-012),
+[ADR-008](/docs/development/adr/adr-008).
+
+## 수락 기준
+
+1. `dash init`으로 만든 폴더가 fumadocs 테마로 뜨고, 메모 MDX + `/dashboard`가
+   있다
+2. `dash data`는 스냅샷만 갱신하고 사용자 MDX·대시보드 소스를 덮지 않는다
+3. MDX에 등록된 UI 칸·가계부 블록 태그가 렌더된다
+4. 허용 목록 밖 칸 타입은 실패한다
+5. 칸 props로 금액을 넣을 수 없다
+6. 로컬에서 snapshot/pending/categorize API → CLI 경로가 동작한다
+7. 정적/배포본에서 쓰기가 되지 않는다
+8. 템플릿·blocks 관찰 가능 경로에 json-render/`spec.json` 정본이 없다

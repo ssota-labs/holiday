@@ -1,0 +1,31 @@
+---
+title: us-dash-mdx-pages
+id: us-dash-mdx-pages
+ticker: us-019
+description: fumadocs 화면에서 메모는 MDX로, 숫자는 대시보드·API로 보고 싶다
+type: conceptual
+summary: 화면 앱은 fumadocs. 기록은 페이지로 쓰고, 금액은 API로만 읽는다
+---
+
+**As a** 채팅으로 장부를 돌리는 1인 사용자  
+**I want** 장부 옆 화면을 fumadocs 앱으로 두고, 메모·회고는 마크다운 페이지로
+쓰며, 금액·잔액·현금 여유는 대시보드 페이지와 API로만 보고 싶다  
+**So that** 내 상황을 글로 남겨 두면서도, 어제 적은 금액이 오늘 숫자처럼
+남아 나를 속이지 않는다
+
+### 수락 기준
+
+1. 화면 폴더를 처음 만들면 fumadocs 기본 테마·컴포넌트로 앱이 열린다
+2. 메모 페이지를 두 개 이상 두면 서로 구분해 본다
+3. 숫자 대시보드 페이지에서 현금 여유·잔액·장부 건강·분류 대기를 본다
+4. 메모 MDX에 허용된 UI 칸·가계부 블록을 태그로 넣을 수 있다
+5. 페이지 본문에 금액을 직접 적어도 그 값이 “현재 잔액”처럼 권위 있게
+   렌더되지 않는다
+6. 장부를 바꾼 뒤 숫자만 다시 불러오면, 페이지 글은 그대로이고 숫자만 바뀐다
+7. 로컬 화면에서는 분류 대기 건을 클릭으로 처리하고, 배포 화면에서는
+   쓰기가 되지 않는다
+
+### 추적
+
+- 스펙: [SPEC-dash-mdx-shell](/docs/spec/dash-mdx-shell)
+- PRD: [prd-dash-mdx-shell](/docs/planning/prds/prd-dash-mdx-shell)

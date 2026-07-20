@@ -6,7 +6,8 @@
     "prd-tax-return-sor",
     "prd-document-skills-companion",
     "prd-social-insurance-sor",
-    "prd-scheduled-routines"
+    "prd-scheduled-routines",
+    "prd-dash-mdx-shell"
   ],
   "collapsible": true,
   "defaultOpen": false,

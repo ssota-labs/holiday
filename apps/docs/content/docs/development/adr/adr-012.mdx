@@ -1,0 +1,43 @@
+---
+title: ADR-012
+description: 사용자 dash는 fumadocs 앱. json-render는 제거하고 MDX·API·UI/블록 등록으로 간다
+type: decision
+summary: dash init이 fumadocs를 깐다. 테마·기본 칸 + UI 셸 + 가계부 블록. 숫자는 API.
+---
+
+<Decision
+  id="ADR-012"
+  title="사용자 dash는 fumadocs 앱. json-render 제거, MDX·API·UI/블록 등록"
+  status="accepted"
+  date="2026-07-20"
+  rejected={[
+    { option: 'vinext + json-render spec.json을 유지하고 MDX 계약만 흉내 내기', because: '다중 페이지·메모·테마·등록 모델을 반만 가져오면 작성 표면이 둘로 갈린다. 사용자가 원하는 것은 문서 사이트와 같은 fumadocs 앱을 장부 폴더에 두는 것이다.' },
+    { option: 'holiday 모노레포 apps/docs에 장부 대시보드를 합치기', because: '문서 사이트는 정책·기획 SSOT다. 사용자 장부·메모·스냅샷과 섞이면 경계가 무너진다. 대상은 유저 프로젝트의 dash/ 폴더다.' },
+    { option: 'MDX만 쓰고 fumadocs 테마·기본 컴포넌트를 쓰지 않기', because: '페이지·네비·기본 칸 경험이 문서 사이트와 어긋나 에이전트·사용자 모두 두 문법을 배운다.' },
+    { option: 'UI 셸(@holiday-cfo/ui) 없이 fumadocs만으로 대시보드를 그리기', because: '숫자 대시보드와 기존 블록이 쓰던 셸·톤이 끊긴다. fumadocs 테마를 따르되 대시보드 라우트에서는 UI 셸과 블록을 그대로 쓴다.' },
+    { option: '브라우저가 ledger.db를 직접 열기', because: 'CLI가 지키던 균형·감사 규칙을 우회한다. 읽기·쓰기는 API가 CLI를 셸로 부른다.' },
+    { option: 'MDX/블록에 금액 prop 허용', because: '닫힌 카탈로그가 막던 “틀린 숫자가 그럴듯한 카드로 보이는” 사고를 다시 연다.' },
+    { option: 'json-render 카탈로그에 actions로 쓰기 노출', because: '에이전트가 레이아웃에 쓰기 액션을 넣게 된다. 쓰기는 블록 안 fetch·로컬 API로만, 작성 어휘에는 올리지 않는다.' },
+  ]}
+>
+사용자 장부 프로젝트의 `dash/`는 **fumadocs(Next) 앱**이다.
+`holiday dash init`이 그 템플릿을 복사한다. holiday 레포의 `apps/docs`와는
+별 제품 표면이다.
+
+채택:
+
+1. **fumadocs 기본 컴포넌트·테마** — 메모·기록 MDX 페이지의 기본 경험
+2. **`@holiday-cfo/ui` 셸** — 대시보드 라우트와 블록이 기존처럼 사용. MDX
+   레지스트리에도 필요한 UI 칸을 등록해 메모 페이지에서 태그로 쓴다
+3. **`@holiday-cfo/blocks` 가계부 블록** — 대시보드와 MDX 양쪽에 등록.
+   금액·쓰기 액션 prop 없음
+4. **json-render / `spec.json` 제거** — 배치는 MDX와 대시보드 페이지
+5. **API** — 로컬에서 잔액·현금흐름·건강·분류 대기를 CLI 경유 API로 읽기/쓰기.
+   배포 사진은 bake된 읽기 전용 데이터 + 쓰기 API 없음
+6. **대시보드 별 라우트** — 숫자 조종석은 `/dashboard`(또는 동등). 메모는
+   content MDX 트리
+
+[ADR-008](/docs/development/adr/adr-008)의 로컬 조종석 / 배포 사진 경계는
+그대로다. Vision의 “웹 대시보드를 제품으로” 거부와도 맞다 — 본체는 CLI,
+화면은 스냅샷·기록 보조다.
+</Decision>

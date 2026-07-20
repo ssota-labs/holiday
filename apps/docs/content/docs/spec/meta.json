@@ -3,7 +3,8 @@
   "pages": [
     "cli",
     "data-model",
-    "system-model"
+    "system-model",
+    "dash-mdx-shell"
   ],
   "collapsible": true,
   "defaultOpen": false

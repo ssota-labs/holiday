@@ -12,7 +12,8 @@
     "close",
     "cashflow",
     "tax",
-    "insurance"
+    "insurance",
+    "dash"
   ],
   "collapsible": true,
   "defaultOpen": false

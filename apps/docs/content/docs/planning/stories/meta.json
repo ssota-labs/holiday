@@ -18,7 +18,8 @@
     "us-tax-return",
     "us-document-skills-companion",
     "us-social-insurance",
-    "us-scheduled-routines"
+    "us-scheduled-routines",
+    "us-dash-mdx-pages"
   ],
   "collapsible": true,
   "defaultOpen": false,

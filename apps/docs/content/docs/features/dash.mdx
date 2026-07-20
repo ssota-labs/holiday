@@ -1,0 +1,41 @@
+---
+title: 대시보드
+description: 장부 옆 fumadocs 화면. 메모는 MDX, 숫자는 API·스냅샷.
+type: guide
+summary: 라이브 웹앱이 아니다. fumadocs 앱이 스냅샷·API로 숫자를 보여 준다.
+related:
+  - /docs/planning/prds/prd-dash-mdx-shell
+  - /docs/spec/dash-mdx-shell
+  - /docs/development/adr/adr-008
+  - /docs/development/adr/adr-012
+---
+
+장부 화면(dash)은 사용자 프로젝트 폴더에 깔리는 **fumadocs 앱**이다.
+장부 DB를 브라우저가 직접 열지 않는다. 숫자는 CLI가 구운 스냅샷과 로컬 API로
+읽고, 메모·기록은 MDX 페이지로 남긴다.
+
+## 역할 분리
+
+| 누가 | 무엇을 |
+|---|---|
+| CLI (`dash data`) / 로컬 API | 잔액·현금 여유·장부 건강·분류 대기 |
+| 사용자/에이전트 | MDX 메모·대시보드 배치 |
+| fumadocs 테마 | 페이지·네비·기본 칸 |
+| UI 셸 + 가계부 블록 | 숫자 표·런웨이·분류 대기 (MDX에도 등록) |
+
+로컬 미리보기에서만 분류 대기를 클릭으로 처리한다. 배포본은 읽기 전용이다
+([ADR-008](/docs/development/adr/adr-008)).
+
+## 작성 모델 (계획)
+
+vinext + JSON 배치 렌더러를 거두고, fumadocs 템플릿 + MDX + 대시보드
+라우트로 옮긴다
+([prd-dash-mdx-shell](/docs/planning/prds/prd-dash-mdx-shell),
+[ADR-012](/docs/development/adr/adr-012)).
+
+## 하지 않는 것
+
+- 라이브 잔액 구독
+- 화면에서 세액·할부 공식 재계산
+- 페이지에 금액을 다시 적어 “현재 잔액”처럼 보이게 하기
+- 모노레포 문서 사이트와 장부 화면을 한 앱으로 합치기

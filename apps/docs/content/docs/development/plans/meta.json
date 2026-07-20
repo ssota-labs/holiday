@@ -8,7 +8,8 @@
     "plan-cashflow-card-bill-non-usage",
     "plan-recurring-future-active-from",
     "plan-social-insurance-sor",
-    "plan-scheduled-routines"
+    "plan-scheduled-routines",
+    "plan-dash-mdx-shell"
   ],
   "collapsible": true,
   "defaultOpen": false,
