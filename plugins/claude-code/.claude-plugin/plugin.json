@@ -1,7 +1,7 @@
 {
   "name": "holiday-cfo",
   "displayName": "holiday-cfo",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A double-entry CFO ledger for one person: 가계부, 부채, 자산, 현금흐름, 수입 정산(원천징수·4대보험).",
   "author": {
     "name": "ssota-labs",
