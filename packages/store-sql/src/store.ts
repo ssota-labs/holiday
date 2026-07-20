@@ -57,6 +57,20 @@ import {
   type TaxReturnStatus,
   type TaxValueKind,
   type ValidatedTaxReturn,
+  type InsuranceEnrollment,
+  type InsuranceEnrollmentId,
+  type InsuranceEnrollmentStatus,
+  type InsuranceScheme,
+  type ValidatedInsuranceEnrollment,
+  enrollmentCovers,
+  type InsuranceContributionDetail,
+  type InsuranceContributionHeader,
+  type InsuranceContributionId,
+  type InsuranceContributionKind,
+  type InsuranceContributionStatus,
+  type ValidatedInsuranceContribution,
+  type YearMonth,
+  headerOfInsuranceContribution,
   Txn,
   type SystemKind,
   type TxnId,
@@ -1123,6 +1137,199 @@ class SqlUow implements LedgerUow {
     return headerOf(v);
   }
 
+  async listInsuranceEnrollments(filter?: {
+    scheme?: InsuranceScheme;
+    asOf?: IsoDate;
+  }): Promise<readonly InsuranceEnrollment[]> {
+    const where: string[] = [];
+    const params: SqlValue[] = [];
+    if (filter?.scheme) {
+      where.push('scheme = ?');
+      params.push(filter.scheme);
+    }
+    const sql =
+      `SELECT * FROM insurance_enrollment` +
+      (where.length > 0 ? ` WHERE ${where.join(' AND ')}` : '') +
+      ` ORDER BY scheme, starts_on, created_at`;
+    const rows = await this.db.all<InsuranceEnrollmentRowRaw>(sql, ...params);
+    let mapped = rows.map(mapInsuranceEnrollment);
+    if (filter?.asOf) {
+      const asOf = filter.asOf;
+      mapped = mapped.filter((e) => enrollmentCovers(e, asOf));
+    }
+    return mapped;
+  }
+
+  async addInsuranceEnrollment(v: ValidatedInsuranceEnrollment): Promise<InsuranceEnrollment> {
+    if (v.closeId !== null && v.closeEndsOn !== null) {
+      const prev = await this.db.get<InsuranceEnrollmentRowRaw>(
+        'SELECT * FROM insurance_enrollment WHERE id = ?',
+        v.closeId,
+      );
+      if (!prev) {
+        throw new Error(`holiday: cannot close missing enrollment ${v.closeId}`);
+      }
+      if (prev.ends_on !== null) {
+        throw new Error(`holiday: enrollment ${v.closeId} is already closed`);
+      }
+      if (prev.scheme !== v.scheme) {
+        throw new Error(`holiday: close target scheme does not match`);
+      }
+      await this.db.run(
+        `UPDATE insurance_enrollment SET ends_on = ? WHERE id = ?`,
+        v.closeEndsOn,
+        v.closeId,
+      );
+    }
+
+    await this.db.run(
+      `INSERT INTO insurance_enrollment (
+         id, scheme, status, starts_on, ends_on, note, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      v.id,
+      v.scheme,
+      v.status,
+      v.startsOn,
+      v.endsOn,
+      v.note,
+      v.createdAt,
+    );
+    await this.#appendAudit('insurance_enrollment_add', v.id, {
+      scheme: v.scheme,
+      status: v.status,
+      startsOn: v.startsOn,
+      endsOn: v.endsOn,
+      closeId: v.closeId,
+      closeEndsOn: v.closeEndsOn,
+    });
+    return {
+      id: v.id,
+      scheme: v.scheme,
+      status: v.status,
+      startsOn: v.startsOn,
+      endsOn: v.endsOn,
+      note: v.note,
+      createdAt: v.createdAt,
+    };
+  }
+
+  async listInsuranceContributions(filter?: {
+    yearMonth?: YearMonth;
+    includeSuperseded?: boolean;
+  }): Promise<readonly InsuranceContributionHeader[]> {
+    const where: string[] = [];
+    const params: SqlValue[] = [];
+    if (filter?.yearMonth) {
+      where.push('year_month = ?');
+      params.push(filter.yearMonth);
+    }
+    if (!filter?.includeSuperseded) {
+      where.push(`status = 'current'`);
+    }
+    const sql =
+      `SELECT * FROM insurance_contribution` +
+      (where.length > 0 ? ` WHERE ${where.join(' AND ')}` : '') +
+      ` ORDER BY year_month DESC, revision DESC`;
+    const rows = await this.db.all<InsuranceContributionRowRaw>(sql, ...params);
+    return rows.map(mapInsuranceContributionHeader);
+  }
+
+  async getInsuranceContribution(query: {
+    yearMonth: YearMonth;
+    revision?: number;
+  }): Promise<InsuranceContributionDetail | null> {
+    let row: InsuranceContributionRowRaw | undefined;
+    if (query.revision !== undefined) {
+      row = await this.db.get<InsuranceContributionRowRaw>(
+        `SELECT * FROM insurance_contribution WHERE year_month = ? AND revision = ?`,
+        query.yearMonth,
+        query.revision,
+      );
+    } else {
+      row = await this.db.get<InsuranceContributionRowRaw>(
+        `SELECT * FROM insurance_contribution WHERE year_month = ? AND status = 'current'`,
+        query.yearMonth,
+      );
+    }
+    if (!row) return null;
+    const lines = await this.#insuranceContributionLines(row.id);
+    return { ...mapInsuranceContributionHeader(row), lines };
+  }
+
+  async #insuranceContributionLines(
+    contributionId: string,
+  ): Promise<InsuranceContributionDetail['lines']> {
+    return (
+      await this.db.all<{
+        kind: string;
+        amount_minor: bigint;
+      }>(
+        'SELECT * FROM insurance_contribution_line WHERE contribution_id = ? ORDER BY kind',
+        contributionId,
+      )
+    ).map((r) => ({
+      kind: r.kind as InsuranceContributionKind,
+      amountMinor: toBigInt(r.amount_minor),
+    }));
+  }
+
+  async addInsuranceContribution(
+    v: ValidatedInsuranceContribution,
+  ): Promise<InsuranceContributionHeader> {
+    if (v.supersedeId) {
+      const prev = await this.db.get<InsuranceContributionRowRaw>(
+        'SELECT * FROM insurance_contribution WHERE id = ?',
+        v.supersedeId,
+      );
+      if (!prev) {
+        throw new Error(`holiday: cannot supersede missing contribution ${v.supersedeId}`);
+      }
+      if (prev.status !== 'current') {
+        throw new Error(`holiday: contribution ${v.supersedeId} is not current`);
+      }
+      if (prev.year_month !== v.yearMonth) {
+        throw new Error(`holiday: supersede target does not match year_month`);
+      }
+      await this.db.run(
+        `UPDATE insurance_contribution SET status = 'superseded' WHERE id = ?`,
+        v.supersedeId,
+      );
+    }
+
+    await this.db.run(
+      `INSERT INTO insurance_contribution (
+         id, year_month, recorded_on, revision, status, commodity,
+         note, source_path, source_sha256, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      v.id,
+      v.yearMonth,
+      v.recordedOn,
+      v.revision,
+      v.status,
+      v.commodity,
+      v.note,
+      v.sourcePath,
+      v.sourceSha256,
+      v.createdAt,
+    );
+    for (const line of v.lines) {
+      await this.db.run(
+        `INSERT INTO insurance_contribution_line (contribution_id, kind, amount_minor)
+         VALUES (?, ?, ?)`,
+        v.id,
+        line.kind,
+        line.amountMinor,
+      );
+    }
+    await this.#appendAudit('insurance_contribution_add', v.id, {
+      yearMonth: v.yearMonth,
+      revision: v.revision,
+      lines: v.lines.length,
+      supersedeId: v.supersedeId,
+    });
+    return headerOfInsuranceContribution(v);
+  }
+
   async listLoans(): Promise<readonly LoanWithSchedule[]> {
     const loans = await this.db.all<LoanRowRaw>('SELECT * FROM loan ORDER BY account_id');
     // Sequential, not Promise.all: on SQLite the driver is one connection and
@@ -1839,6 +2046,56 @@ function mapTaxReturnHeader(r: TaxReturnRowRaw): TaxReturnHeader {
     filedOn: r.filed_on as IsoDate,
     revision: toInt(r.revision),
     status: r.status as TaxReturnStatus,
+    commodity: r.commodity as CommodityCode,
+    note: r.note,
+    sourcePath: r.source_path,
+    sourceSha256: r.source_sha256,
+    createdAt: r.created_at,
+  };
+}
+
+interface InsuranceEnrollmentRowRaw {
+  id: string;
+  scheme: string;
+  status: string;
+  starts_on: string;
+  ends_on: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+function mapInsuranceEnrollment(r: InsuranceEnrollmentRowRaw): InsuranceEnrollment {
+  return {
+    id: r.id as InsuranceEnrollmentId,
+    scheme: r.scheme as InsuranceScheme,
+    status: r.status as InsuranceEnrollmentStatus,
+    startsOn: r.starts_on as IsoDate,
+    endsOn: r.ends_on as IsoDate | null,
+    note: r.note,
+    createdAt: r.created_at,
+  };
+}
+
+interface InsuranceContributionRowRaw {
+  id: string;
+  year_month: string;
+  recorded_on: string;
+  revision: bigint;
+  status: string;
+  commodity: string;
+  note: string | null;
+  source_path: string | null;
+  source_sha256: string | null;
+  created_at: string;
+}
+
+function mapInsuranceContributionHeader(r: InsuranceContributionRowRaw): InsuranceContributionHeader {
+  return {
+    id: r.id as InsuranceContributionId,
+    yearMonth: r.year_month as YearMonth,
+    recordedOn: r.recorded_on as IsoDate,
+    revision: toInt(r.revision),
+    status: r.status as InsuranceContributionStatus,
     commodity: r.commodity as CommodityCode,
     note: r.note,
     sourcePath: r.source_path,

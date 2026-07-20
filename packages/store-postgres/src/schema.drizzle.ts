@@ -462,6 +462,90 @@ export const taxReturnLine = pgTable(
   ],
 );
 
+/**
+ * Social-insurance enrollment interval (직장/지역/임의가입).
+ * Not journal — no txn FK. See ADR-011 / POLICY-023.
+ */
+export const insuranceEnrollment = pgTable(
+  'insurance_enrollment',
+  {
+    id: text('id').primaryKey(),
+    scheme: text('scheme').notNull(),
+    status: text('status').notNull(),
+    startsOn: text('starts_on').notNull(),
+    endsOn: text('ends_on'),
+    note: text('note'),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    index('insurance_enrollment_by_scheme').on(t.scheme),
+    index('insurance_enrollment_by_starts').on(t.startsOn),
+    check('insurance_enrollment_scheme_enum', sql`${t.scheme} IN ('health','national_pension')`),
+    check(
+      'insurance_enrollment_status_enum',
+      sql`${t.status} IN ('workplace','regional','voluntary')`,
+    ),
+    check(
+      'insurance_enrollment_voluntary_pension',
+      sql`NOT (${t.status} = 'voluntary' AND ${t.scheme} != 'national_pension')`,
+    ),
+    check(
+      'insurance_enrollment_date_order',
+      sql`${t.endsOn} IS NULL OR ${t.startsOn} <= ${t.endsOn}`,
+    ),
+  ],
+);
+
+/**
+ * Direct-pay social-insurance contribution for a calendar month.
+ * Workplace withholdings stay on income_settlement. ADR-011 / POLICY-023.
+ */
+export const insuranceContribution = pgTable(
+  'insurance_contribution',
+  {
+    id: text('id').primaryKey(),
+    yearMonth: text('year_month').notNull(),
+    recordedOn: text('recorded_on').notNull(),
+    revision: integer('revision').notNull(),
+    status: text('status').notNull(),
+    commodity: text('commodity')
+      .notNull()
+      .references(() => commodity.code),
+    note: text('note'),
+    sourcePath: text('source_path'),
+    sourceSha256: text('source_sha256'),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    uniqueIndex('insurance_contribution_unique').on(t.yearMonth, t.revision),
+    uniqueIndex('insurance_contribution_one_current')
+      .on(t.yearMonth)
+      .where(sql`${t.status} = 'current'`),
+    index('insurance_contribution_by_month').on(t.yearMonth),
+    check('insurance_contribution_status_enum', sql`${t.status} IN ('current','superseded')`),
+    check('insurance_contribution_revision_positive', sql`${t.revision} >= 1`),
+  ],
+);
+
+export const insuranceContributionLine = pgTable(
+  'insurance_contribution_line',
+  {
+    contributionId: text('contribution_id')
+      .notNull()
+      .references(() => insuranceContribution.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    amountMinor: bigint('amount_minor', { mode: 'bigint' }).notNull(),
+  },
+  (t) => [
+    primaryKey({ name: 'insurance_contribution_line_pk', columns: [t.contributionId, t.kind] }),
+    check(
+      'insurance_contribution_line_kind_enum',
+      sql`${t.kind} IN ('national_pension','health_insurance','long_term_care')`,
+    ),
+    check('insurance_contribution_line_amount_nonneg', sql`${t.amountMinor} >= 0`),
+  ],
+);
+
 export const fxRate = pgTable(
   'fx_rate',
   {

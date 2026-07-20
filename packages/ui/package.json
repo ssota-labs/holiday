@@ -1,6 +1,6 @@
 {
   "name": "@holiday-cfo/ui",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit"

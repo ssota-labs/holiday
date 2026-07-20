@@ -19,7 +19,21 @@ import type {
   TaxReturnHeader,
   ValidatedTaxReturn,
 } from '../domain/tax.js';
+import type {
+  InsuranceEnrollmentFields,
+  InsuranceScheme,
+  ValidatedInsuranceEnrollment,
+} from '../domain/insurance-enrollment.js';
+import type {
+  InsuranceContributionDetail,
+  InsuranceContributionHeader,
+  ValidatedInsuranceContribution,
+  YearMonth,
+} from '../domain/insurance-contribution.js';
 import type { SystemKind, TxnId, ValidatedTxn } from '../domain/txn.js';
+
+/** Enrollment row as stored (no close staging fields). */
+export type InsuranceEnrollment = Omit<InsuranceEnrollmentFields, 'closeId' | 'closeEndsOn'>;
 
 /**
  * A card's billing rule, attached to its liability account.
@@ -251,6 +265,20 @@ export interface LedgerRead {
     revision?: number;
   }): Promise<TaxReturnDetail | null>;
 
+  listInsuranceEnrollments(filter?: {
+    scheme?: InsuranceScheme;
+    asOf?: IsoDate;
+  }): Promise<readonly InsuranceEnrollment[]>;
+
+  listInsuranceContributions(filter?: {
+    yearMonth?: YearMonth;
+    includeSuperseded?: boolean;
+  }): Promise<readonly InsuranceContributionHeader[]>;
+  getInsuranceContribution(query: {
+    yearMonth: YearMonth;
+    revision?: number;
+  }): Promise<InsuranceContributionDetail | null>;
+
   listLoans(): Promise<readonly LoanWithSchedule[]>;
   getLoan(accountId: AccountId): Promise<LoanWithSchedule | null>;
 
@@ -385,6 +413,16 @@ export interface LedgerUow extends LedgerRead {
    * When `v.supersedeId` is set, marks that row superseded in the same transaction.
    */
   addTaxReturn(v: ValidatedTaxReturn): Promise<TaxReturnHeader>;
+  /**
+   * Append a validated enrollment. When `v.closeId` is set, closes that row
+   * (sets ends_on) in the same transaction before insert.
+   */
+  addInsuranceEnrollment(v: ValidatedInsuranceEnrollment): Promise<InsuranceEnrollment>;
+  /**
+   * Append a validated contribution (header + lines) atomically.
+   * When `v.supersedeId` is set, marks that row superseded in the same transaction.
+   */
+  addInsuranceContribution(v: ValidatedInsuranceContribution): Promise<InsuranceContributionHeader>;
   /** Replaces the loan and its whole schedule — a forecast is allowed to change. */
   upsertLoan(loan: Loan, rows: readonly LoanScheduleRow[]): Promise<void>;
 
