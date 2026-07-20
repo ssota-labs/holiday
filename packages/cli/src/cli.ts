@@ -31,6 +31,8 @@ import {
   addMonthsIso,
   assertCadence,
   describeCadence,
+  isListedOn,
+  isUpcomingOn,
   type TxnId,
   WELL_KNOWN_COMMODITIES,
   accountTypeOf,
@@ -673,31 +675,42 @@ recurring
 
 recurring
   .command('list')
-  .description('active recurring expenses')
+  .description('active and upcoming recurring expenses')
   .action(async () => {
     const ws = requireWorkspace();
     const config = readConfig(ws);
     const store = await openLedger(ws);
     const now = assertIsoDate(today());
     const result = await store.read(async (r) => {
-      const items = await r.listRecurring({ activeOn: now });
+      const items = (await r.listRecurring()).filter((i) => isListedOn(i, now));
       const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
-      return items.map((i) => ({ item: i, funding: accounts.get(i.fundingAccountId)?.code ?? '?' }));
+      return items.map((i) => ({
+        item: i,
+        funding: accounts.get(i.fundingAccountId)?.code ?? '?',
+        upcoming: isUpcomingOn(i, now),
+      }));
     });
     await store.close();
 
     if (jsonMode()) {
-      return out(result.map(({ item }) => ({ ...item, amountMinor: item.amountMinor.toString() })));
-    }
-    let monthly = 0n;
-    for (const { item, funding } of result) {
-      if (item.cadence.kind === 'monthly') monthly += item.amountMinor;
-      note(
-        `${item.label.padEnd(20)} ${amounts.format({ minor: item.amountMinor, commodity: item.commodity }).padStart(10)} ` +
-          `${describeCadence(item.cadence).padEnd(14)} ${funding}`,
+      return out(
+        result.map(({ item, upcoming }) => ({
+          ...item,
+          amountMinor: item.amountMinor.toString(),
+          upcoming,
+        })),
       );
     }
-    if (result.length === 0) return note('no active recurring expenses.');
+    let monthly = 0n;
+    for (const { item, funding, upcoming } of result) {
+      if (item.cadence.kind === 'monthly') monthly += item.amountMinor;
+      const tag = upcoming ? `  시작 예정 ${item.activeFrom}` : '';
+      note(
+        `${item.label.padEnd(20)} ${amounts.format({ minor: item.amountMinor, commodity: item.commodity }).padStart(10)} ` +
+          `${describeCadence(item.cadence).padEnd(14)} ${funding}${tag}`,
+      );
+    }
+    if (result.length === 0) return note('활성·시작 예정 정기지출이 없습니다.');
     note('');
     note(`월 합계: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
   });
@@ -771,35 +784,43 @@ income
 
 income
   .command('list')
-  .description('active recurring incomes')
+  .description('active and upcoming recurring incomes')
   .action(async () => {
     const ws = requireWorkspace();
     const config = readConfig(ws);
     const store = await openLedger(ws);
     const now = assertIsoDate(today());
     const result = await store.read(async (r) => {
-      const items = await r.listRecurringIncome({ activeOn: now });
+      const items = (await r.listRecurringIncome()).filter((i) => isListedOn(i, now));
       const accounts = new Map((await r.listAccounts()).map((a) => [a.id, a]));
       return items.map((i) => ({
         item: i,
         deposit: accounts.get(i.depositAccountId)?.code ?? '?',
         cash: accounts.get(i.depositAccountId)?.cash ?? false,
+        upcoming: isUpcomingOn(i, now),
       }));
     });
     await store.close();
 
     if (jsonMode()) {
-      return out(result.map(({ item }) => ({ ...item, amountMinor: item.amountMinor.toString() })));
-    }
-    let monthly = 0n;
-    for (const { item, deposit, cash } of result) {
-      if (item.cadence.kind === 'monthly') monthly += item.amountMinor;
-      note(
-        `${item.label.padEnd(20)} ${amounts.format({ minor: item.amountMinor, commodity: item.commodity }).padStart(10)} ` +
-          `${describeCadence(item.cadence).padEnd(14)} → ${deposit}${cash ? '' : '  ⚠ not --cash'}`,
+      return out(
+        result.map(({ item, upcoming }) => ({
+          ...item,
+          amountMinor: item.amountMinor.toString(),
+          upcoming,
+        })),
       );
     }
-    if (result.length === 0) return note('no active recurring incomes.');
+    let monthly = 0n;
+    for (const { item, deposit, cash, upcoming } of result) {
+      if (item.cadence.kind === 'monthly') monthly += item.amountMinor;
+      const tag = upcoming ? `  시작 예정 ${item.activeFrom}` : '';
+      note(
+        `${item.label.padEnd(20)} ${amounts.format({ minor: item.amountMinor, commodity: item.commodity }).padStart(10)} ` +
+          `${describeCadence(item.cadence).padEnd(14)} → ${deposit}${cash ? '' : '  ⚠ not --cash'}${tag}`,
+      );
+    }
+    if (result.length === 0) return note('활성·시작 예정 정기수입이 없습니다.');
     note('');
     note(`월 합계: ${amounts.format({ minor: monthly, commodity: config.functionalCurrency })} ${config.functionalCurrency}`);
   });

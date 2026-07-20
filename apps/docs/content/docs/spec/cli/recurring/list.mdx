@@ -2,7 +2,7 @@
 title: recurring list
 description: holiday recurring list 명령 계약
 type: reference
-summary: 활성 정기지출을 나열한다.
+summary: 활성·시작 예정 정기지출을 나열한다.
 ---
 
 <SpecVersion
@@ -27,7 +27,7 @@ summary: 활성 정기지출을 나열한다.
 <CommandSpec
   command="recurring list"
   mutates={false}
-  summary="활성 정기지출을 나열한다."
+  summary="활성·시작 예정 정기지출을 나열한다. 시작 예정은 upcoming으로 구분한다."
   signature={`holiday recurring list`}
   flags={[]}
   exits={[

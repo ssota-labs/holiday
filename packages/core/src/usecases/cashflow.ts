@@ -2,6 +2,7 @@ import {
   cashRunway,
   type CommodityCode,
   type IsoDate,
+  overlapsHorizon,
   type ProjectedOutflow,
   projectCardBills,
   projectInstallments,
@@ -140,8 +141,14 @@ export async function projectCashflow(
     months: i.plan.months,
     rows: i.rows,
   }));
-  const recurring = await r.listRecurring({ activeOn: asOf });
-  const recurringIncomes = await r.listRecurringIncome({ activeOn: asOf });
+  // Include schedules whose start is still in the future: the horizon may still
+  // contain their first occurrence. `activeOn: asOf` would drop them entirely
+  // (SPEC-recurring-active-window). Per-occurrence `isActiveOn` keeps pre-start
+  // cadence days out of the runway.
+  const recurring = (await r.listRecurring()).filter((x) => overlapsHorizon(x, asOf, until));
+  const recurringIncomes = (await r.listRecurringIncome()).filter((x) =>
+    overlapsHorizon(x, asOf, until),
+  );
   const loans = (await r.listLoans()).map((l) => ({
     accountId: l.loan.accountId,
     fundingAccountId: l.loan.fundingAccountId,

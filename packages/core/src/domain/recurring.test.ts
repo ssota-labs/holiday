@@ -11,7 +11,10 @@ import {
   type RecurringIncome,
   assertCadence,
   describeCadence,
+  isListedOn,
+  isUpcomingOn,
   occurrencesBetween,
+  overlapsHorizon,
 } from './recurring.js';
 
 const d = (s: string) => s as IsoDate;
@@ -184,6 +187,18 @@ describe('projectRecurring', () => {
     expect(rows.map((r) => r.occurredOn)).toEqual(['2026-07-25', '2026-08-25']);
   });
 
+  it('projects only post-start occurrences when activeFrom is still in the future', () => {
+    // SPEC-recurring-active-window: today=7/20, start=8/25 → 7/25 out, 8/25·9/25 in.
+    const futureRent: RecurringExpense = { ...rent, activeFrom: d('2026-08-25') };
+    const rows = projectRecurring({
+      recurring: [futureRent],
+      cardRules,
+      today: d('2026-07-20'),
+      until: d('2026-09-30'),
+    });
+    expect(rows.map((r) => r.occurredOn)).toEqual(['2026-08-25', '2026-09-25']);
+  });
+
   it('excludes a card charge whose payment lands past the horizon', () => {
     // Charged 9/17 → paid 11/1. Asking about October must not show it.
     const rows = projectRecurring({
@@ -253,6 +268,68 @@ describe('projectRecurringIncome', () => {
       until: d('2026-12-31'),
     });
     expect(rows.map((r) => r.paymentDate)).toEqual(['2026-07-25', '2026-08-25']);
+  });
+
+  it('projects only post-start occurrences when activeFrom is still in the future', () => {
+    // SPEC-recurring-active-window: start on first deposit day, do not pull it forward.
+    const retainer: RecurringIncome = { ...paycheck, label: '외주비', activeFrom: d('2026-08-25') };
+    const rows = projectRecurringIncome({
+      incomes: [retainer],
+      today: d('2026-07-20'),
+      until: d('2026-09-30'),
+    });
+    expect(rows.map((r) => r.paymentDate)).toEqual(['2026-08-25', '2026-09-25']);
+  });
+});
+
+describe('overlapsHorizon', () => {
+  const window = { activeFrom: d('2026-08-25'), activeTo: null as IsoDate | null };
+
+  it('includes a future start that still falls inside the forecast until', () => {
+    expect(overlapsHorizon(window, d('2026-07-20'), d('2026-12-31'))).toBe(true);
+  });
+
+  it('excludes a start that is past the forecast until', () => {
+    expect(overlapsHorizon(window, d('2026-07-20'), d('2026-08-01'))).toBe(false);
+  });
+
+  it('excludes a schedule that ended on or before asOf', () => {
+    expect(
+      overlapsHorizon({ activeFrom: d('2020-01-01'), activeTo: d('2026-07-20') }, d('2026-07-20'), d('2026-12-31')),
+    ).toBe(false);
+    expect(
+      overlapsHorizon({ activeFrom: d('2020-01-01'), activeTo: d('2026-07-19') }, d('2026-07-20'), d('2026-12-31')),
+    ).toBe(false);
+  });
+
+  it('keeps a schedule that ends after asOf', () => {
+    expect(
+      overlapsHorizon({ activeFrom: d('2020-01-01'), activeTo: d('2026-07-21') }, d('2026-07-20'), d('2026-12-31')),
+    ).toBe(true);
+  });
+});
+
+describe('isListedOn / isUpcomingOn', () => {
+  it('lists active and upcoming schedules, hides ended ones', () => {
+    const asOf = d('2026-07-20');
+    const active = { activeFrom: d('2020-01-01'), activeTo: null };
+    const upcoming = { activeFrom: d('2026-08-25'), activeTo: null };
+    const ended = { activeFrom: d('2020-01-01'), activeTo: d('2026-07-19') };
+
+    expect(isListedOn(active, asOf)).toBe(true);
+    expect(isListedOn(upcoming, asOf)).toBe(true);
+    expect(isListedOn(ended, asOf)).toBe(false);
+
+    expect(isUpcomingOn(active, asOf)).toBe(false);
+    expect(isUpcomingOn(upcoming, asOf)).toBe(true);
+    expect(isUpcomingOn(ended, asOf)).toBe(false);
+  });
+
+  it('treats a schedule ending today as still listed (not upcoming)', () => {
+    const asOf = d('2026-07-20');
+    const endingToday = { activeFrom: d('2020-01-01'), activeTo: d('2026-07-20') };
+    expect(isListedOn(endingToday, asOf)).toBe(true);
+    expect(isUpcomingOn(endingToday, asOf)).toBe(false);
   });
 });
 
