@@ -1,0 +1,11 @@
+{
+  "title": "insurance",
+  "pages": [
+    "enrollment-add",
+    "enrollment-list",
+    "contribution-add",
+    "contribution-list",
+    "contribution-show"
+  ],
+  "pagesIndex": "index"
+}

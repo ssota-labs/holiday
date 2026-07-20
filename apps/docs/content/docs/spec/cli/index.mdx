@@ -104,5 +104,10 @@ summary: 전역 --json, stderr 에러 봉투, exit code가 계약이다.
 | [`tax return add`](/docs/spec/cli/tax#tax-return-add) | yes | 관측된 세금 신고서 헤더·라인을 SoR에 append한다. 세액 공식 없음. |
 | [`tax return list`](/docs/spec/cli/tax#tax-return-list) | no | 저장된 세금 신고서 헤더를 나열한다. |
 | [`tax return show`](/docs/spec/cli/tax#tax-return-show) | no | 한 건의 신고서 헤더와 라인을 반환한다. |
+| [`insurance enrollment add`](/docs/spec/cli/insurance#insurance-enrollment-add) | yes | 사회보험 자격 구간을 append한다. |
+| [`insurance enrollment list`](/docs/spec/cli/insurance#insurance-enrollment-list) | no | 자격 구간을 나열한다. |
+| [`insurance contribution add`](/docs/spec/cli/insurance#insurance-contribution-add) | yes | 직접 납부 월 고지를 SoR에 append한다. 요율 추정 없음. |
+| [`insurance contribution list`](/docs/spec/cli/insurance#insurance-contribution-list) | no | 직접 납부 월 고지 표지를 나열한다. |
+| [`insurance contribution show`](/docs/spec/cli/insurance#insurance-contribution-show) | no | 한 달 고지 표지와 라인을 반환한다. |
 | [`verify`](/docs/spec/cli/verify) | no | 원장 불변식과 감사 해시 체인을 검사한다. |
 | [`checkpoint`](/docs/spec/cli/checkpoint) | yes | SQLite WAL을 ledger.db로 fold한다. (스냅샷 checkpoint와 무관) |

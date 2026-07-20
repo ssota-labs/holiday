@@ -1,0 +1,173 @@
+---
+title: insurance
+description: 사회보험 자격·직접 납부 월 금액 명령 계약
+type: reference
+summary: enrollment · contribution — 자격 구간과 직접 납부 고지
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.4.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.4.0',
+      date: '2026-07-20',
+      summary: 'insurance enrollment/contribution — 자격·직접 납부 SoR',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 구현 전에는 계약 초안이다.
+
+관련 기능: [insurance](/docs/features/insurance)
+
+| 명령 | mutates | 요약 |
+|---|---|---|
+| [`insurance enrollment add`](#insurance-enrollment-add) | yes | 사회보험 자격 구간을 append한다. |
+| [`insurance enrollment list`](#insurance-enrollment-list) | no | 자격 구간을 나열한다. |
+| [`insurance contribution add`](#insurance-contribution-add) | yes | 직접 납부 월 고지를 append한다. 요율 추정 없음. |
+| [`insurance contribution list`](#insurance-contribution-list) | no | 월 고지 표지를 나열한다. |
+| [`insurance contribution show`](#insurance-contribution-show) | no | 한 달 고지 표지·라인을 반환한다. |
+
+## Schemes / enrollment status
+
+| `--scheme` | 의미 | 허용 `--status` |
+|---|---|---|
+| `health` | 건강보험 (장기요양 자격은 건보에 종속) | `workplace` · `regional` |
+| `national_pension` | 국민연금 | `workplace` · `regional` · `voluntary` |
+
+| `--status` | 의미 |
+|---|---|
+| `workplace` | 직장가입자 — 보통 개인 고지 없음 |
+| `regional` | 지역가입자 — 직접 납부 |
+| `voluntary` | 임의가입 (국민연금만) — 직접 납부 |
+
+## Contribution kinds
+
+| line `kind` | 의미 |
+|---|---|
+| `national_pension` | 국민연금 |
+| `health_insurance` | 건강보험 |
+| `long_term_care` | 장기요양 |
+
+## insurance enrollment add
+
+<CommandSpec
+  command="insurance enrollment add"
+  mutates={true}
+  summary="사회보험 자격 구간을 append한다."
+  signature={`holiday insurance enrollment add --scheme --status --from [--to] [--note]`}
+  flags={[
+    { name: '--scheme', type: 'health|national_pension', required: true, description: '보험 종류' },
+    { name: '--status', type: 'workplace|regional|voluntary', required: true, description: '자격' },
+    { name: '--from', type: 'YYYY-MM-DD', required: true, description: '시작일' },
+    { name: '--to', type: 'YYYY-MM-DD', description: '종료일. 생략 시 현재까지(열린 구간)' },
+    { name: '--note', type: 'string' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: 'overlap · invalid_status_for_scheme · LedgerError' },
+    { code: 2, meaning: '사용법 오류' },
+  ]}
+  example={`holiday insurance enrollment add --scheme health --status workplace --from 2025-09-01 --json`}
+/>
+
+같은 `scheme`에서 날짜가 겹치는 열린/닫힌 구간과 충돌하면 거절한다.
+자격 전환 시 이전 구간에 `--to`를 넣거나, 구현이 “열린 구간 자동 종료”를
+지원하면 스펙에 명시한다 — 1차 권장은 **이전 구간을 명시적으로 닫은 뒤** 새 구간 add.
+
+## insurance enrollment list
+
+<CommandSpec
+  command="insurance enrollment list"
+  mutates={false}
+  summary="자격 구간을 나열한다."
+  signature={`holiday insurance enrollment list [--scheme] [--as-of]`}
+  flags={[
+    { name: '--scheme', type: 'health|national_pension', description: '보험 필터' },
+    { name: '--as-of', type: 'YYYY-MM-DD', description: '이 날짜에 유효한 구간만' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 2, meaning: '사용법 오류' },
+  ]}
+  example={`holiday insurance enrollment list --scheme health --json`}
+/>
+
+## insurance contribution add
+
+<CommandSpec
+  command="insurance contribution add"
+  mutates={true}
+  summary="직접 납부 월 고지를 SoR에 append한다. 요율 추정 없음."
+  signature={`holiday insurance contribution add --month --recorded-on --data-file [--amend] [--note] [--source]`}
+  flags={[
+    { name: '--month', type: 'YYYY-MM', required: true, description: '부과연월' },
+    { name: '--recorded-on', type: 'YYYY-MM-DD', required: true, description: '기록일' },
+    { name: '--data-file', type: 'path', required: true, description: '라인 JSON 파일' },
+    { name: '--amend', type: 'boolean', description: '정정 — 새 revision append' },
+    { name: '--note', type: 'string' },
+    { name: '--source', type: 'path', description: '원본 경로 — sha256' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: 'duplicate_insurance_contribution · domain 거부 · LedgerError' },
+    { code: 2, meaning: '사용법 오류' },
+  ]}
+  example={`holiday insurance contribution add --month 2026-03 --recorded-on 2026-03-25 --data-file notice.json --json`}
+/>
+
+### `--data-file`
+
+```json
+{
+  "commodity": "KRW",
+  "lines": [
+    { "kind": "health_insurance", "amount": "143800" },
+    { "kind": "long_term_care", "amount": "18890" },
+    { "kind": "national_pension", "amount": "189000" }
+  ]
+}
+```
+
+금액은 **소수 문자열**. `number` 금지. `lines` ≥ 1, kind 중복 금지.
+직장 공제액을 넣지 않는다 — 직접 납부 달만.
+
+## insurance contribution list
+
+<CommandSpec
+  command="insurance contribution list"
+  mutates={false}
+  summary="월 고지 표지를 나열한다."
+  signature={`holiday insurance contribution list [--month] [--all]`}
+  flags={[
+    { name: '--month', type: 'YYYY-MM', description: '부과연월 필터' },
+    { name: '--all', type: 'boolean', description: 'superseded 포함' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 2, meaning: '사용법 오류' },
+  ]}
+  example={`holiday insurance contribution list --json`}
+/>
+
+## insurance contribution show
+
+<CommandSpec
+  command="insurance contribution show"
+  mutates={false}
+  summary="한 달 고지 표지와 라인을 반환한다."
+  signature={`holiday insurance contribution show --month [--revision]`}
+  flags={[
+    { name: '--month', type: 'YYYY-MM', required: true, description: '부과연월' },
+    { name: '--revision', type: 'number', description: '생략 시 current' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: 'not_found' },
+    { code: 2, meaning: '사용법 오류' },
+  ]}
+  example={`holiday insurance contribution show --month 2026-03 --json`}
+/>

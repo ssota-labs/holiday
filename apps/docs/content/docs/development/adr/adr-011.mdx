@@ -1,0 +1,29 @@
+---
+title: ADR-011
+description: 사회보험은 자격 구간 + 직접 납부 월 금액 — 요율 추정 없음
+type: decision
+summary: 자격은 enrollment 테이블, 직접 납부액은 contribution 테이블. 직장 공제액은 급여 정산에 둔다.
+---
+
+<Decision
+  id="ADR-011"
+  title="사회보험은 자격 구간 + 직접 납부 월 금액 — 요율 추정 없음"
+  status="accepted"
+  date="2026-07-20"
+  rejected={[
+    { option: '보험 비용 전표만으로 충분하다', because: '낸 돈은 전표로 남는다. 다만 “언제 직장/지역이었나”, “지역이던 달 고지액”은 전표 다리에 안 들어간다.' },
+    { option: '급여 정산만 확장한다', because: '정산은 직장 공제·지급 회차에 묶인다. 지역가입·임의가입 자격과 개인 고지를 표현하지 못한다.' },
+    { option: '월 금액만 두고 자격은 메모로', because: '직장가입자라 고지가 없는 달이 길다. 자격 이력이 없으면 “그때 왜 고지가 없었나”를 복원할 수 없다.' },
+    { option: '직장 공제액도 contribution에 넣는다', because: '급여 정산과 이중 SoR가 된다. 직장분은 정산·명세, 이 테이블은 직접 납부만.' },
+    { option: 'tax_return에 사회보험을 섞는다', because: '기간 단위·칸·개정 사유가 다르다.' },
+    { option: '요율로 지역가입 보험료를 계산한다', because: '관측 SoR다. 그럴듯하게 틀린 숫자가 과거를 오염시킨다.' },
+  ]}
+>
+사회보험은 저널 밖 사실 두 층이다.
+
+1. `insurance_enrollment` — 보험 종류·자격·시작일·종료일
+2. `insurance_contribution` / `_line` — 직접 납부 달의 부과연월·항목 금액
+
+직장 공제액은 `income_settlement`가 담당한다. 현금 납부는 보험 비용 전표다.
+자격·고지 기록은 전표를 만들지 않고, 요율로 금액을 다시 계산하지 않는다.
+</Decision>

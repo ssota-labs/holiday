@@ -1,0 +1,60 @@
+---
+title: insurance contribution add
+description: holiday insurance contribution add 명령 계약
+type: reference
+summary: 직접 납부 월 고지를 SoR에 append한다. 요율 추정 없음.
+id: SPEC-insurance-contribution-add
+stage: accepted
+related:
+  - /docs/planning/prds/prd-social-insurance-sor
+  - /docs/features/insurance
+  - /docs/development/plans/plan-social-insurance-sor
+---
+
+<SpecVersion
+  spec="CLI"
+  version="0.4.0"
+  source="packages/cli/src/cli.ts"
+  history={[
+    {
+      version: '0.4.0',
+      date: '2026-07-20',
+      summary: 'insurance contribution add — 직접 납부 월 고지',
+      ref: 'packages/cli/src/cli.ts',
+    },
+  ]}
+/>
+
+> 이 페이지는 **latest**다. 스키마·예시는 [insurance 인덱스](/docs/spec/cli/insurance#insurance-contribution-add)를 본다.
+
+관련 기능: [insurance](/docs/features/insurance)
+
+<CommandSpec
+  command="insurance contribution add"
+  mutates={true}
+  summary="직접 납부 월 고지를 SoR에 append한다. 요율 추정 없음."
+  signature={`holiday insurance contribution add --month --recorded-on --data-file [--amend] [--note] [--source]`}
+  flags={[
+    { name: '--month', type: 'YYYY-MM', required: true, description: '부과연월' },
+    { name: '--recorded-on', type: 'YYYY-MM-DD', required: true, description: '기록일' },
+    { name: '--data-file', type: 'path', required: true, description: '라인 JSON 파일' },
+    { name: '--amend', type: 'boolean', description: '정정 — 새 revision append' },
+    { name: '--note', type: 'string' },
+    { name: '--source', type: 'path', description: '원본 경로 — sha256' },
+  ]}
+  exits={[
+    { code: 0, meaning: '성공' },
+    { code: 1, meaning: 'duplicate_insurance_contribution · domain 거부 · LedgerError' },
+    { code: 2, meaning: '사용법 오류 (UsageError)' },
+  ]}
+  example={`holiday insurance contribution add --month 2026-03 --recorded-on 2026-03-25 --data-file notice.json --json`}
+/>
+
+## `--data-file` 스키마
+
+금액은 **소수 문자열**. `number` 금지.
+
+- `lines` 최소 1개, `kind` ∈ `national_pension` · `health_insurance` · `long_term_care`
+- 같은 `kind` 중복 금지
+- 직장 공제액이 아니라 **직접 납부** 달만
+- CLI는 요율로 금액을 검증·수정하지 않는다

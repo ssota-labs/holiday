@@ -11,7 +11,8 @@
     "fx",
     "close",
     "cashflow",
-    "tax"
+    "tax",
+    "insurance"
   ],
   "collapsible": true,
   "defaultOpen": false
