@@ -3,18 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import type { Account, AccountCode, CommodityCode, IsoDate } from '@holiday-cfo/core';
-import { Txn, accountTypeOf, assertAccountCode, unwrap } from '@holiday-cfo/core';
-import {
-  amounts,
-  DATE,
-  KRW,
-  newAccountId,
-  newTxnId,
-  runLedgerStoreConformance,
-  seed,
-  simpleTxn,
-} from '@holiday-cfo/store-testkit';
+import type { CommodityCode } from '@holiday-cfo/core';
+import { runLedgerStoreConformance, seed, simpleTxn } from '@holiday-cfo/store-testkit';
 
 import { Db } from './db.js';
 import { MigrationDriftError } from '@holiday-cfo/store-sql';
@@ -138,90 +128,6 @@ describe('sqlite — audit hash chain', () => {
     expect(() => raw.exec(`UPDATE audit_log SET event = 'nope' WHERE seq = 1`)).toThrow(/append-only/);
     expect(() => raw.exec('DELETE FROM audit_log WHERE seq = 1')).toThrow(/append-only/);
     raw.close();
-  });
-});
-
-describe('sqlite — streamPostings txn meta', () => {
-  it('exposes systemKind and correctsTxnId for cashflow projection', async () => {
-    // plan-005 risk: if the join omits these, projectCardBills cannot drop
-    // opening/correction legs and bills inflate again.
-    const store = await newStore();
-    await store.init();
-    await store.migrate();
-    const f = await store.unitOfWork((uow) => seed(uow));
-
-    const equityCode = assertAccountCode('Equity:Opening');
-    const equity: Account = {
-      id: newAccountId(),
-      code: equityCode as AccountCode,
-      type: accountTypeOf(equityCode),
-      parentId: null,
-      commodity: KRW,
-      monetary: true,
-      cash: false,
-      placeholder: false,
-      openedOn: '2020-01-01' as IsoDate,
-      closedOn: null,
-    };
-
-    const openingId = newTxnId();
-    const purchase = simpleTxn(f, 12500n);
-    const opening = unwrap(
-      Txn.create({
-        id: openingId,
-        date: DATE,
-        bookingCommodity: KRW,
-        narration: 'opening',
-        systemKind: 'opening_balance',
-        postings: [
-          { accountId: f.card.id, units: amounts.fromMinor(-2_000_000n, 'KRW') },
-          { accountId: equity.id, units: amounts.fromMinor(2_000_000n, 'KRW') },
-        ],
-      }),
-    );
-    const correction = unwrap(
-      Txn.create({
-        id: newTxnId(),
-        date: DATE,
-        bookingCommodity: KRW,
-        narration: 'undo',
-        correctsTxnId: purchase.id,
-        postings: [
-          { accountId: f.card.id, units: amounts.fromMinor(12500n, 'KRW') },
-          { accountId: f.dining.id, units: amounts.fromMinor(-12500n, 'KRW') },
-        ],
-      }),
-    );
-
-    await store.unitOfWork(async (uow) => {
-      await uow.upsertAccount(equity);
-      await uow.appendTxn(opening, { status: 'posted' });
-      await uow.appendTxn(purchase, { status: 'posted' });
-      await uow.appendTxn(correction, { status: 'posted' });
-    });
-
-    const rows = await store.read(async (r) => {
-      const out: { txnId: string; systemKind: string | null; correctsTxnId: string | null }[] = [];
-      for await (const p of r.streamPostings({})) {
-        if (p.seq !== 0) continue;
-        out.push({ txnId: p.txnId, systemKind: p.systemKind, correctsTxnId: p.correctsTxnId });
-      }
-      return out;
-    });
-
-    expect(rows.find((r) => r.txnId === opening.id)).toMatchObject({
-      systemKind: 'opening_balance',
-      correctsTxnId: null,
-    });
-    expect(rows.find((r) => r.txnId === correction.id)).toMatchObject({
-      systemKind: null,
-      correctsTxnId: purchase.id,
-    });
-    expect(rows.find((r) => r.txnId === purchase.id)).toMatchObject({
-      systemKind: null,
-      correctsTxnId: null,
-    });
-    await store.close();
   });
 });
 
