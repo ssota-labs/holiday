@@ -132,5 +132,19 @@ export const MIGRATIONS: readonly InlinedMigration[] = [
       "CREATE INDEX `tax_return_by_year` ON `tax_return` (`tax_year`);",
       "CREATE INDEX `tax_return_by_form_year` ON `tax_return` (`form`,`tax_year`);"
     ]
+  },
+  {
+    "name": "20260720093937_busy_puppet_master",
+    "hash": "6c11c4f934a82698c8f4130fa853842e914339ca2c5b86ea62d8c01b5a9fa8eb",
+    "statements": [
+      "CREATE TABLE `insurance_contribution` (\n\t`id` text PRIMARY KEY,\n\t`year_month` text NOT NULL,\n\t`recorded_on` text NOT NULL,\n\t`revision` integer NOT NULL,\n\t`status` text NOT NULL,\n\t`commodity` text NOT NULL,\n\t`note` text,\n\t`source_path` text,\n\t`source_sha256` text,\n\t`created_at` text NOT NULL,\n\tCONSTRAINT `fk_insurance_contribution_commodity_commodity_code_fk` FOREIGN KEY (`commodity`) REFERENCES `commodity`(`code`),\n\tCONSTRAINT \"insurance_contribution_status_enum\" CHECK(\"status\" IN ('current','superseded')),\n\tCONSTRAINT \"insurance_contribution_revision_positive\" CHECK(\"revision\" >= 1)\n);",
+      "CREATE TABLE `insurance_contribution_line` (\n\t`contribution_id` text NOT NULL,\n\t`kind` text NOT NULL,\n\t`amount_minor` integer NOT NULL,\n\tCONSTRAINT `insurance_contribution_line_pk` PRIMARY KEY(`contribution_id`, `kind`),\n\tCONSTRAINT `fk_insurance_contribution_line_contribution_id_insurance_contribution_id_fk` FOREIGN KEY (`contribution_id`) REFERENCES `insurance_contribution`(`id`) ON DELETE CASCADE,\n\tCONSTRAINT \"insurance_contribution_line_kind_enum\" CHECK(\"kind\" IN ('national_pension','health_insurance','long_term_care')),\n\tCONSTRAINT \"insurance_contribution_line_amount_nonneg\" CHECK(\"amount_minor\" >= 0)\n);",
+      "CREATE TABLE `insurance_enrollment` (\n\t`id` text PRIMARY KEY,\n\t`scheme` text NOT NULL,\n\t`status` text NOT NULL,\n\t`starts_on` text NOT NULL,\n\t`ends_on` text,\n\t`note` text,\n\t`created_at` text NOT NULL,\n\tCONSTRAINT \"insurance_enrollment_scheme_enum\" CHECK(\"scheme\" IN ('health','national_pension')),\n\tCONSTRAINT \"insurance_enrollment_status_enum\" CHECK(\"status\" IN ('workplace','regional','voluntary')),\n\tCONSTRAINT \"insurance_enrollment_voluntary_pension\" CHECK(NOT (\"status\" = 'voluntary' AND \"scheme\" != 'national_pension')),\n\tCONSTRAINT \"insurance_enrollment_date_order\" CHECK(\"ends_on\" IS NULL OR \"starts_on\" <= \"ends_on\")\n);",
+      "CREATE UNIQUE INDEX `insurance_contribution_unique` ON `insurance_contribution` (`year_month`,`revision`);",
+      "CREATE UNIQUE INDEX `insurance_contribution_one_current` ON `insurance_contribution` (`year_month`) WHERE \"insurance_contribution\".\"status\" = 'current';",
+      "CREATE INDEX `insurance_contribution_by_month` ON `insurance_contribution` (`year_month`);",
+      "CREATE INDEX `insurance_enrollment_by_scheme` ON `insurance_enrollment` (`scheme`);",
+      "CREATE INDEX `insurance_enrollment_by_starts` ON `insurance_enrollment` (`starts_on`);"
+    ]
   }
 ];

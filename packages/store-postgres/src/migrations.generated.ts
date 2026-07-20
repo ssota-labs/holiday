@@ -160,5 +160,21 @@ export const MIGRATIONS: readonly InlinedMigration[] = [
       "ALTER TABLE \"tax_return\" ADD CONSTRAINT \"tax_return_commodity_commodity_code_fkey\" FOREIGN KEY (\"commodity\") REFERENCES \"commodity\"(\"code\");",
       "ALTER TABLE \"tax_return_line\" ADD CONSTRAINT \"tax_return_line_return_id_tax_return_id_fkey\" FOREIGN KEY (\"return_id\") REFERENCES \"tax_return\"(\"id\") ON DELETE CASCADE;"
     ]
+  },
+  {
+    "name": "20260720093939_sour_celestials",
+    "hash": "b799201a5b600d6d2e0820366d92920f77e24605209034576b8c94305b97eea1",
+    "statements": [
+      "CREATE TABLE \"insurance_contribution\" (\n\t\"id\" text PRIMARY KEY,\n\t\"year_month\" text NOT NULL,\n\t\"recorded_on\" text NOT NULL,\n\t\"revision\" integer NOT NULL,\n\t\"status\" text NOT NULL,\n\t\"commodity\" text NOT NULL,\n\t\"note\" text,\n\t\"source_path\" text,\n\t\"source_sha256\" text,\n\t\"created_at\" text NOT NULL,\n\tCONSTRAINT \"insurance_contribution_status_enum\" CHECK (\"status\" IN ('current','superseded')),\n\tCONSTRAINT \"insurance_contribution_revision_positive\" CHECK (\"revision\" >= 1)\n);",
+      "CREATE TABLE \"insurance_contribution_line\" (\n\t\"contribution_id\" text,\n\t\"kind\" text,\n\t\"amount_minor\" bigint NOT NULL,\n\tCONSTRAINT \"insurance_contribution_line_pk\" PRIMARY KEY(\"contribution_id\",\"kind\"),\n\tCONSTRAINT \"insurance_contribution_line_kind_enum\" CHECK (\"kind\" IN ('national_pension','health_insurance','long_term_care')),\n\tCONSTRAINT \"insurance_contribution_line_amount_nonneg\" CHECK (\"amount_minor\" >= 0)\n);",
+      "CREATE TABLE \"insurance_enrollment\" (\n\t\"id\" text PRIMARY KEY,\n\t\"scheme\" text NOT NULL,\n\t\"status\" text NOT NULL,\n\t\"starts_on\" text NOT NULL,\n\t\"ends_on\" text,\n\t\"note\" text,\n\t\"created_at\" text NOT NULL,\n\tCONSTRAINT \"insurance_enrollment_scheme_enum\" CHECK (\"scheme\" IN ('health','national_pension')),\n\tCONSTRAINT \"insurance_enrollment_status_enum\" CHECK (\"status\" IN ('workplace','regional','voluntary')),\n\tCONSTRAINT \"insurance_enrollment_voluntary_pension\" CHECK (NOT (\"status\" = 'voluntary' AND \"scheme\" != 'national_pension')),\n\tCONSTRAINT \"insurance_enrollment_date_order\" CHECK (\"ends_on\" IS NULL OR \"starts_on\" <= \"ends_on\")\n);",
+      "CREATE UNIQUE INDEX \"insurance_contribution_unique\" ON \"insurance_contribution\" (\"year_month\",\"revision\");",
+      "CREATE UNIQUE INDEX \"insurance_contribution_one_current\" ON \"insurance_contribution\" (\"year_month\") WHERE \"status\" = 'current';",
+      "CREATE INDEX \"insurance_contribution_by_month\" ON \"insurance_contribution\" (\"year_month\");",
+      "CREATE INDEX \"insurance_enrollment_by_scheme\" ON \"insurance_enrollment\" (\"scheme\");",
+      "CREATE INDEX \"insurance_enrollment_by_starts\" ON \"insurance_enrollment\" (\"starts_on\");",
+      "ALTER TABLE \"insurance_contribution\" ADD CONSTRAINT \"insurance_contribution_commodity_commodity_code_fkey\" FOREIGN KEY (\"commodity\") REFERENCES \"commodity\"(\"code\");",
+      "ALTER TABLE \"insurance_contribution_line\" ADD CONSTRAINT \"insurance_contribution_line_JRdluMcuBCkJ_fkey\" FOREIGN KEY (\"contribution_id\") REFERENCES \"insurance_contribution\"(\"id\") ON DELETE CASCADE;"
+    ]
   }
 ];

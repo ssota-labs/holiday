@@ -92,6 +92,16 @@ import {
   taxLinesToColumns,
   type TaxForm,
   type TaxPeriod,
+  InsuranceEnrollment,
+  describeInsuranceEnrollmentError,
+  isInsuranceScheme,
+  isInsuranceEnrollmentStatus,
+  InsuranceContribution,
+  describeInsuranceContributionError,
+  assertYearMonth,
+  isInsuranceContributionKind,
+  type InsuranceScheme,
+  type YearMonth,
 } from '@holiday-cfo/core';
 
 import { bakeDatasets, scaffold } from './dash.js';
@@ -1426,6 +1436,391 @@ taxReturn
       note(`  [${col}]`);
       for (const [k, v] of Object.entries(cells)) note(`    ${k}: ${v}`);
     }
+  });
+
+const INSURANCE_CONTRIB_DATA_FILE = z.object({
+  commodity: z.string().min(1),
+  lines: z
+    .array(
+      z.object({
+        kind: z.string().min(1),
+        amount: z.string().min(1),
+      }),
+    )
+    .min(1),
+});
+
+function rejectJsonNumbersInContribLines(
+  lines: ReadonlyArray<{ kind: string; amount: unknown }>,
+): void {
+  for (const line of lines) {
+    if (typeof line.amount === 'number') {
+      throw new UsageError(
+        `lines.${line.kind}.amount must be a decimal string, not a JSON number.`,
+      );
+    }
+  }
+}
+
+const insurance = program
+  .command('insurance')
+  .description('사회보험 자격·직접 납부 SoR — 요율 추정 없음');
+const enrollment = insurance.command('enrollment').description('자격 구간');
+const contribution = insurance.command('contribution').description('직접 납부 월 고지');
+
+enrollment
+  .command('add')
+  .description('사회보험 자격 구간을 append한다')
+  .requiredOption('--scheme <scheme>', 'health | national_pension')
+  .requiredOption('--status <status>', 'workplace | regional | voluntary')
+  .requiredOption('--from <date>', '시작일 YYYY-MM-DD')
+  .option('--to <date>', '종료일. 생략 시 열린 구간')
+  .option('--note <text>')
+  .action(
+    async (o: {
+      scheme: string;
+      status: string;
+      from: string;
+      to?: string;
+      note?: string;
+    }) => {
+      if (!isInsuranceScheme(o.scheme)) {
+        throw new UsageError(
+          `unknown --scheme ${JSON.stringify(o.scheme)}. Use health or national_pension.`,
+        );
+      }
+      if (!isInsuranceEnrollmentStatus(o.status)) {
+        throw new UsageError(
+          `unknown --status ${JSON.stringify(o.status)}. Use workplace, regional, or voluntary.`,
+        );
+      }
+      const scheme = o.scheme;
+      const status = o.status;
+      const startsOn = assertIsoDate(o.from);
+      const endsOn = o.to !== undefined ? assertIsoDate(o.to) : null;
+
+      const ws = requireWorkspace();
+      const store = await openLedger(ws);
+      try {
+        const row = await store.unitOfWork(async (uow) => {
+          const existing = await uow.listInsuranceEnrollments({ scheme });
+          const validated = InsuranceEnrollment.create({
+            id: nextUlid(),
+            scheme,
+            status,
+            startsOn,
+            endsOn,
+            note: o.note ?? null,
+            createdAt: new Date().toISOString(),
+            existing: existing.map((e) => ({
+              id: e.id,
+              startsOn: e.startsOn,
+              endsOn: e.endsOn,
+            })),
+          });
+          if (!validated.ok) {
+            throw new LedgerError(
+              validated.error[0]?.code ?? 'invalid_insurance_enrollment',
+              validated.error.map(describeInsuranceEnrollmentError).join('\n'),
+            );
+          }
+          return uow.addInsuranceEnrollment(validated.value);
+        });
+        if (jsonMode()) {
+          return out({
+            id: row.id,
+            scheme: row.scheme,
+            status: row.status,
+            startsOn: row.startsOn,
+            endsOn: row.endsOn,
+            note: row.note,
+          });
+        }
+        note(
+          `✓ 자격 구간을 남겼습니다 — ${row.scheme} ${row.status} ` +
+            `${row.startsOn}–${row.endsOn ?? '현재'}. ` +
+            '다음: holiday insurance enrollment list --json',
+        );
+      } finally {
+        await store.close();
+      }
+    },
+  );
+
+enrollment
+  .command('list')
+  .description('자격 구간을 나열한다')
+  .option('--scheme <scheme>', 'health | national_pension')
+  .option('--as-of <date>', '이 날짜에 유효한 구간만')
+  .action(async (o: { scheme?: string; asOf?: string }) => {
+    let scheme: InsuranceScheme | undefined;
+    if (o.scheme !== undefined) {
+      if (!isInsuranceScheme(o.scheme)) {
+        throw new UsageError(`unknown --scheme ${JSON.stringify(o.scheme)}`);
+      }
+      scheme = o.scheme;
+    }
+    const asOf = o.asOf !== undefined ? assertIsoDate(o.asOf) : undefined;
+
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const rows = await store.read((r) =>
+      r.listInsuranceEnrollments({
+        ...(scheme ? { scheme } : {}),
+        ...(asOf ? { asOf } : {}),
+      }),
+    );
+    await store.close();
+
+    if (jsonMode()) return out(rows);
+    if (rows.length === 0) return note('자격 구간이 없습니다.');
+    for (const e of rows) {
+      note(
+        `· ${e.scheme.padEnd(16)} ${e.status.padEnd(10)} ` +
+          `${e.startsOn}–${e.endsOn ?? '현재'}` +
+          (e.note ? `  ${e.note}` : ''),
+      );
+    }
+  });
+
+contribution
+  .command('add')
+  .description('직접 납부 월 고지를 SoR에 append한다. 요율 추정 없음')
+  .requiredOption('--month <yyyy-mm>', '부과연월')
+  .requiredOption('--recorded-on <date>', '기록일 YYYY-MM-DD')
+  .requiredOption('--data-file <path>', '라인 JSON 파일')
+  .option('--amend', '정정 — 새 revision append', false)
+  .option('--note <text>')
+  .option('--source <path>', '원본 파일 경로 — sha256 출처 기록')
+  .action(
+    async (o: {
+      month: string;
+      recordedOn: string;
+      dataFile: string;
+      amend?: boolean;
+      note?: string;
+      source?: string;
+    }) => {
+      let yearMonth: YearMonth;
+      try {
+        yearMonth = assertYearMonth(o.month);
+      } catch (e) {
+        throw new UsageError(e instanceof Error ? e.message : String(e));
+      }
+      const recordedOn = assertIsoDate(o.recordedOn);
+
+      const { readFile } = await import('node:fs/promises');
+      let raw: string;
+      try {
+        raw = await readFile(o.dataFile, 'utf8');
+      } catch (e) {
+        throw new UsageError(`cannot read --data-file: ${(e as Error).message}`);
+      }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw) as unknown;
+      } catch (e) {
+        throw new UsageError(`--data-file is not valid JSON: ${(e as Error).message}`);
+      }
+      if (parsed && typeof parsed === 'object' && 'lines' in parsed) {
+        const lines = (parsed as { lines: unknown }).lines;
+        if (Array.isArray(lines)) {
+          rejectJsonNumbersInContribLines(
+            lines as ReadonlyArray<{ kind: string; amount: unknown }>,
+          );
+        }
+      }
+      const data = INSURANCE_CONTRIB_DATA_FILE.parse(parsed);
+      for (const line of data.lines) {
+        if (!isInsuranceContributionKind(line.kind)) {
+          throw new UsageError(
+            `unknown line kind ${JSON.stringify(line.kind)}. ` +
+              'Use national_pension, health_insurance, or long_term_care.',
+          );
+        }
+      }
+
+      let sourcePath: string | null = null;
+      let sourceSha256: string | null = null;
+      if (o.source) {
+        sourcePath = o.source;
+        sourceSha256 = await sha256Bytes(new Uint8Array(await readFile(o.source)));
+      }
+
+      const ws = requireWorkspace();
+      const store = await openLedger(ws);
+      try {
+        const header = await store.unitOfWork(async (uow) => {
+          const existing = await uow.getInsuranceContribution({ yearMonth });
+          const validated = o.amend
+            ? (() => {
+                if (!existing) {
+                  throw new LedgerError(
+                    'not_found',
+                    `no current contribution for ${yearMonth} to amend. Add the first without --amend.`,
+                  );
+                }
+                return InsuranceContribution.amend({
+                  id: nextUlid(),
+                  previous: existing,
+                  recordedOn,
+                  commodity: data.commodity as CommodityCode,
+                  note: o.note ?? null,
+                  sourcePath,
+                  sourceSha256,
+                  createdAt: new Date().toISOString(),
+                  lines: data.lines,
+                  amounts,
+                });
+              })()
+            : InsuranceContribution.create({
+                id: nextUlid(),
+                yearMonth,
+                recordedOn,
+                commodity: data.commodity as CommodityCode,
+                note: o.note ?? null,
+                sourcePath,
+                sourceSha256,
+                createdAt: new Date().toISOString(),
+                lines: data.lines,
+                amounts,
+              });
+          if (!validated.ok) {
+            throw new LedgerError(
+              validated.error[0]?.code ?? 'invalid_insurance_contribution',
+              validated.error.map(describeInsuranceContributionError).join('\n'),
+            );
+          }
+          try {
+            return await uow.addInsuranceContribution(validated.value);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (/UNIQUE|unique|constraint/i.test(msg)) {
+              throw new LedgerError(
+                'duplicate_insurance_contribution',
+                `a contribution for ${yearMonth} revision already exists. Use --amend for a new revision.`,
+              );
+            }
+            throw e;
+          }
+        });
+        if (jsonMode()) {
+          return out({
+            id: header.id,
+            yearMonth: header.yearMonth,
+            recordedOn: header.recordedOn,
+            revision: header.revision,
+            status: header.status,
+            commodity: header.commodity,
+          });
+        }
+        note(
+          `✓ 직접 납부 월 고지를 남겼습니다 — ${header.yearMonth} (${header.revision}차). ` +
+            `다음: holiday insurance contribution show --month ${header.yearMonth} --json`,
+        );
+      } finally {
+        await store.close();
+      }
+    },
+  );
+
+contribution
+  .command('list')
+  .description('월 고지 표지를 나열한다')
+  .option('--month <yyyy-mm>', '부과연월 필터')
+  .option('--all', 'superseded 포함', false)
+  .action(async (o: { month?: string; all?: boolean }) => {
+    let yearMonth: YearMonth | undefined;
+    if (o.month !== undefined) {
+      try {
+        yearMonth = assertYearMonth(o.month);
+      } catch (e) {
+        throw new UsageError(e instanceof Error ? e.message : String(e));
+      }
+    }
+
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const rows = await store.read((r) =>
+      r.listInsuranceContributions({
+        ...(yearMonth ? { yearMonth } : {}),
+        includeSuperseded: Boolean(o.all),
+      }),
+    );
+    await store.close();
+
+    if (jsonMode()) return out(rows);
+    if (rows.length === 0) return note('직접 납부 월 고지가 없습니다.');
+    for (const h of rows) {
+      const mark = h.status === 'current' ? '✓' : '·';
+      note(
+        `${mark} ${h.yearMonth}  r${h.revision}  ${h.recordedOn}` +
+          (h.status === 'superseded' ? '  (대체됨)' : ''),
+      );
+    }
+  });
+
+contribution
+  .command('show')
+  .description('한 달 고지 표지와 라인을 반환한다')
+  .requiredOption('--month <yyyy-mm>', '부과연월')
+  .option('--revision <n>', '생략 시 current')
+  .action(async (o: { month: string; revision?: string }) => {
+    let yearMonth: YearMonth;
+    try {
+      yearMonth = assertYearMonth(o.month);
+    } catch (e) {
+      throw new UsageError(e instanceof Error ? e.message : String(e));
+    }
+    let revision: number | undefined;
+    if (o.revision !== undefined) {
+      revision = Number(o.revision);
+      if (!Number.isInteger(revision) || revision < 1) {
+        throw new UsageError(`--revision must be an integer >= 1`);
+      }
+    }
+
+    const ws = requireWorkspace();
+    const store = await openLedger(ws);
+    const detail = await store.read((r) =>
+      r.getInsuranceContribution({
+        yearMonth,
+        ...(revision !== undefined ? { revision } : {}),
+      }),
+    );
+    await store.close();
+
+    if (!detail) {
+      throw new LedgerError(
+        'not_found',
+        `no insurance contribution for ${yearMonth}` +
+          (revision !== undefined ? ` revision ${revision}` : ''),
+      );
+    }
+
+    const lines = Object.fromEntries(
+      detail.lines.map((l) => [l.kind, l.amountMinor.toString()]),
+    );
+    const payload = {
+      id: detail.id,
+      yearMonth: detail.yearMonth,
+      recordedOn: detail.recordedOn,
+      revision: detail.revision,
+      status: detail.status,
+      commodity: detail.commodity,
+      note: detail.note,
+      sourcePath: detail.sourcePath,
+      sourceSha256: detail.sourceSha256,
+      lines,
+    };
+    if (jsonMode()) return out(payload);
+
+    note(
+      `${detail.yearMonth} — ${detail.revision}차` +
+        (detail.status === 'superseded' ? ' (대체됨)' : ''),
+    );
+    note(`기록일 ${detail.recordedOn} · ${detail.commodity}`);
+    for (const [k, v] of Object.entries(lines)) note(`  ${k}: ${v}`);
   });
 
 program

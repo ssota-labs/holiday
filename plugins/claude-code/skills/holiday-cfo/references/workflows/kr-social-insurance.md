@@ -94,11 +94,38 @@ CLI는 **건보료 × 13.14%** 경로를 쓴다.
 직장 요율표로 역산하지 않는다.
 
 - 통장에서 나갔으면 → 보험 비용·납부 전표
-- “그달 고지액이 얼마였나”를 남기려면 → (기획 승인 후) 사회보험 월 고지 SoR;
-  그 전에는 전표 narration·메모로만
+- “언제 직장/지역이었나” → `insurance enrollment`
+- “그달 고지액이 얼마였나” → `insurance contribution` (직접 납부 달만)
 
 갑근세·지방소득세는 4대보험이 아니다. 급여 regime에서는 `--earned-tax`로
 명세서/간이세액표 값을 넣는다 (`kr-income.md`).
+
+## 자격·월 고지 SoR
+
+```bash
+# 직장가입 (종료 없음)
+holiday insurance enrollment add --scheme health --status workplace \
+  --from 2025-09-01 --json
+
+# 지역으로 전환 — 열린 직장 구간은 전날로 자동 종료
+holiday insurance enrollment add --scheme health --status regional \
+  --from 2026-03-01 --json
+
+holiday insurance enrollment list --scheme health --json
+
+# 직접 납부 달 고지 (요율 추정 금지)
+holiday insurance contribution add --month 2026-03 --recorded-on 2026-03-25 \
+  --data-file notice.json --json
+
+holiday insurance contribution show --month 2026-03 --json
+```
+
+`--data-file` 금액은 **소수 문자열**. `number` 금지. kinds:
+`national_pension` · `health_insurance` · `long_term_care`.
+직장 공제액을 여기 넣지 않는다 — 급여 정산이 담당.
+
+자격 먼저 권고. 자격 없이 contribution만 넣어도 저장은 되지만, “왜 그달
+고지가 있었나”를 복원하기 어렵다.
 
 ## CLI와의 경계
 
@@ -107,7 +134,8 @@ CLI는 **건보료 × 13.14%** 경로를 쓴다.
 | 이번 급여에서 4대보험 근로자분이 얼마인가 | `income settle --regime salary` |
 | 요율·상하한이 법령과 맞나 | `income check` + 이 표 / `KR_STATUTE` |
 | 사업소득 3.3%·부가세 10% | `kr-income.md` (사회보험 아님) |
-| 지역가입 고지액 | 관측값만. 요율 추정 금지 |
+| 지금/과거 직장·지역 자격 | `insurance enrollment` |
+| 지역가입 고지액 | `insurance contribution` — 관측값만. 요율 추정 금지 |
 
 ## 법이 바뀌면
 

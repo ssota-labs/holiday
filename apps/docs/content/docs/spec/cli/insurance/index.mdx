@@ -19,7 +19,7 @@ summary: enrollment · contribution — 자격 구간과 직접 납부 고지
   ]}
 />
 
-> 이 페이지는 **latest**다. 구현 전에는 계약 초안이다.
+> 이 페이지는 **latest**다.
 
 관련 기능: [insurance](/docs/features/insurance)
 
@@ -75,8 +75,9 @@ summary: enrollment · contribution — 자격 구간과 직접 납부 고지
 />
 
 같은 `scheme`에서 날짜가 겹치는 열린/닫힌 구간과 충돌하면 거절한다.
-자격 전환 시 이전 구간에 `--to`를 넣거나, 구현이 “열린 구간 자동 종료”를
-지원하면 스펙에 명시한다 — 1차 권장은 **이전 구간을 명시적으로 닫은 뒤** 새 구간 add.
+같은 `scheme`에 **열린 구간이 하나** 있고 새 구간의 `--from`이 그보다 뒤면,
+이전 구간을 새 시작일 **전날**로 자동 종료한 뒤 append한다. 열린 구간이
+둘 이상이면 거절한다 — 그 경우 이전 구간에 `--to`를 명시한 뒤 다시 add.
 
 ## insurance enrollment list
 
