@@ -1,0 +1,101 @@
+---
+title: plan-scheduled-routines
+description: 여섯 정기 리듬 프롬프트를 스킬에 넣고 셋업이 호스트 도구로 등록하게 한다
+type: guide
+summary: automation·daily/weekly/monthly·setup을 스펙에 맞추고, Claude Code/Codex 등록을 도구로 강제한다.
+id: plan-scheduled-routines
+ticker: plan-008
+stage: ready
+changeType: product
+prd: prd-scheduled-routines
+specs:
+  - SPEC-scheduled-routines
+stories:
+  - us-scheduled-routines
+codeAreas:
+  - plugins/claude-code
+  - plugins/codex
+  - packages/cli
+  - apps/docs
+related:
+  - /docs/planning/prds/prd-scheduled-routines
+  - /docs/planning/stories/us-scheduled-routines
+  - /docs/agent/scheduled-routines
+  - /docs/agent/skill
+---
+
+## 목표
+
+[prd-scheduled-routines](/docs/planning/prds/prd-scheduled-routines)대로
+매일 저녁 수집·매일 아침 리포트·주 2회·월 2회 리듬을 문서·스킬에 고정하고,
+셋업 끝에서 Claude Code·Codex 에이전트가 **호스트 스케줄 도구로 직접** 등록하게 한다.
+
+## 영향 범위
+
+| 영역 | 변경 |
+|---|---|
+| `plugins/claude-code/skills/holiday-cfo/references/automation.md` | 여섯 주기·프롬프트·호스트별 도구 등록 절차 |
+| `…/workflows/daily.md` | 저녁 수집 / 아침 리포트로 분리 |
+| `…/workflows/weekly.md` | 일요일 밤 / 월요일 아침으로 분리 |
+| `…/workflows/monthly.md` | 말일 전 / 1일로 분리 |
+| `…/workflows/setup.md` | “제안만” → 동의 후 도구로 등록·확인 |
+| `plugins/*/skills/holiday-cfo/SKILL.md` | 워크플로 표·색인 문구 |
+| `packages/cli/templates/ledger/AGENTS.md` | 리듬 절을 새 주기·말투에 맞춤 |
+| `apps/docs` | 본 기획·[SPEC-scheduled-routines](/docs/agent/scheduled-routines)·skill 스펙 이력(구현 PR) |
+
+codex `references/`는 claude-code 심링크라 한 소스만 고친다.
+
+## 구현 순서
+
+1. `automation.md`를 SPEC 주기 표·프롬프트 정본·Claude `/schedule`·Codex Automations
+   도구 등록으로 교체. “Always ask first”는 유지하되, 동의 후 **직접 등록**을 의무화.
+2. `daily.md` / `weekly.md` / `monthly.md`를 각 2슬롯 절차로 나눈다.
+3. `setup.md` 8번을: 주기 제안 → 동의 → 호스트 도구 호출 → 목록 확인 →
+   실패 시 수동 프롬프트 인계 로 바꾼다.
+4. 양쪽 `SKILL.md` 워크플로 표·references 색인을 맞춘다.
+5. 장부 init 템플릿 `AGENTS.md` 리듬 절을 저녁 수집·아침 리포트·주/월 2회로 갱신.
+6. `apps/docs` skill 스펙에 이력 한 줄·에이전트 nav에 scheduled-routines 링크.
+7. 사용자-facing 배포는 후속 릴리스 계획으로 버전 bump + `v*` 태그
+   (이 구현 PR에 public package version을 넣지 않는다 — 스킬 문구·템플릿만).
+
+## 검증 계획
+
+### 자동 테스트
+
+- `pnpm --filter holiday-plugin test`
+- `pnpm --filter @holiday-cfo/docs check:planning`
+- `pnpm check:docs-first` (구현 PR 본문에 Plan 경로)
+
+### 수동 테스트 / 기획 체크
+
+1. scratch 장부 셋업 → 주기 일부만 동의 → Claude Code `/schedule list` 또는
+   Codex Scheduled에 동의한 항목만 있는지
+2. 저녁 프롬프트 수동 실행 → 지출 내역(카드·현금·이체) 수집 후 오늘 요약, 내일·주간 전망 없음
+3. 아침 프롬프트 수동 실행 → 새 거래 질문 없이 어제/오늘 이벤트만
+4. 1일 프롬프트 → dry-run·제안만, 승인 전 close 없음
+5. 스케줄 도구 실패 시 수동 프롬프트 인계
+
+## 마이그레이션과 호환성
+
+- 원장 DB·마이그레이션 없음
+- 이미 손으로 걸어 둔 옛 daily/weekly/monthly가 있으면 중복을 말하고
+  교체·유지 중 하나를 묻는다
+- CLI 계약 불변
+
+## 위험과 롤백
+
+| 위험 | 완화 |
+|---|---|
+| 클라우드 루틴이 로컬 `.holiday/`에 못 닿음 | Claude는 Desktop/로컬 예약 우선, 클라우드는 private 저장소 연결 전제 |
+| Codex 시간대 이슈 | Asia/Seoul 명시, 첫 실행 시각 사용자 확인 |
+| 호스트 미로그인·도구 없음 | 실패를 숨기지 말고 수동 프롬프트 인계 |
+| 여섯 개 전부 기본 등록 | 동의 전에는 하나도 등록하지 않음 |
+
+롤백: 스킬·템플릿 문구만 되돌리면 된다. 이미 등록된 호스트 스케줄은 사용자가 지운다.
+
+## 완료 조건
+
+1. [SPEC-scheduled-routines](/docs/agent/scheduled-routines) 수락 기준 충족
+2. setup이 Claude Code·Codex에서 도구 등록을 지시하고, “제안만”으로 끝나지 않음
+3. `pnpm --filter holiday-plugin test` 통과
+4. 계획 stage → `done`

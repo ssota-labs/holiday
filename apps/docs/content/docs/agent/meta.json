@@ -2,7 +2,8 @@
   "title": "에이전트",
   "pages": [
     "skill",
-    "document-skills-companion"
+    "document-skills-companion",
+    "scheduled-routines"
   ],
   "collapsible": true,
   "defaultOpen": false
