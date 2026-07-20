@@ -2,7 +2,7 @@
 title: ADR-003
 description: 이율은 스케일드 bigint. float도 decimal.js도 아니다
 type: decision
-summary: 이율은 스케일드 bigint. float도 decimal.js도 아니다
+summary: 이율은 18자리 고정소수점 정수. 반올림은 half away from zero.
 ---
 
 <Decision
@@ -12,12 +12,15 @@ summary: 이율은 스케일드 bigint. float도 decimal.js도 아니다
   date="2026-07-17"
   commit="45b293c"
   rejected={[
-    { option: 'IEEE 754 double', because: '0.1 + 0.2 !== 0.3이 블로그 글에선 웃기지만 360번 복리로 굴리면 안 웃기다. 이 원장은 금액에 float을 쓰지 않는데 이율에만 쓸 이유가 없다.' },
-    { option: 'decimal.js', because: '순수 JS라 번들은 되지만, @holiday-cfo/core는 설치 스텝 없는 단일파일 플러그인 바이너리에 인라인된다. 의존성은 값어치를 증명해야 하고, 이건 40줄 고정소수점으로 된다.' },
+    { option: 'IEEE 754 부동(double)', because: '0.1 + 0.2가 0.3이 안 되는 문제가, 대출처럼 360번 곱하면 원 단위 차이로 드러난다. 금액에 float을 안 쓰는데 이율에만 쓸 이유가 없다.' },
+    { option: 'decimal.js', because: '순수 JS라 넣을 수는 있다. 다만 core는 가볍게 유지하는 편이고, 고정소수점 사칙은 수십 줄이면 된다. 의존성 추가 값어치가 안 나온다.' },
   ]}
 >
-18자리 스케일 정수. 360회 곱셈에 누적 오차가 원 단위로 1e-10 수준이라 무의미하다.
+이율은 **소수점이 18자리인 정수(`bigint`)** 로 둔다. 구현은 `packages/core/src/domain/rate.ts`
+의 `RATE_SCALE`이다. 원리금균등 같은 계산을 수백 번 곱해도, 원 단위로 보면 오차는
+사실상 없다(대략 10⁻¹⁰원 수준).
 
-반올림은 **half away from zero** — 은행이 하는 방식이다. banker's rounding으로 영리하게
-굴면 `loan check`가 매달 ₩1 차이를 영원히 보고한다.
+금액에 이율을 곱할 때 반올림은 **half away from zero**(0.5면 0에서 멀어지는 쪽)다.
+은행·대출 명세가 보통 이렇게 한다. 은행가 반올림(짝수 쪽으로)을 쓰면
+`loan check`가 매달 1원 차이를 끝없이 보고한다.
 </Decision>

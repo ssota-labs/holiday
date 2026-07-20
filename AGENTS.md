@@ -122,7 +122,7 @@ node packages/cli/dist/main.js <command>   # 배포되면 `npx @holiday-cfo/cli@
 9. **`LedgerStore` 구현은 `store-sql`에 하나.** 엔진 패키지는 드라이버·스키마·마이그레이션만.
 
 정책 카탈로그와 강제 테스트: `apps/docs/content/docs/domain/policy.mdx`.
-결정은 `apps/docs/content/docs/development/adr.mdx` — 거부한 대안이 본문이다.
+결정은 `apps/docs/content/docs/development/adr/` — 거부한 대안이 본문이다.
 
 ## 코딩 규칙
 

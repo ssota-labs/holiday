@@ -2,7 +2,7 @@
 title: ADR-005
 description: 스키마는 drizzle-kit. 쿼리는 우리 것
 type: decision
-summary: 스키마는 drizzle-kit. 쿼리는 우리 것
+summary: DDL은 drizzle-kit, 읽기·쓰기는 Db 래퍼. 금액은 bigint로 왕복한다.
 ---
 
 <Decision
@@ -12,25 +12,24 @@ summary: 스키마는 drizzle-kit. 쿼리는 우리 것
   date="2026-07-17"
   commit="75a75e8"
   rejected={[
-    { option: 'drizzle-orm 전면 도입 (쿼리 포함)', because: 'Drizzle의 SQLite 세션은 setReadBigInts(true)를 절대 호출하지 않고 integer()가 내부적으로 `number int53`으로 타이핑돼 있다. 2^53을 넘으면 ERR_OUT_OF_RANGE로 죽고 주입할 훅이 없다(prepareQuery 안의 지역 변수). 이 원장의 금액은 i64이고 적합성 스위트가 2^53+1 왕복을 못박는다.' },
-    { option: "blob({mode:'bigint'})", because: 'bigint를 십진수 ASCII로 BLOB에 저장한다. 정확하지만 SUM()이 안 되고 ORDER BY가 바이트 정렬이라 getBalances가 통째로 날아간다.' },
-    { option: '손으로 쓴 SQL 유지', because: '마이그레이션 관리가 원시적이었고, 무엇보다 "적용된 마이그레이션 수정 금지"가 강제되지 않는 주석이었다.' },
+    { option: 'drizzle-orm으로 쿼리까지 전부 쓰기', because: 'Drizzle SQLite 세션은 bigint를 켜지 않고, integer를 number(53비트)로 본다. 2^53을 넘는 금액은 바로 터지고 고칠 훅이 없다. 이 장부 금액은 i64이고 테스트가 2^53+1 왕복을 못 박는다.' },
+    { option: "bigint를 BLOB 문자열로 저장", because: '정확히는 남지만 SUM()이 안 되고 정렬도 바이트 순이라 잔액 조회가 깨진다.' },
+    { option: '스키마 SQL을 손으로만 관리', because: '마이그레이션 추적이 약하고, “이미 적용한 파일을 고치지 말 것”이 주석에만 있었다.' },
   ]}
 >
-DDL은 Drizzle이 만들고 읽기는 `Db` 래퍼가 한다. `integer()`가 뱉는 DDL은 평범한
-`INTEGER`라 이 분리는 비용이 0이다.
+테이블 정의·마이그레이션 파일은 **drizzle-kit**이 만든다. 실제 SELECT/INSERT는
+우리 `Db` 래퍼가 한다. Drizzle이 만드는 DDL은 평범한 `INTEGER`라, 이렇게 나눠도
+추가 비용은 거의 없다.
 
-**도입 동기였던 전제는 성립하지 않았다.** Drizzle은 SQLite와 Postgres에 하나의 스키마를
-주지 않는다 — `sqliteTable`과 `pgTable`은 별개 빌더고 컬럼 타입도 안 겹친다. Supabase는
-어차피 자기 스키마를 쓴다. SQLite의 `RAISE(ABORT)`와 Postgres의 plpgsql `RAISE
-EXCEPTION`은 방언이 다른 거지 툴체인 문제가 아니고, 포트 경계가 이미 그걸 허용한다.
+처음엔 “한 스키마로 SQLite와 Postgres를 같이”가 동기였다. 그건 **성립하지 않았다**.
+`sqliteTable`과 `pgTable`은 별개고, 트리거 SQL도 방언이 다르다. 포트 경계가 이미
+그걸 허용한다.
 
-**진짜 얻은 건 해시 추적이다.** `__holiday_migrations`가 각 마이그레이션의 sha256을
-기록해서, 적용된 걸 수정하면 다음 열기에서 터진다. Drizzle의 `__drizzle_migrations`에서
-가져온 아이디어인데 테이블은 우리 것이다 — Drizzle의 `migrate()`는 런타임에 디스크에서
-`.sql`을 읽고, 이 CLI는 옆에 아무것도 없는 단일파일이다.
+**실제로 얻은 것**은 마이그레이션 **내용 해시**다. `__holiday_migrations`에 sha256을
+남겨, 이미 적용한 파일을 고치면 다음 열기에서 실패한다. Drizzle의 마이그레이션
+테이블에서 아이디어를 빌렸지만, CLI는 디스크의 `.sql`을 런타임에 읽지 않는
+단일 배포물이라 우리 테이블을 쓴다.
 
-**대가:** STRICT 테이블을 잃었다(drizzle-kit 미지원). 손편집으로 INTEGER 컬럼에 TEXT를
-넣는 걸 막던 ring 3 하나가 빠졌다. 그리고 RC(`1.0.0-rc.4`)에 핀됐다 — stable에는
-node:sqlite 드라이버가 없다.
+**대가.** STRICT 테이블은 못 쓴다(drizzle-kit 미지원). INTEGER에 TEXT를 넣는
+실수를 DB가 덜 막아 준다. 또한 `node:sqlite` 드라이버가 있는 RC 버전에 핀한다.
 </Decision>
