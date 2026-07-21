@@ -2,14 +2,26 @@
 title: close
 description: holiday close 명령 계약
 type: reference
-summary: "월 마감: 게이트 → FX 재평가 → 스냅샷 → period=closed. --dry-run은 쓰기 없음."
+summary: "월 마감: 게이트 → FX 재평가 → 스냅샷 → period=closed. --dry-run은 쓰기 없음. 말일 기준 부채 만기 요약."
+id: SPEC-cli-close
+stage: accepted
+related:
+  - /docs/features/close
+  - /docs/features/liability-maturity
+  - /docs/domain/liability-maturity
 ---
 
 <SpecVersion
   spec="CLI"
-  version="0.1.0"
+  version="0.4.2"
   source="packages/cli/src/cli.ts"
   history={[
+    {
+      version: '0.4.2',
+      date: '2026-07-21',
+      summary: '기간 말일 기준 liabilityMaturity 요약 추가 (dry-run 포함)',
+      ref: 'packages/cli/src/cli.ts',
+    },
     {
       version: '0.1.0',
       date: '2026-07-17',
@@ -22,12 +34,12 @@ summary: "월 마감: 게이트 → FX 재평가 → 스냅샷 → period=closed
 > 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
 
 
-관련 기능: [close](/docs/features/close)
+관련 기능: [close](/docs/features/close) · [부채 만기 구분](/docs/features/liability-maturity)
 
 <CommandSpec
   command="close"
   mutates={true}
-  summary="월 마감: 게이트 → FX 재평가 → 스냅샷 → period=closed. --dry-run은 쓰기 없음."
+  summary="월 마감: 게이트 → FX 재평가 → 스냅샷 → period=closed. --dry-run은 쓰기 없음. 말일 기준 유동·비유동 요약을 붙인다."
   signature={`holiday close <month> [--dry-run]`}
   flags={[
     { name: '<month>', type: 'YYYY-MM', kind: 'arg', required: true },
@@ -40,3 +52,39 @@ summary: "월 마감: 게이트 → FX 재평가 → 스냅샷 → period=closed
   ]}
   example={`holiday close 2026-06 --dry-run --json`}
 />
+
+## JSON — dry-run
+
+기존 키에 `liabilityMaturity`만 추가한다. 기준일은 그달 말일.
+
+```json
+{
+  "month": "2026-06",
+  "wouldRevalue": 0,
+  "assertions": 2,
+  "dryRun": true,
+  "liabilityMaturity": {
+    "asOf": "2026-06-30",
+    "currentMinor": "4200000",
+    "nonCurrentMinor": "86000000",
+    "totalMinor": "90200000",
+    "byAccount": []
+  }
+}
+```
+
+부채 잔액이 없으면 `liabilityMaturity`는 `null`.
+`holiday balance --as-of <말일>`의 합계와 같다
+([SPEC-liability-maturity](/docs/domain/liability-maturity) 수락 4).
+
+## JSON — 마감 성공
+
+```json
+{
+  "month": "2026-06",
+  "closed": true,
+  "revaluationTxnId": null,
+  "snapshotAccounts": 12,
+  "liabilityMaturity": { "asOf": "2026-06-30", "currentMinor": "…", "nonCurrentMinor": "…", "totalMinor": "…", "byAccount": [] }
+}
+```
