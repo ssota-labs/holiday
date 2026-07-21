@@ -2,14 +2,26 @@
 title: balance
 description: holiday balance 명령 계약
 type: reference
-summary: 계정 잔액을 조회한다. 집계는 weight 기준이다.
+summary: 계정 잔액을 조회하고, 부채가 있으면 유동·비유동 요약을 붙인다.
+id: SPEC-cli-balance
+stage: accepted
+related:
+  - /docs/features/accounts
+  - /docs/features/liability-maturity
+  - /docs/domain/liability-maturity
 ---
 
 <SpecVersion
   spec="CLI"
-  version="0.1.0"
+  version="0.4.2"
   source="packages/cli/src/cli.ts"
   history={[
+    {
+      version: '0.4.2',
+      date: '2026-07-21',
+      summary: 'liabilityMaturity 요약(유동·비유동). JSON을 { asOf, balances, liabilityMaturity }로 감쌈',
+      ref: 'packages/cli/src/cli.ts',
+    },
     {
       version: '0.1.0',
       date: '2026-07-17',
@@ -22,21 +34,65 @@ summary: 계정 잔액을 조회한다. 집계는 weight 기준이다.
 > 이 페이지는 **latest**다. 불변 스냅샷은 [`/docs/spec/cli/0.1.0`](/docs/spec/cli/0.1.0)이다.
 
 
-관련 기능: [accounts](/docs/features/accounts)
+관련 기능: [accounts](/docs/features/accounts) · [부채 만기 구분](/docs/features/liability-maturity)
 
 <CommandSpec
   command="balance"
   mutates={false}
-  summary="계정 잔액을 조회한다. 집계는 weight 기준이다."
+  summary="계정 잔액을 조회한다. 집계는 weight 기준이다. 부채 잔액이 있으면 유동·비유동 요약을 붙인다."
   signature={`holiday balance [--as-of YYYY-MM-DD] [--account PREFIX]`}
   flags={[
-    { name: '--as-of', type: 'YYYY-MM-DD' },
-    { name: '--account', type: 'string', description: '예: Assets' },
+    { name: '--as-of', type: 'YYYY-MM-DD', description: '기준일. 생략 시 오늘. 만기 구분의 asOf' },
+    { name: '--account', type: 'string', description: '예: Assets, Liabilities' },
   ]}
   exits={[
     { code: 0, meaning: '성공' },
     { code: 1, meaning: '원장/도메인 거부 (LedgerError) 또는 내부 오류' },
     { code: 2, meaning: '사용법 오류 (UsageError)' },
   ]}
-  example={`holiday balance --account Assets --json`}
+  example={`holiday balance --account Liabilities --as-of 2026-07-31 --json`}
 />
+
+## JSON (`--json`)
+
+```json
+{
+  "asOf": "2026-07-31",
+  "balances": [
+    {
+      "accountId": "…",
+      "accountCode": "Liabilities:Card:Shinhan",
+      "commodity": "KRW",
+      "unitsMinor": "-1240000",
+      "weightMinor": "-1240000"
+    }
+  ],
+  "liabilityMaturity": {
+    "asOf": "2026-07-31",
+    "currentMinor": "1240000",
+    "nonCurrentMinor": "0",
+    "totalMinor": "1240000",
+    "byAccount": [
+      {
+        "accountId": "…",
+        "accountCode": "Liabilities:Card:Shinhan",
+        "currentMinor": "1240000",
+        "nonCurrentMinor": "0",
+        "totalMinor": "1240000"
+      }
+    ]
+  }
+}
+```
+
+- `balances[]` 행의 `unitsMinor` / `weightMinor`는 **문자열** bigint (기존과 동일 의미).
+- `liabilityMaturity` 금액은 **빚의 크기(절댓값)** 문자열. 계약:
+  [SPEC-liability-maturity](/docs/domain/liability-maturity).
+- 조회 범위에 부채 잔액이 없으면 `liabilityMaturity`는 `null`이다.
+- 0.4.2 이전은 잔액 배열만 stdout에 냈다. 파서는 `balances` 키를 본다.
+
+## 사람 출력
+
+계정 행 뒤에 부채가 있으면 한 줄:
+
+`유동부채 … · 비유동부채 … · 합 … (기준일 YYYY-MM-DD)`

@@ -27,7 +27,9 @@ import {
   Txn,
   buildInstallmentSchedule,
   projectCashflow,
+  liabilityMaturityAt,
   type CashflowAssumption,
+  type LiabilityMaturitySummary,
   addMonthsIso,
   assertCadence,
   describeCadence,
@@ -283,17 +285,31 @@ program
     const ws = requireWorkspace();
     const config = readConfig(ws);
     const store = await openLedger(ws);
-    const rows = await store.read((r) =>
-      r.getBalances({
-        ...(o.asOf ? { asOf: assertIsoDate(o.asOf) } : {}),
-        ...(o.account ? { accountPrefix: assertAccountPrefix(o.account) } : {}),
-      }),
-    );
+    const asOf = assertIsoDate(o.asOf ?? today());
+    const accountPrefix = o.account ? assertAccountPrefix(o.account) : undefined;
+    const { rows, maturity } = await store.read(async (r) => {
+      const balances = await r.getBalances({
+        asOf,
+        ...(accountPrefix ? { accountPrefix } : {}),
+      });
+      const liabilityMaturity = await liabilityMaturityAt(r, {
+        asOf,
+        ...(accountPrefix ? { accountPrefix } : {}),
+      });
+      return { rows: balances, maturity: liabilityMaturity };
+    });
     await store.close();
+    const maturityOut = maturity.totalMinor === 0n ? null : maturity;
     if (jsonMode()) {
-      return out(
-        rows.map((r) => ({ ...r, unitsMinor: r.unitsMinor.toString(), weightMinor: r.weightMinor.toString() })),
-      );
+      return out({
+        asOf,
+        balances: rows.map((r) => ({
+          ...r,
+          unitsMinor: r.unitsMinor.toString(),
+          weightMinor: r.weightMinor.toString(),
+        })),
+        liabilityMaturity: maturityOut ? serializeLiabilityMaturity(maturityOut) : null,
+      });
     }
     for (const r of rows) {
       const sign = BigInt(displaySignOf(accountTypeOf(r.accountCode)));
@@ -303,6 +319,12 @@ program
           ? ''
           : `  (${amounts.formatWithCode({ minor: r.weightMinor * sign, commodity: config.functionalCurrency })})`;
       note(`${r.accountCode.padEnd(40)} ${units.padStart(20)}${carrying}`);
+    }
+    if (maturityOut) {
+      const money = (m: bigint) => amounts.format({ minor: m, commodity: config.functionalCurrency });
+      note(
+        `유동부채 ${money(maturityOut.currentMinor)} · 비유동부채 ${money(maturityOut.nonCurrentMinor)} · 합 ${money(maturityOut.totalMinor)} (기준일 ${asOf})`,
+      );
     }
   });
 
@@ -1966,7 +1988,14 @@ program
           targetMinor: convert(b.unitsMinor, resolved.rate, registry.exponentOf(b.commodity), registry.exponentOf(config.functionalCurrency)),
         });
       }
-      return { gate: closeGate(drafts.length, checks), lines: revaluationLines(revalInputs), balances, assertionCount: assertions.length };
+      const liabilityMaturity = await liabilityMaturityAt(r, { asOf: bounds.end });
+      return {
+        gate: closeGate(drafts.length, checks),
+        lines: revaluationLines(revalInputs),
+        balances,
+        assertionCount: assertions.length,
+        liabilityMaturity,
+      };
     });
 
     if (!plan.gate.ok) {
@@ -1976,12 +2005,24 @@ program
     }
 
     const money = (m: bigint) => amounts.format({ minor: m, commodity: config.functionalCurrency });
+    const maturityOut = plan.liabilityMaturity.totalMinor === 0n ? null : plan.liabilityMaturity;
     if (o.dryRun) {
       await store.close();
-      out({ month, wouldRevalue: plan.lines.length, assertions: plan.assertionCount, dryRun: true });
+      out({
+        month,
+        wouldRevalue: plan.lines.length,
+        assertions: plan.assertionCount,
+        dryRun: true,
+        liabilityMaturity: maturityOut ? serializeLiabilityMaturity(maturityOut) : null,
+      });
       note(`${month}은 마감할 수 있습니다. 잔액 대조 ${plan.assertionCount}건 통과.`);
       for (const l of plan.lines) note(`  재평가 ${l.accountCode.padEnd(30)} ${money(l.deltaMinor).padStart(14)} KRW`);
       if (plan.lines.length === 0) note('  재평가할 외화 계정 없음.');
+      if (maturityOut) {
+        note(
+          `유동부채 ${money(maturityOut.currentMinor)} · 비유동부채 ${money(maturityOut.nonCurrentMinor)} · 합 ${money(maturityOut.totalMinor)} (기준일 ${bounds.end})`,
+        );
+      }
       return;
     }
 
@@ -2054,9 +2095,20 @@ program
     });
     await store.close();
 
-    out({ month, closed: true, revaluationTxnId: result.txnId, snapshotAccounts: result.accounts });
+    out({
+      month,
+      closed: true,
+      revaluationTxnId: result.txnId,
+      snapshotAccounts: result.accounts,
+      liabilityMaturity: maturityOut ? serializeLiabilityMaturity(maturityOut) : null,
+    });
     note(`${month}을 마감했습니다. 계정 ${result.accounts}개를 스냅샷으로 남겼습니다.`);
     for (const l of plan.lines) note(`  재평가 ${l.accountCode.padEnd(30)} ${money(l.deltaMinor).padStart(14)} KRW`);
+    if (maturityOut) {
+      note(
+        `유동부채 ${money(maturityOut.currentMinor)} · 비유동부채 ${money(maturityOut.nonCurrentMinor)} · 합 ${money(maturityOut.totalMinor)} (기준일 ${bounds.end})`,
+      );
+    }
     if (plan.assertionCount === 0) {
       // Not a hard gate — a new ledger has none — but worth saying.
       note(`  ⚠ 이 기간에는 잔액 대조가 없었습니다. 명세서와 대조하지 않은 달은 얼린 것이지 마감한 것이 아닙니다.`);
@@ -3364,6 +3416,23 @@ async function makeDeriveWeight(
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+/** bigint 금액을 JSON 문자열로. 빚의 크기(절댓값) 규약 그대로. */
+function serializeLiabilityMaturity(m: LiabilityMaturitySummary) {
+  return {
+    asOf: m.asOf,
+    currentMinor: m.currentMinor.toString(),
+    nonCurrentMinor: m.nonCurrentMinor.toString(),
+    totalMinor: m.totalMinor.toString(),
+    byAccount: m.byAccount.map((a) => ({
+      accountId: a.accountId,
+      accountCode: a.accountCode,
+      currentMinor: a.currentMinor.toString(),
+      nonCurrentMinor: a.nonCurrentMinor.toString(),
+      totalMinor: a.totalMinor.toString(),
+    })),
+  };
 }
 
 
