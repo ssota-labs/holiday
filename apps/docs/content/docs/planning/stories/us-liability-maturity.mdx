@@ -1,0 +1,39 @@
+---
+title: us-liability-maturity
+description: 기준일 부채를 유동·비유동으로 나눠 보고 싶다
+type: conceptual
+summary: 마감·질의 때 1년 안팎 빚 합계를 같은 규칙으로 본다
+id: us-liability-maturity
+ticker: us-020
+---
+
+**As a** 1인 사용자  
+**I want** 지금(또는 마감일) 기준으로 부채를 유동·비유동으로 나눠 보고 싶다  
+**So that** 1년 안에 갚을 빚과 그 뒤 빚을 따로 짚어 본다
+
+### 무엇을 보는가
+
+자세한 칸은 [prd-liability-maturity](/docs/planning/prds/prd-liability-maturity)에 있다.
+
+1. **기준일** — 보통 오늘, 마감이면 그달 말일
+2. **유동부채·비유동부채·총액** — 원금 기준
+3. **필요하면 계정별 나눔** — 어느 대출·할부가 단기로 잡혔는지
+
+계정 이름은 바꾸지 않고 전표도 나누지 않는다. 잔액 조회와 마감 보고에
+같은 규칙을 쓴다.
+
+### 수락 기준
+
+1. 기준일을 주면 유동·비유동·총액이 나온다. 유동+비유동 = 총액이다
+2. 카드·미지급 잔액은 전액 유동이다
+3. 할부·대출은 남은 상환 예측의 **원금**을 12개월 경계로 나눈다
+4. 상환 예측이 없는 부채 잔액은 전액 유동이다
+5. 월 마감과 마감 미리보기에 같은 합계가 붙는다
+6. 이 조회만으로 전표·계정 변경이 생기지 않는다
+
+### 추적
+
+- 기능: [liability-maturity](/docs/features/liability-maturity)
+- 스펙: [SPEC-liability-maturity](/docs/domain/liability-maturity)
+- PRD: [prd-liability-maturity](/docs/planning/prds/prd-liability-maturity)
+- 구현계획: [plan-liability-maturity](/docs/development/plans/plan-liability-maturity)

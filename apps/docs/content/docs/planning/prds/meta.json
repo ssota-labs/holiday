@@ -7,7 +7,8 @@
     "prd-document-skills-companion",
     "prd-social-insurance-sor",
     "prd-scheduled-routines",
-    "prd-dash-mdx-shell"
+    "prd-dash-mdx-shell",
+    "prd-liability-maturity"
   ],
   "collapsible": true,
   "defaultOpen": false,

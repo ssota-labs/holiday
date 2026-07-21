@@ -4,7 +4,8 @@
     "glossary",
     "policy",
     "cashflow-card-bill",
-    "recurring-active-window"
+    "recurring-active-window",
+    "liability-maturity"
   ],
   "collapsible": true,
   "defaultOpen": true

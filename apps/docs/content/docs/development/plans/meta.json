@@ -9,7 +9,8 @@
     "plan-recurring-future-active-from",
     "plan-social-insurance-sor",
     "plan-scheduled-routines",
-    "plan-dash-mdx-shell"
+    "plan-dash-mdx-shell",
+    "plan-liability-maturity"
   ],
   "collapsible": true,
   "defaultOpen": false,
