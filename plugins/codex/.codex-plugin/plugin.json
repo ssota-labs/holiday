@@ -1,6 +1,6 @@
 {
   "name": "holiday-cfo",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Drive the holiday CLI from a Codex session: record a personal double-entry ledger (가계부, 부채, 할부, 정기지출, 수입 정산, 사회보험), project cash flow, and scaffold a shareable dashboard.",
   "author": {
     "name": "ssota-labs",

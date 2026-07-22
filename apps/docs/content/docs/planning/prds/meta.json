@@ -8,6 +8,7 @@
     "prd-social-insurance-sor",
     "prd-scheduled-routines",
     "prd-dash-mdx-shell",
+    "prd-liability-maturity",
     "prd-scaffold-sync"
   ],
   "collapsible": true,
