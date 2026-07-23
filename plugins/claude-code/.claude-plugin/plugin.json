@@ -1,8 +1,8 @@
 {
   "name": "holiday-cfo",
   "displayName": "holiday-cfo",
-  "version": "0.4.3",
-  "description": "A double-entry CFO ledger for one person: \uac00\uacc4\ubd80, \ubd80\ucc44, \uc790\uc0b0, \ud604\uae08\ud750\ub984, \uc218\uc785 \uc815\uc0b0(\uc6d0\ucc9c\uc9d5\uc218\u00b74\ub300\ubcf4\ud5d8), \uc0ac\ud68c\ubcf4\ud5d8 \uc790\uaca9\u00b7\uc9c1\uc811 \ub0a9\ubd80.",
+  "version": "0.4.4",
+  "description": "A double-entry CFO ledger for one person: 가계부, 부채, 자산, 현금흐름, 수입 정산(원천징수·4대보험), 사회보험 자격·직접 납부.",
   "author": {
     "name": "ssota-labs",
     "url": "https://github.com/ssota-labs"
@@ -15,6 +15,6 @@
     "ledger",
     "double-entry",
     "cashflow",
-    "\uac00\uacc4\ubd80"
+    "가계부"
   ]
 }

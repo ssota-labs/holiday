@@ -1,7 +1,7 @@
 {
   "name": "holiday-cfo",
-  "version": "0.4.3",
-  "description": "Drive the holiday CLI from a Codex session: record a personal double-entry ledger (\uac00\uacc4\ubd80, \ubd80\ucc44, \ud560\ubd80, \uc815\uae30\uc9c0\ucd9c, \uc218\uc785 \uc815\uc0b0, \uc0ac\ud68c\ubcf4\ud5d8), project cash flow, and scaffold a shareable dashboard.",
+  "version": "0.4.4",
+  "description": "Drive the holiday CLI from a Codex session: record a personal double-entry ledger (가계부, 부채, 할부, 정기지출, 수입 정산, 사회보험), project cash flow, and scaffold a shareable dashboard.",
   "author": {
     "name": "ssota-labs",
     "url": "https://github.com/ssota-labs"
@@ -14,7 +14,7 @@
     "ledger",
     "double-entry",
     "cashflow",
-    "\uac00\uacc4\ubd80"
+    "가계부"
   ],
   "skills": "./skills/",
   "interface": {
