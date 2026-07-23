@@ -10,7 +10,8 @@
     "plan-social-insurance-sor",
     "plan-scheduled-routines",
     "plan-dash-mdx-shell",
-    "plan-liability-maturity"
+    "plan-liability-maturity",
+    "plan-ledger-status-md"
   ],
   "collapsible": true,
   "defaultOpen": false,

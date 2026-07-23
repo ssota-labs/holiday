@@ -1,0 +1,38 @@
+---
+title: us-ledger-status-md
+description: 계좌·부채 목록을 마크다운으로 바로 보고 싶다
+type: conceptual
+summary: DB를 안 열어봐도 어떤 계좌와 빚이 있는지 파일 한 장으로 훑는다
+id: us-ledger-status-md
+ticker: us-021
+---
+
+**As a** 1인 사용자(와 그 장부를 운전하는 채팅 에이전트)  
+**I want** 어떤 계좌와 부채가 있는지 마크다운 한 장으로 보고 싶다  
+**So that** 매번 장부 조회를 돌리지 않아도 지금 구조를 바로 짚을 수 있다
+
+### 무엇을 보는가
+
+자세한 칸은 [prd-ledger-status-md](/docs/planning/prds/prd-ledger-status-md)에 있다.
+
+1. **현황 파일** — 장부 폴더의 마크다운
+2. **계좌 목록** — 통장·지갑처럼 돈이 있는 곳
+3. **부채 목록** — 카드·대출·할부 등 빚의 이름
+4. **갱신 시각** — 언제 다시 쓴 목록인지
+
+잔액이나 현금흐름 숫자는 이 파일이 맡을 일이 아니다.
+
+### 수락 기준
+
+1. 현황 파일을 열면 계좌와 부채 이름이 보인다
+2. 갱신 시각이 적혀 있다
+3. 계정·카드·대출·할부를 바꾼 뒤 다시 쓰면 목록이 따라간다
+4. 파일만 수정해서는 장부가 바뀌지 않는다
+5. 에이전트는 방향을 잡을 때 이 파일을 먼저 읽도록 안내받는다
+
+### 추적
+
+- 기능: [ledger-status](/docs/features/ledger-status)
+- 스펙: [SPEC-ledger-status](/docs/agent/ledger-status)
+- PRD: [prd-ledger-status-md](/docs/planning/prds/prd-ledger-status-md)
+- 구현계획: [plan-ledger-status-md](/docs/development/plans/plan-ledger-status-md)

@@ -20,7 +20,8 @@
     "us-social-insurance",
     "us-scheduled-routines",
     "us-dash-mdx-pages",
-    "us-liability-maturity"
+    "us-liability-maturity",
+    "us-ledger-status-md"
   ],
   "collapsible": true,
   "defaultOpen": false,

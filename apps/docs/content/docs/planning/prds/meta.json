@@ -8,7 +8,8 @@
     "prd-social-insurance-sor",
     "prd-scheduled-routines",
     "prd-dash-mdx-shell",
-    "prd-liability-maturity"
+    "prd-liability-maturity",
+    "prd-ledger-status-md"
   ],
   "collapsible": true,
   "defaultOpen": false,

@@ -3,7 +3,8 @@
   "pages": [
     "skill",
     "document-skills-companion",
-    "scheduled-routines"
+    "scheduled-routines",
+    "ledger-status"
   ],
   "collapsible": true,
   "defaultOpen": false

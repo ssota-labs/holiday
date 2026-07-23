@@ -1,0 +1,40 @@
+---
+title: 장부 현황 마크다운
+description: 계좌·부채 이름을 status.md로 남겨 사람과 에이전트가 읽는다
+type: guide
+summary: 장부 진실은 DB. status.md는 나열용 다시 쓰기 파일이다.
+related:
+  - /docs/planning/stories/us-ledger-status-md
+  - /docs/agent/ledger-status
+  - /docs/planning/prds/prd-ledger-status-md
+---
+
+장부에 어떤 계좌와 부채가 있는지를 **마크다운 한 장**에 적어 둔다. 잔액·전망·마감
+숫자는 넣지 않는다. 그 숫자는 잔액 조회·현금흐름·대시보드에서 본다.
+
+## 언제 보나
+
+1. **사람이** 에디터에서 구조를 훑을 때
+2. **에이전트가** 세션 초반에 방향을 잡을 때 — 파일이 없으면 목록 조회로 넘어간다
+3. **계정·카드·대출·할부를 바꾼 뒤** 다시 써서 목록을 맞출 때
+
+## 감각
+
+| 구분 | 이 파일 | 장부 DB |
+|---|---|---|
+| 역할 | 읽기용 나열 | 진실 |
+| 손으로 고침 | 다시 쓰면 덮임 | 계정·스케줄 명령으로만 변경 |
+| 잔액 | 없음 (1차) | 잔액 조회 |
+
+## 수락 기준
+
+1. `status.md`에 계좌·부채 이름과 갱신 시각이 있다
+2. 다시 쓰기 후 장부에 있는 계좌·부채가 목록에 나타난다
+3. 파일만 고쳐서는 장부가 바뀌지 않는다
+4. 에이전트 안내에 방향 잡을 때 현황 파일을 먼저 읽는다는 내용이 있다
+
+## 스펙 · 스토리
+
+[SPEC-ledger-status](/docs/agent/ledger-status) ·
+[us-ledger-status-md](/docs/planning/stories/us-ledger-status-md) ·
+[prd-ledger-status-md](/docs/planning/prds/prd-ledger-status-md)
