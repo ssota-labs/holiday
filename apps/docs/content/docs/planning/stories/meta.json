@@ -21,7 +21,8 @@
     "us-scheduled-routines",
     "us-dash-mdx-pages",
     "us-liability-maturity",
-    "us-ledger-status-md"
+    "us-ledger-status-md",
+    "us-ledger-status-session-hook"
   ],
   "collapsible": true,
   "defaultOpen": false,

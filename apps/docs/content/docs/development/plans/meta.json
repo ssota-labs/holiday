@@ -11,7 +11,8 @@
     "plan-scheduled-routines",
     "plan-dash-mdx-shell",
     "plan-liability-maturity",
-    "plan-ledger-status-md"
+    "plan-ledger-status-md",
+    "plan-ledger-status-session-hook"
   ],
   "collapsible": true,
   "defaultOpen": false,

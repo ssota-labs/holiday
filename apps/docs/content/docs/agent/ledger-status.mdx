@@ -7,13 +7,16 @@ id: SPEC-ledger-status
 stage: accepted
 related:
   - /docs/planning/prds/prd-ledger-status-md
+  - /docs/planning/prds/prd-ledger-status-session-hook
   - /docs/planning/stories/us-ledger-status-md
+  - /docs/planning/stories/us-ledger-status-session-hook
   - /docs/features/ledger-status
   - /docs/features/accounts
   - /docs/features/cards
   - /docs/features/loans
   - /docs/features/installments
   - /docs/agent/skill
+  - /docs/agent/document-skills-companion
 ---
 
 ## 범위
@@ -24,10 +27,14 @@ related:
 
 **대상 cwd:** `.holiday/ledger.db`가 있는 장부 프로젝트.
 
+세션 시작 훅은 같은 cwd에서 **파일 유무만** 보고, 없을 때만 다시 쓰기와 동일
+본문으로 만든다. 문서 스킬 companion 훅과 같은 soft-fail 계열이다.
+
 ## 사람 말로
 
 지금 어떤 통장·카드·대출·할부가 있는지 파일 하나로 본다. 숫자는 믿지 말고
 이름만 본다. 파일이 없거나 오래돼 보이면 다시 쓰거나 목록 조회로 확인한다.
+장부 폴더에서 채팅이 열리면, 파일이 없을 때는 훅이 먼저 만들어 둘 수 있다.
 
 ## 인터페이스
 
@@ -35,8 +42,9 @@ related:
 |---|---|
 | 현황 파일 | 경로: 장부 프로젝트 루트의 `status.md` (UTF-8 마크다운) |
 | 다시 쓰기 명령 | `holiday status`. 장부를 읽어 파일을 **통째로** 덮어쓴다. 손편집 보존 없음 |
+| 세션 시작 훅 | `.holiday/` 장부 cwd에서 `status.md` 유무 확인. **없으면** 다시 쓰기와 동일 본문으로 생성. **있으면** no-op |
 | 구조 변경 후 | 계정·카드·대출·할부 **추가·개명·종료**에 성공하면 다시 쓰기를 권장한다. 구현은 자동 다시 쓰기를 택할 수 있다 (명령과 동일 본문) |
-| 에이전트·스킬 | 방향 잡기(계정 추측 금지의 앞단)에서 `status.md`를 **먼저** 읽는다. 없거나 비면 기존 목록 조회로 폴백한다 |
+| 에이전트·스킬 | 세션·구조 파악에서 `status.md`를 **먼저** 확인한다. 없거나 비면 다시 쓰기 또는 목록 조회로 폴백한다 |
 | stdout | 다시 쓰기 명령은 사람용 한 줄(`note`) + `--json` 시 경로·갱신시각 |
 
 변경 명령의 플래그·exit code 세부는 CLI 스펙 페이지에서 맞춘다 (구현 PR).
@@ -76,12 +84,27 @@ related:
 
 ### 에이전트 읽기 규칙
 
-1. “계정이 뭐가 있지 / 카드·대출이 뭐가 있지”처럼 **구조 파악**이면 `status.md`를
-   먼저 연다
+1. 장부 폴더에서 일할 때 `status.md`를 **항상** 먼저 확인한다
 2. 파일이 없거나 절이 비어 있으면 `holiday status`를 돌리거나 `account list` /
    `card list` / `loan list` / `installment list`로 폴백한다
 3. **잔액·확정·대조**에는 이 파일을 쓰지 않는다 — 기존 조회·대조 명령을 쓴다
 4. 파일에 없는 계정 이름을 지어내지 않는다 (기존 “계정 추측 금지”와 동일)
+
+### 세션 시작 훅 규칙
+
+1. **가드:** `.holiday/`가 있는 유저 장부 프로젝트에서만 동작. holiday 개발
+   모노레포·장부 없는 cwd는 no-op
+2. **없을 때만 생성:** `status.md`가 없으면 `holiday status`와 동일 본문으로
+   만든다. 있으면 내용을 덮지 않는다
+3. **soft-fail:** CLI·네트워크·권한·호스트 trust 실패는 세션을 막지 않는다
+   (exit 0 계열, 문서 스킬 companion와 동일 정신)
+4. **호스트 배치:**
+   - Claude Code / Codex: 플러그인 `SessionStart` → 플러그인 루트 스크립트
+   - Cursor: `holiday init` 템플릿 `.cursor/hooks.json` `sessionStart` (없는
+     파일만 생성). 이미 `hooks.json`이 있는 장부는 수동으로 항목·스크립트를
+     더한다
+5. **컨텍스트(선택):** 호스트가 허용하면 “생성함 / 이미 있음 / 건너뜀” 한 줄.
+   잔액·계정 목록 전체를 훅 출력에 넣지 않는다
 
 ## 데이터와 불변식
 
@@ -107,12 +130,15 @@ related:
 | 원장 없음 | 거절, 파일 미작성 |
 | 쓰기 권한 없음 | 거절, 기존 파일 유지(있으면) |
 | 손편집만 있고 원장과 불일치 | 오류 아님 — 다음 다시 쓰기가 원장으로 맞춤 |
+| 세션 훅에서 CLI/네트워크 실패 | soft-fail, 세션 계속. 에이전트는 수동 다시 쓰기·목록 폴백 |
+| Cursor/Codex 훅 거절·untrusted | 훅 스킵. 안내·수동 `holiday status`로 동일 결과 가능해야 함 |
 
 ## 호환성
 
-- 기존 장부에 `status.md`가 없어도 동작한다 (없으면 읽고 폴백)
+- 기존 장부에 `status.md`가 없어도 동작한다 (없으면 읽고 폴백, 훅이 있으면 생성)
 - 마이그레이션 없음
 - dash `data/ledger.json`·MDX와 경로·역할이 겹치지 않는다
+- 기존 장부의 `.cursor/hooks.json`·플러그인 밖 설정은 init이 덮지 않는다
 
 ## 수락 기준
 
@@ -120,5 +146,7 @@ related:
 2. 장부에 있는 비-placeholder 자산 잎 계정과 카드·대출·할부가 각 절에 나타난다
 3. 본문에 잔액 숫자가 없다
 4. 파일만 수정해도 원장 계정·스케줄이 변하지 않는다
-5. 스킬/장부 안내에 “구조 파악 시 `status.md` 우선”이 있다
+5. 스킬/장부 안내에 “세션·구조 파악 시 `status.md` 우선”이 있다
 6. 파일 부재 시 기존 목록 조회로 폴백하는 경로가 문서에 있다
+7. 세션 훅(동작 호스트): 파일 없으면 생성, 있으면 유지, 실패해도 세션 계속
+8. 장부 없는 cwd·개발 모노레포에서는 훅이 현황 파일을 만들지 않는다

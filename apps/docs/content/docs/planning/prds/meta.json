@@ -9,7 +9,8 @@
     "prd-scheduled-routines",
     "prd-dash-mdx-shell",
     "prd-liability-maturity",
-    "prd-ledger-status-md"
+    "prd-ledger-status-md",
+    "prd-ledger-status-session-hook"
   ],
   "collapsible": true,
   "defaultOpen": false,
