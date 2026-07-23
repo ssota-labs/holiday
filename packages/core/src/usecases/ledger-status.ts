@@ -6,12 +6,10 @@ export async function ledgerStatus(
   read: LedgerRead,
   generatedAt: string,
 ): Promise<LedgerStatusSnapshot> {
-  const [accounts, cards, loans, installments] = await Promise.all([
-    read.listAccounts(),
-    read.listCards(),
-    read.listLoans(),
-    read.listInstallments(),
-  ]);
+  const accounts = await read.listAccounts();
+  const cards = await read.listCards();
+  const loans = await read.listLoans();
+  const installments = await read.listInstallments();
 
   return buildLedgerStatus({
     generatedAt,

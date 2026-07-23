@@ -74,7 +74,7 @@ describe('isoTimestampInTimeZone', () => {
   it('includes the configured timezone offset', () => {
     const now = new Date('2026-07-23T03:20:00Z');
     expect(isoTimestampInTimeZone(now, 'Asia/Seoul')).toBe('2026-07-23T12:20:00+09:00');
-    expect(isoTimestampInTimeZone(now, 'UTC')).toBe('2026-07-23T03:20:00Z');
+    expect(isoTimestampInTimeZone(now, 'UTC')).toBe('2026-07-23T03:20:00+00:00');
   });
 });
 

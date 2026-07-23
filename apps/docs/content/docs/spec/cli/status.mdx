@@ -24,9 +24,7 @@ summary: 장부 구조를 프로젝트 루트 status.md에 다시 쓴다.
   mutates={true}
   summary="장부의 계좌·카드·대출·할부 구조를 status.md에 다시 쓴다."
   signature={`holiday status [--json]`}
-  flags={[
-    { name: '--json', value: '', required: false, description: 'statusPath와 generatedAt을 stdout JSON으로 반환' },
-  ]}
+  flags={[]}
   exits={[
     { code: 0, meaning: 'status.md 생성 또는 전체 덮어쓰기 성공' },
     { code: 1, meaning: '원장이 없거나 파일을 쓸 수 없음' },
