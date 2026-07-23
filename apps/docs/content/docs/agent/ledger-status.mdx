@@ -140,6 +140,31 @@ related:
 - dash `data/ledger.json`·MDX와 경로·역할이 겹치지 않는다
 - 기존 장부의 `.cursor/hooks.json`·플러그인 밖 설정은 init이 덮지 않는다
 
+## 기존 Cursor 장부 — 수동 병합
+
+`holiday init`은 **없는 파일만** 쓴다. 이미 `.cursor/hooks.json`이 있는 장부에는
+ensure 훅이 자동으로 안 붙는다. 아래를 한 번 더한다.
+
+1. 스크립트 복사 (없으면): 최신 CLI 템플릿의
+   `.cursor/hooks/ensure-status-md.sh`를 장부
+   `.cursor/hooks/ensure-status-md.sh`로 둔다 (실행 권한 `+x`).
+2. `.cursor/hooks.json`의 `hooks.sessionStart` 배열에 항목을 **추가**한다
+   (기존 문서 스킬 훅은 유지):
+
+```json
+{
+  "command": "./.cursor/hooks/ensure-status-md.sh",
+  "timeout": 120
+}
+```
+
+3. 훅을 거절했거나 CLI가 없으면 세션은 그대로 이어지고, 수동으로
+   `holiday status`(또는 `npx @holiday-cfo/cli@latest status`)를 돌리면 같은
+   파일을 만든다.
+
+Claude Code·Codex는 플러그인 갱신으로 `SessionStart`에 ensure가 들어간다.
+trust가 꺼져 있으면 위 수동 다시 쓰기와 같다.
+
 ## 수락 기준
 
 1. 다시 쓰기 후 `status.md`에 제목·갱신 시각·계좌·부채 절이 있다

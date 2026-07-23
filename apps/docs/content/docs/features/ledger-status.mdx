@@ -25,6 +25,11 @@ related:
 `holiday status`를 실행하면 프로젝트 루트의 `status.md`를 원장 기준으로 통째로
 다시 쓴다. `holiday status --json`은 파일 경로와 갱신 시각을 반환한다.
 
+세션 훅(Claude Code·Codex 플러그인, 새 장부의 Cursor 템플릿)은 파일이 **없을
+때만** 같은 다시 쓰기로 만든다. 이미 있는 Cursor `hooks.json`은 init이 덮지
+않는다 — 수동 추가는 [SPEC-ledger-status](/docs/agent/ledger-status)의
+「기존 Cursor 장부」절을 본다.
+
 ## 감각
 
 | 구분 | 이 파일 | 장부 DB |

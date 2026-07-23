@@ -61,10 +61,11 @@ npx @holiday-cfo/cli@latest <command>
 ## 장부 구조 파악
 
 세션에서 장부를 다룰 때는 **항상** 프로젝트 루트의 `status.md`를 확인한다.
-없으면 `holiday status`로 만든다. 비어 있거나 오래돼 보이면 같은 명령으로
-다시 쓴다. 이 파일에는 계좌·카드·대출·할부 이름과 계정 코드만 있고 잔액은
-없다. 파일이 없거나 절이 비면 `holiday account list` / `card list` /
-`loan list` / `installment list`로 폴백한다.
+세션 시작 훅이 켜져 있으면 파일이 없을 때 만들어 둘 수 있다(이미 있으면
+덮지 않는다). 그래도 없으면 `holiday status`로 만든다. 비어 있거나 오래돼
+보이면 같은 명령으로 다시 쓴다. 이 파일에는 계좌·카드·대출·할부 이름과 계정
+코드만 있고 잔액은 없다. 파일이 없거나 절이 비면 `holiday account list` /
+`card list` / `loan list` / `installment list`로 폴백한다.
 
 잔액·확정·잔액 대조 판단에는 `status.md`를 쓰지 않는다. 이 파일을 손으로 고쳐도
 원장은 바뀌지 않으며, `holiday status`를 다시 실행하면 원장 기준으로 통째로 덮인다.

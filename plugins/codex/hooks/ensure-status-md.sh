@@ -1,0 +1,1 @@
+../../claude-code/hooks/ensure-status-md.sh

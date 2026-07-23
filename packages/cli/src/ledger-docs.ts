@@ -20,7 +20,8 @@ function walkFiles(path: string): string[] {
 
 /**
  * `holiday init` — write the ledger project's AGENTS.md / CLAUDE.md, and (when
- * missing) Cursor `.cursor/hooks.json` for soft-fail document-skills refresh.
+ * missing) Cursor `.cursor/hooks.json` for soft-fail document-skills refresh
+ * and status.md ensure.
  *
  * Never clobbered: nested paths are created file-by-file so a pre-existing
  * `.cursor/` does not block a missing hooks file.

@@ -169,7 +169,9 @@ program
       note(`에이전트 지침을 만들었습니다: ${docs.created.join(', ')} — 이 폴더에서 일하는 에이전트의 말투와 규칙입니다.`);
     }
     if (docs.created.some((p) => p.replaceAll('\\', '/').startsWith('.cursor/'))) {
-      note(`Cursor 세션 훅을 만들었습니다 — 문서 스킬(xlsx/pdf)을 이 장부 폴더 기준으로 soft-fail 갱신합니다.`);
+      note(
+        `Cursor 세션 훅을 만들었습니다 — 문서 스킬 갱신과 status.md 유무 확인(없으면 생성)을 soft-fail로 돌립니다.`,
+      );
     }
     note(`ledger.db는 커밋해 두세요. 이 저장소는 반드시 비공개(private)여야 합니다 — 당신의 돈입니다.`);
   });

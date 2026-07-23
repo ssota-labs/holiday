@@ -5,6 +5,10 @@
       {
         "command": "./.cursor/hooks/update-document-skills.sh",
         "timeout": 120
+      },
+      {
+        "command": "./.cursor/hooks/ensure-status-md.sh",
+        "timeout": 120
       }
     ]
   }

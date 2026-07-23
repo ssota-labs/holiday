@@ -1,5 +1,5 @@
 {
-  "description": "Refresh project-scoped document skills (xlsx/pdf/docx/pptx) on session start. Soft-fail; ledger cwd only.",
+  "description": "SessionStart: refresh project document skills and ensure status.md exists (soft-fail; ledger cwd only).",
   "hooks": {
     "SessionStart": [
       {
@@ -10,6 +10,12 @@
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/update-document-skills.sh\"",
             "timeout": 120,
             "statusMessage": "Updating project document skills"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ensure-status-md.sh\"",
+            "timeout": 120,
+            "statusMessage": "Ensuring ledger status.md"
           }
         ]
       }

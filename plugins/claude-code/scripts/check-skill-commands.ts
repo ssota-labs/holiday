@@ -238,6 +238,9 @@ function main(): void {
     if (!raw.includes('SessionStart') || !raw.includes('update-document-skills.sh')) {
       problems.push(`${host}: SessionStart must invoke update-document-skills.sh`);
     }
+    if (!raw.includes('ensure-status-md.sh')) {
+      problems.push(`${host}: SessionStart must invoke ensure-status-md.sh`);
+    }
   }
   for (const name of ['xlsx', 'pdf', 'docx', 'pptx'] as const) {
     for (const root of [join(PLUGIN, 'skills'), join(PLUGIN, '..', 'codex', 'skills')]) {
@@ -251,21 +254,23 @@ function main(): void {
       }
     }
   }
-  // Codex shares the update script via symlink — broken links mean a half-deployed plugin.
-  const codexScript = join(PLUGIN, '..', 'codex', 'hooks', 'update-document-skills.sh');
-  const claudeScript = join(PLUGIN, 'hooks', 'update-document-skills.sh');
-  if (!existsSync(claudeScript)) {
-    problems.push(`${claudeScript}: missing soft-fail update script`);
-  }
-  if (!existsSync(codexScript)) {
-    problems.push(`${codexScript}: missing (expected symlink to Claude Code hooks script)`);
-  } else if (existsSync(claudeScript)) {
-    try {
-      if (realpathSync(codexScript) !== realpathSync(claudeScript)) {
-        problems.push(`${codexScript}: must resolve to the same file as ${claudeScript}`);
+  // Codex shares hook scripts via symlink — broken links mean a half-deployed plugin.
+  for (const name of ['update-document-skills.sh', 'ensure-status-md.sh'] as const) {
+    const codexScript = join(PLUGIN, '..', 'codex', 'hooks', name);
+    const claudeScript = join(PLUGIN, 'hooks', name);
+    if (!existsSync(claudeScript)) {
+      problems.push(`${claudeScript}: missing soft-fail SessionStart script`);
+    }
+    if (!existsSync(codexScript)) {
+      problems.push(`${codexScript}: missing (expected symlink to Claude Code hooks script)`);
+    } else if (existsSync(claudeScript)) {
+      try {
+        if (realpathSync(codexScript) !== realpathSync(claudeScript)) {
+          problems.push(`${codexScript}: must resolve to the same file as ${claudeScript}`);
+        }
+      } catch {
+        problems.push(`${codexScript}: broken symlink`);
       }
-    } catch {
-      problems.push(`${codexScript}: broken symlink`);
     }
   }
 
@@ -278,7 +283,7 @@ function main(): void {
 
   console.log(`✓ ${ok.length} command(s) referenced by the skill all exist, and nothing shipped is listed as missing.`);
   for (const c of ok.sort()) console.log(`  holiday ${c}`);
-  console.log('✓ document-skills companion setup + SessionStart hooks present; no vendored Anthropic skill trees.');
+  console.log('✓ document-skills companion + status.md ensure SessionStart hooks present; no vendored Anthropic skill trees.');
 }
 
 main();

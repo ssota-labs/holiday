@@ -64,10 +64,11 @@ entry you're about to post in plain language and let the user confirm.
 ## Getting oriented
 
 Always check `status.md` when you start working in a ledger folder. It lists
-account, card, loan, and installment names without balances. If it is missing,
-run `holiday status` to create it. If it is empty or looks stale, rewrite with
-the same command, then fall back to the list commands if needed. Never use it
-for a balance, reconciliation, or posted-state answer.
+account, card, loan, and installment names without balances. SessionStart hooks
+may create it when missing (they never overwrite an existing file). If it is
+still missing, run `holiday status` to create it. If it is empty or looks stale,
+rewrite with the same command, then fall back to the list commands if needed.
+Never use it for a balance, reconciliation, or posted-state answer.
 
 ```bash
 holiday status                # rewrite status.md from the ledger

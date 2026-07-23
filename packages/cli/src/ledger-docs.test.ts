@@ -22,14 +22,16 @@ describe('scaffoldLedgerDocs', () => {
         'CLAUDE.md',
         join('.cursor', 'hooks.json'),
         join('.cursor', 'hooks', 'update-document-skills.sh'),
+        join('.cursor', 'hooks', 'ensure-status-md.sh'),
       ]),
     );
     expect(readFileSync(join(dest, 'AGENTS.md'), 'utf8')).toContain('holiday v0.3.1');
     const hooks = JSON.parse(readFileSync(join(dest, '.cursor', 'hooks.json'), 'utf8')) as {
       hooks: { sessionStart: unknown[] };
     };
-    expect(hooks.hooks.sessionStart.length).toBe(1);
+    expect(hooks.hooks.sessionStart.length).toBe(2);
     expect(existsSync(join(dest, '.cursor', 'hooks', 'update-document-skills.sh'))).toBe(true);
+    expect(existsSync(join(dest, '.cursor', 'hooks', 'ensure-status-md.sh'))).toBe(true);
 
     // Pre-existing .cursor/ must not block a missing hooks.json, and existing files stay.
     writeFileSync(join(dest, 'AGENTS.md'), 'user-edited\n');
@@ -38,7 +40,12 @@ describe('scaffoldLedgerDocs', () => {
 
     const second = scaffoldLedgerDocs(dest, '0.9.9');
     expect(second.skipped).toEqual(
-      expect.arrayContaining(['AGENTS.md', 'CLAUDE.md', join('.cursor', 'hooks', 'update-document-skills.sh')]),
+      expect.arrayContaining([
+        'AGENTS.md',
+        'CLAUDE.md',
+        join('.cursor', 'hooks', 'update-document-skills.sh'),
+        join('.cursor', 'hooks', 'ensure-status-md.sh'),
+      ]),
     );
     expect(second.created).toEqual(expect.arrayContaining([join('.cursor', 'hooks.json')]));
     expect(readFileSync(join(dest, 'AGENTS.md'), 'utf8')).toBe('user-edited\n');
@@ -55,5 +62,8 @@ describe('scaffoldLedgerDocs', () => {
     const again = scaffoldLedgerDocs(dest, '0.3.1');
     expect(again.skipped).toContain(join('.cursor', 'hooks', 'update-document-skills.sh'));
     expect(readFileSync(script, 'utf8')).toContain('skills update -p -y');
+    expect(readFileSync(join(dest, '.cursor', 'hooks', 'ensure-status-md.sh'), 'utf8')).toContain(
+      'status.md',
+    );
   });
 });
