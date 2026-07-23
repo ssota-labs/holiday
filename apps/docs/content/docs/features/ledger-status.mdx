@@ -5,8 +5,10 @@ type: guide
 summary: 장부 진실은 DB. status.md는 나열용 다시 쓰기 파일이다.
 related:
   - /docs/planning/stories/us-ledger-status-md
+  - /docs/planning/stories/us-ledger-status-session-hook
   - /docs/agent/ledger-status
   - /docs/planning/prds/prd-ledger-status-md
+  - /docs/planning/prds/prd-ledger-status-session-hook
 ---
 
 장부에 어떤 계좌와 부채가 있는지를 **마크다운 한 장**에 적어 둔다. 잔액·전망·마감
@@ -17,6 +19,8 @@ related:
 1. **사람이** 에디터에서 구조를 훑을 때
 2. **에이전트가** 세션 초반에 방향을 잡을 때 — 파일이 없으면 목록 조회로 넘어간다
 3. **계정·카드·대출·할부를 바꾼 뒤** 다시 써서 목록을 맞출 때
+4. **세션이 열릴 때** — 훅이 켜진 호스트에서는 파일이 없으면 만들어 둔다. 있으면
+   그대로 둔다
 
 `holiday status`를 실행하면 프로젝트 루트의 `status.md`를 원장 기준으로 통째로
 다시 쓴다. `holiday status --json`은 파일 경로와 갱신 시각을 반환한다.
@@ -34,10 +38,13 @@ related:
 1. `status.md`에 계좌·부채 이름과 갱신 시각이 있다
 2. 다시 쓰기 후 장부에 있는 계좌·부채가 목록에 나타난다
 3. 파일만 고쳐서는 장부가 바뀌지 않는다
-4. 에이전트 안내에 방향 잡을 때 현황 파일을 먼저 읽는다는 내용이 있다
+4. 에이전트 안내에 현황 파일을 먼저 확인한다는 내용이 있다
+5. 세션 훅이 켜진 호스트에서 파일이 없으면 생기고, 있으면 유지된다
 
 ## 스펙 · 스토리
 
 [SPEC-ledger-status](/docs/agent/ledger-status) ·
 [us-ledger-status-md](/docs/planning/stories/us-ledger-status-md) ·
-[prd-ledger-status-md](/docs/planning/prds/prd-ledger-status-md)
+[us-ledger-status-session-hook](/docs/planning/stories/us-ledger-status-session-hook) ·
+[prd-ledger-status-md](/docs/planning/prds/prd-ledger-status-md) ·
+[prd-ledger-status-session-hook](/docs/planning/prds/prd-ledger-status-session-hook)

@@ -1,0 +1,38 @@
+---
+title: us-ledger-status-session-hook
+description: 세션을 열면 현황 파일이 없으면 만들어 졌으면 한다
+type: conceptual
+summary: 장부 채팅이 시작될 때 현황 마크다운 유무를 보고, 없으면 만들어 둔다
+id: us-ledger-status-session-hook
+ticker: us-022
+---
+
+**As a** 1인 사용자(와 그 장부를 운전하는 채팅 에이전트)  
+**I want** 장부 폴더에서 세션이 열릴 때 현황 파일이 없으면 만들어지길 바란다  
+**So that** 안내를 잊었거나 예전 안내만 남아 있어도 구조 파일 없이 시작하지 않는다
+
+### 무엇을 보는가
+
+자세한 칸은 [prd-ledger-status-session-hook](/docs/planning/prds/prd-ledger-status-session-hook)에 있다.
+
+1. **현황 파일 유무** — 세션 초반에 파일이 있는지 본다
+2. **없을 때 생성** — 장부 기준으로 같은 나열 파일을 만든다
+3. **있을 때 유지** — 매 세션마다 덮어쓰지 않는다
+
+잔액 숫자는 이 흐름이 맡을 일이 아니다. 파일 본문 계약은
+[us-ledger-status-md](/docs/planning/stories/us-ledger-status-md)와 같다.
+
+### 수락 기준
+
+1. 장부 폴더에 현황 파일이 없을 때 세션을 열면 파일이 생긴다 (훅이 동작하는 호스트)
+2. 파일이 이미 있으면 세션을 열어도 내용이 바뀌지 않는다
+3. 훅 실패 후에도 장부 대화를 이어갈 수 있다
+4. 장부가 아닌 폴더에서는 현황 파일을 만들지 않는다
+
+### 추적
+
+- 기능: [ledger-status](/docs/features/ledger-status)
+- 스펙: [SPEC-ledger-status](/docs/agent/ledger-status)
+- PRD: [prd-ledger-status-session-hook](/docs/planning/prds/prd-ledger-status-session-hook)
+- 구현계획: [plan-ledger-status-session-hook](/docs/development/plans/plan-ledger-status-session-hook)
+- 선행 스토리: [us-ledger-status-md](/docs/planning/stories/us-ledger-status-md)
